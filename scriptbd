@@ -1,0 +1,100 @@
+--Crear base de datos
+CREATE DATABASE sistema_faenasDB;
+
+--Crear tablas de faena
+
+
+CREATE TABLE IF NOT EXISTS provincia(
+    id_provincia SERIAL PRIMARY KEY,
+    descripcion VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS enfermedad(
+    id_enfermedad SERIAL PRIMARY KEY,
+    descripcion VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS categoria_especie(
+    id_cat_especie SERIAL PRIMARY KEY,
+    descripcion VARCHAR(25) NOT NULL,
+);
+
+CREATE TABLE IF NOT EXISTS especie(
+    id_especie SERIAL PRIMARY KEY,
+    id_cat_especie SMALLINT NOT NULL,
+    descripcion VARCHAR(20) NOT NULL,
+
+    CONSTRAINT FK_id_categoria_especie FOREIGN KEY (id_cat_especie) REFERENCES categoria_especie(id_cat_especie),
+);
+
+CREATE TABLE IF NOT EXISTS localidad(
+	id_localidad SERIAL PRIMARY KEY,
+    descripcion VARCHAR(20) NOT NULL,
+	id_provincia SMALLINT NOT NULL,
+	CONSTRAINT FK_id_provincia FOREIGN KEY (id_provincia) REFERENCES provincia(id_provincia)
+);
+
+CREATE TABLE IF NOT EXISTS titular_faena(
+	id_titular_faena SERIAL PRIMARY KEY, 
+	nombre VARCHAR(30) NOT NULL,
+	id_localidad SMALLINT NOT NULL,
+	CONSTRAINT FK_id_localidad FOREIGN KEY (id_localidad) REFERENCES localidad(id_localidad)
+);
+
+
+
+CREATE TABLE IF NOT EXISTS tropa(
+    id_tropa SERIAL INTEGER PRIMARY KEY,
+    extendida_por VARCHAR(50) NOT NULL,
+    localidad VARCHAR(25) NOT NULL,
+    dte_dtu VARCHAR(30) NOT NULL,
+    guia_policial VARCHAR(30) NOT NULL,
+    fecha DATE NOT NULL,
+    --creado en TIMESTAMPTZ DEFAULT NOW(); sirve para auditar eventos del sistema (creación, modificación), DEFAULT NOW() para timestamps automaticos.
+    id_titular_faena SMALLINT, 
+
+    CONSTRAINT FK_id_titular_faena FOREIGN KEY (id_titular_faena) REFERENCES titular_faena(id_titular_faena)
+);
+
+CREATE TABLE IF NOT EXISTS tropa_detalle(
+    id_tropa_detalle SERIAL INTEGER PRIMARY KEY 
+    id_cat_especie INTEGER NOT NULL,
+    id_tropa INTEGER NOT NULL,
+    id_especie SMALLINT NOT NULL,
+    cantidad SMALLINT NOT NULL,
+
+
+    CONSTRAINT FK_id_tropa FOREIGN KEY (id_tropa) REFERENCES tropa(id_tropa),
+    CONSTRAINT FK_id_especie FOREIGN KEY (id_especie) REFERENCES especie(id_especie)
+);
+
+CREATE TABLE IF NOT EXISTS faena(
+    id_faena SERIAL INTEGER PRIMARY KEY,
+    id_tropa INTEGER NOT NULL,
+    fecha_faena DATE NOT NULL,
+    cantidad_faena SMALLINT NOT NULL,
+
+    CONSTRAINT FK_id_tropa FOREIGN KEY (id_tropa) REFERENCES tropa (id_tropa)
+);
+
+
+CREATE TABLE IF NOT EXISTS decomiso(
+    id_decomiso SERIAL INTEGER PRIMARY KEY,
+    id_faena INTEGER NOT NULL,
+    id_enfermedad INTEGER NOT NULL,
+    cantidad_afectados SMALLINT,
+
+    CONSTRAINT FK_id_faena FOREIGN KEY (id_faena) REFERENCES faena(id_faena),
+    CONSTRAINT FK_id_enfermedad FOREIGN KEY (id_enfermedad) REFERENCES enfermedad(id_enfermedad)
+);
+
+-------CONSULTAS---------
+
+--CARGAR DATOS a la tablaX
+--INSERT INTO provincia (descripcion) VALUES ('Capital');
+INSERT INTO provincia (descripcion) VALUES ('Corrientes');
+
+
+--ELIMINAR DATOS a la tablaX
+--DELETE FROM provincia WHERE (descripcion) = 'Capital';
+

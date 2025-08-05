@@ -296,6 +296,34 @@ const getDecomiso=async()=>{
     }
 };
 
+//--------------AGREGAR ROL USUARIO-----------------------------
+
+const addRolUsuario=async()=>{
+    try{
+        const result=await pool.query("INSERT INTO rol_usuario(descripcion)"
+                                     +   "VALUES ($1);", ["SuperAdmin"]);
+        
+        console.log(result);
+        console.log("Rol agregado!");
+    }catch(error){
+        console.error(error);
+    }
+};
+
+//----------------------LISTAR FAENA-----------------------------------
+const getRolUsuario=async()=>{
+    try{
+        const result=await pool.query("SELECT id_rol, descripcion FROM rol_usuario;");
+        
+        console.log(result.rows);
+        console.log("Roles de usuarios listadas");
+    }catch(error){
+        console.error(error);
+    }
+};
+
+
+
 
 //addProvincia();
 //getProvincia();
@@ -326,5 +354,8 @@ const getDecomiso=async()=>{
 //
 //addDecomiso();
 //getDecomiso();
-
-
+//
+//addRolUsuario();
+//getRolUsuario();
+//
+//

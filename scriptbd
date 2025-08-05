@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS enfermedad(
 
 CREATE TABLE IF NOT EXISTS categoria_especie(
     id_cat_especie SERIAL PRIMARY KEY,
-    descripcion VARCHAR(25) NOT NULL,
+    descripcion VARCHAR(25) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS especie(
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS especie(
     id_cat_especie SMALLINT NOT NULL,
     descripcion VARCHAR(20) NOT NULL,
 
-    CONSTRAINT FK_id_categoria_especie FOREIGN KEY (id_cat_especie) REFERENCES categoria_especie(id_cat_especie),
+    CONSTRAINT FK_id_categoria_especie FOREIGN KEY (id_cat_especie) REFERENCES categoria_especie(id_cat_especie)
 );
 
 CREATE TABLE IF NOT EXISTS localidad(
@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS titular_faena(
 
 CREATE TABLE IF NOT EXISTS tropa(
     id_tropa SERIAL INTEGER PRIMARY KEY,
+    /*num_usuario INTEGER NOT NULL,  SE DEBE TENER UN NUMERO DE USUARIO EN TROPA, AL TENER DTE_DTU Y un IDTROPA AUTOINCREMENTAL?*/
     extendida_por VARCHAR(50) NOT NULL,
     localidad VARCHAR(25) NOT NULL,
     dte_dtu VARCHAR(30) NOT NULL,
@@ -57,7 +58,7 @@ CREATE TABLE IF NOT EXISTS tropa(
 );
 
 CREATE TABLE IF NOT EXISTS tropa_detalle(
-    id_tropa_detalle SERIAL INTEGER PRIMARY KEY 
+    id_tropa_detalle SERIAL INTEGER PRIMARY KEY,
     id_cat_especie INTEGER NOT NULL,
     id_tropa INTEGER NOT NULL,
     id_especie SMALLINT NOT NULL,
@@ -87,6 +88,39 @@ CREATE TABLE IF NOT EXISTS decomiso(
     CONSTRAINT FK_id_faena FOREIGN KEY (id_faena) REFERENCES faena(id_faena),
     CONSTRAINT FK_id_enfermedad FOREIGN KEY (id_enfermedad) REFERENCES enfermedad(id_enfermedad)
 );
+
+CREATE TABLE IF NOT EXISTS remanente_tropa (
+    id_remanente SERIAL PRIMARY KEY,
+    id_tropa INTEGER NOT NULL,
+    /*dte_dtu seria lo mejor para un remanente no?*/
+    cantidad_remanente SMALLINT NOT NULL, -- animales no faenados
+    motivo VARCHAR(100), -- opcional, ej: "No aptos", "Destino distinto", "Faena parcial"
+    fecha_registro DATE DEFAULT CURRENT_DATE,
+
+    CONSTRAINT FK_id_tropa FOREIGN KEY (id_tropa) REFERENCES tropa(id_tropa)
+);
+/*Esta tabla permite registrar por tropa cuántos animales quedaron sin faenar, por qué motivo y cuándo.
+*/
+
+
+CREATE TABLE IF NOT EXISTS rol_usuario(
+    id_rol SERIAL PRIMARY KEY,
+    descripcion VARCHAR(20) NOT NULL
+)
+
+CREATE TABLE IF NOT EXISTS usuario (
+    id_usuario SERIAL PRIMARY KEY,
+    dni SMALLINT NOT NULL,
+    nombre VARCHAR(20) NOT NULL,
+    apellido VARCHAR(20) NOT NULL,
+    contraseña VARCHAR(20) NOT NULL,
+    email VARCHAR(20) NOT NULL,
+    creado_en TIMESTAMPTZ DEFAULT NOW(),
+    id_rol INTEGER NOT NULL,
+
+    CONSTRAINT fk_id_rol FOREIGN KEY id_rol REFERENCES rol_usuario(id_rol)
+    )
+
 
 -------CONSULTAS---------
 

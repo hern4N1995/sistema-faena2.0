@@ -1,3 +1,4 @@
+// src/components/LoginModal.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,7 +9,7 @@ export default function LoginModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     if (!usuario || !password) {
@@ -16,15 +17,45 @@ export default function LoginModal({ isOpen, onClose }) {
       return;
     }
 
-    // Guardar sesión simulada
-    localStorage.setItem(
-      'user',
-      JSON.stringify({ id: 1, email: usuario, rol: 'admin' })
-    );
-    localStorage.setItem('token', 'token-falso');
+    try {
+      // 🔗 INTEGRACIÓN CON BACKEND
+      // Reemplazar esta URL con la del endpoint real
+      const response = await fetch('http://localhost:3000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: usuario, password }),
+      });
 
-    onClose();
-    navigate('/admin/provincias');
+      if (!response.ok) {
+        throw new Error('Credenciales inválidas');
+      }
+
+      const data = await response.json();
+
+      // 🧠 El backend debe responder con algo como:
+      // {
+      //   id: 1,
+      //   email: 'usuario@ejemplo.com',
+      //   rol: 'admin' // o 'usuario'
+      // }
+
+      // Guardar sesión
+      localStorage.setItem('user', JSON.stringify(data));
+      localStorage.setItem('token', data.token || 'token-falso');
+
+      onClose();
+
+      // Redirigir según rol
+      if (data.rol === 'admin') {
+        navigate('/admin/provincias');
+      } else {
+        navigate('/tropa'); // o la vista principal para usuarios
+      }
+    } catch (error) {
+      alert('Error al iniciar sesión: ' + error.message);
+    }
   };
 
   return (

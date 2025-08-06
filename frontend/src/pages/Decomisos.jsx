@@ -1,7 +1,4 @@
-// DecomisosPage.jsx
-
 import React, { useState } from 'react';
-import Layout from "../components/Layout.jsx";
 
 const diseaseCategories = [
   {
@@ -86,7 +83,6 @@ const DecomisosPage = () => {
   const [validDte, setValidDte] = useState(false);
   const [error, setError] = useState('');
 
-  // Initialize nested disease data
   const initData = {};
   diseaseCategories.forEach(({ category, subcategories }) => {
     initData[category] = {};
@@ -95,11 +91,7 @@ const DecomisosPage = () => {
     });
   });
   const [diseasesData, setDiseasesData] = useState(initData);
-
-  // Observations state
-  const [observations, setObservations] = useState([
-    { id: 1, text: '' },
-  ]);
+  const [observations, setObservations] = useState([{ id: 1, text: '' }]);
 
   const handleSearch = async () => {
     if (!dte.trim()) return;
@@ -122,23 +114,16 @@ const DecomisosPage = () => {
   };
 
   const addObservation = () => {
-    setObservations((prev) => [
-      ...prev,
-      { id: Date.now(), text: '' },
-    ]);
+    setObservations((prev) => [...prev, { id: Date.now(), text: '' }]);
   };
 
   const removeObservation = (id) => {
-    setObservations((prev) =>
-      prev.filter((obs) => obs.id !== id)
-    );
+    setObservations((prev) => prev.filter((obs) => obs.id !== id));
   };
 
   const handleObsChange = (id, text) => {
     setObservations((prev) =>
-      prev.map((obs) =>
-        obs.id === id ? { ...obs, text } : obs
-      )
+      prev.map((obs) => (obs.id === id ? { ...obs, text } : obs))
     );
   };
 
@@ -156,20 +141,19 @@ const DecomisosPage = () => {
       });
       if (!res.ok) throw new Error('Error al guardar');
       alert('Datos guardados correctamente');
-      // reset form if needed
     } catch (err) {
       alert(err.message);
     }
   };
 
   return (
-    <Layout>
-      <h1 className="text-black text-2xl text-center font-bold px-4 py-2">
-          🧬 DECOMISOS 🦠
-        </h1>
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-white p-6">
+      <h1 className="text-black text-2xl text-center font-bold mb-6">
+        🧬 DECOMISOS 🦠
+      </h1>
+
       {/* DTE Input */}
-      <div className="flex items-center space-x-2">
+      <div className="max-w-xl mx-auto flex items-center space-x-2 mb-4">
         <input
           type="text"
           placeholder="Ingrese DTE"
@@ -184,13 +168,11 @@ const DecomisosPage = () => {
           Buscar
         </button>
       </div>
-      {error && (
-        <p className="text-red-600">{error}</p>
-      )}
+      {error && <p className="text-red-600 text-center">{error}</p>}
 
       {/* Diseases Table */}
       {validDte && (
-        <>
+        <div className="max-w-5xl mx-auto space-y-6">
           <table className="table-auto w-full border-collapse">
             <thead>
               <tr className="bg-gray-100">
@@ -200,66 +182,45 @@ const DecomisosPage = () => {
               </tr>
             </thead>
             <tbody>
-              {diseaseCategories.map(
-                ({ category, subcategories }) =>
-                  subcategories.map((sub, i) => (
-                    <tr key={category + sub}>
-                      <td className="border px-4 py-2">
-                        {i === 0 ? category : ''}
-                      </td>
-                      <td className="border px-4 py-2">
-                        {sub}
-                      </td>
-                      <td className="border px-4 py-2">
-                        <input
-                          type="number"
-                          min="0"
-                          value={
-                            diseasesData[category][sub]
-                          }
-                          onChange={(e) =>
-                            handleCountChange(
-                              category,
-                              sub,
-                              e.target.value
-                            )
-                          }
-                          className="w-20 border rounded px-2 py-1"
-                        />
-                      </td>
-                    </tr>
-                  ))
+              {diseaseCategories.map(({ category, subcategories }) =>
+                subcategories.map((sub, i) => (
+                  <tr key={category + sub}>
+                    <td className="border px-4 py-2">
+                      {i === 0 ? category : ''}
+                    </td>
+                    <td className="border px-4 py-2">{sub}</td>
+                    <td className="border px-4 py-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={diseasesData[category][sub]}
+                        onChange={(e) =>
+                          handleCountChange(category, sub, e.target.value)
+                        }
+                        className="w-20 border rounded px-2 py-1"
+                      />
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
 
           {/* Observations */}
           <div>
-            <h2 className="font-medium mb-2">
-              Observaciones
-            </h2>
+            <h2 className="font-medium mb-2">Observaciones</h2>
             <div className="space-y-2">
               {observations.map((obs) => (
-                <div
-                  key={obs.id}
-                  className="flex items-center space-x-2"
-                >
+                <div key={obs.id} className="flex items-center space-x-2">
                   <input
                     type="text"
                     value={obs.text}
-                    onChange={(e) =>
-                      handleObsChange(
-                        obs.id,
-                        e.target.value
-                      )
-                    }
+                    onChange={(e) => handleObsChange(obs.id, e.target.value)}
                     className="border rounded px-3 py-2 flex-grow"
                     placeholder="Escriba la observación…"
                   />
                   <button
-                    onClick={() =>
-                      removeObservation(obs.id)
-                    }
+                    onClick={() => removeObservation(obs.id)}
                     className="text-red-600 hover:underline"
                   >
                     Eliminar
@@ -284,10 +245,9 @@ const DecomisosPage = () => {
               Guardar
             </button>
           </div>
-        </>
+        </div>
       )}
     </div>
-    </Layout>
   );
 };
 

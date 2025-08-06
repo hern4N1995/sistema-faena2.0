@@ -1,5 +1,8 @@
 const pool = require('../config/db');
+const { login } = require('../routes/auth.routes');
 
+
+//OBTENER FAENAS
 const obtenerFaenas = async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM faenas');
@@ -43,5 +46,9 @@ const crearFaena = async (req, res) => {
     res.status(500).json({ error: 'Error al crear faena' });
   }
 };
+
+
+//LOGIN TRATAMOS DE QUE FUNCIONES
+
 
 module.exports = { obtenerFaenas, crearFaena };

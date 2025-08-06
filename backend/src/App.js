@@ -29,12 +29,12 @@ app.listen(PORT, () => {
  */
 
 // src/app.js
-
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
 const faenaRoutes = require('./routes/faena.routes');
+const authRoutes = require('./routes/auth.routes');
 
 const app = express();
 
@@ -58,9 +58,13 @@ app.get('/', (req, res) => {
 
 // Rutas de faenas
 app.use('/api/faenas', faenaRoutes);
+app.use('/api/auth',authRoutes);
+
+
 
 // Iniciar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en puerto ${PORT}`);
 });
+

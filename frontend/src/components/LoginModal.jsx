@@ -1,69 +1,43 @@
 // src/components/LoginModal.jsx
-import React, { useState } from 'react';
+import axios from 'axios';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function LoginModal({ isOpen, onClose }) {
-  const [usuario, setUsuario] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   if (!isOpen) return null;
 
-  // 👉 Simulador temporal de roles para desarrollo
-  const roleMap = {
-    'super@admin.com': 'superadmin',
-    'admin@admin.com': 'admin',
-    'user@user.com': 'usuario',
-  };
-
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!usuario || !password) {
+    if (!email || !password) {
       setError('Por favor completa los campos');
       return;
     }
 
     try {
-      // 🔗 INTEGRACIÓN CON BACKEND
-      // Reemplazar esta URL con la del endpoint real
-      const response = await fetch('http://localhost:3000/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: usuario, password }),
+      const response = await axios.post('http://localhost:3000/api/auth/login', {
+        email,
+        password,
       });
 
-      if (!response.ok) {
-        throw new Error('Credenciales inválidas');
-      }
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (!data?.email || !data?.rol) {
+      if (!data?.user?.email || !data?.user?.rol || !data?.token) {
         throw new Error('Respuesta inválida del servidor');
       }
-      */
 
-      // 🔁 Simulación local sin conexión backend
-      const rol = roleMap[usuario] || 'usuario';
-      const data = {
-        id: 1,
-        email: usuario,
-        rol,
-        token: 'token-simulado',
-      };
-
-      // 🧠 Guardar sesión
-      localStorage.setItem('user', JSON.stringify(data));
+      localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('token', data.token);
 
       onClose();
 
-      // 🚪 Redirección por rol
-      switch (data.rol) {
+      // Redirección por rol
+      switch (data.user.rol) {
         case 'admin':
           navigate('/inicio');
           break;
@@ -73,7 +47,7 @@ export default function LoginModal({ isOpen, onClose }) {
         default:
           navigate('/inicio');
           break;
-      }
+    }
     } catch (err) {
       setError(err.message || 'Error desconocido');
     }
@@ -90,12 +64,12 @@ export default function LoginModal({ isOpen, onClose }) {
         </button>
         <h2 className="text-xl mb-4 font-bold">Login</h2>
         {error && <p className="text-red-600 mb-2">{error}</p>}
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleSubmit}>
           <input
             type="text"
             placeholder="Correo electrónico"
-            value={usuario}
-            onChange={(e) => setUsuario(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full mb-2 p-2 border rounded"
           />
           <input

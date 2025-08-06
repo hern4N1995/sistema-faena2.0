@@ -1,4 +1,33 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
 export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await axios.post('http://localhost:3000/api/auth/login', {
+        email,
+        password,
+      });
+
+      const data = response.data;
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data));
+
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Credenciales inválidas o error en el servidor');
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-full max-w-sm">
@@ -6,7 +35,7 @@ export default function Login() {
 
         <input
           type="text"
-          placeholder="Email"
+          placeholder="Correo electronico"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full mb-3 p-2 border rounded"
@@ -17,7 +46,7 @@ export default function Login() {
           type="password"
           placeholder="Contraseña"
           value={password}
-          onChange={(e) => setContraseña(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
           className="w-full mb-3 p-2 border rounded"
           required
         />
@@ -33,22 +62,3 @@ export default function Login() {
     </div>
   );
 }
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  // Simular un usuario con rol "admin"
-  const fakeUser = {
-    id: 1,
-    email,
-    rol: 'admin',
-  };
-
-  const fakeToken = 'admin-token-123';
-
-  // Guardar en localStorage como si fuera una sesión real
-  localStorage.setItem('token', fakeToken);
-  localStorage.setItem('user', JSON.stringify(fakeUser));
-
-  navigate('/dashboard');
-};

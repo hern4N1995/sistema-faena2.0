@@ -1,4 +1,5 @@
 // src/components/LoginModal.jsx
+import axios from 'axios';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,19 +21,12 @@ export default function LoginModal({ isOpen, onClose }) {
     try {
       // 🔗 INTEGRACIÓN CON BACKEND
       // Reemplazar esta URL con la del endpoint real
-      const response = await fetch('http://localhost:3000/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: usuario, password }),
-      });
+      const response = await axios.post('http://localhost:3000/api/auth/login', {
+      email: usuario,
+      password,
+    });
 
-      if (!response.ok) {
-        throw new Error('Credenciales inválidas');
-      }
-
-      const data = await response.json();
+const data = response.data;
 
       // 🧠 El backend debe responder con algo como:
       // {

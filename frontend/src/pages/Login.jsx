@@ -4,7 +4,7 @@ import axios from 'axios';
 
 export default function Login() {
   const [email, setEmail] = useState('');
-  const [contraseña, setContraseña] = useState('');
+  const [password, setContraseña] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -13,9 +13,9 @@ export default function Login() {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:3000/api/login', {
+      const response = await axios.post('http://localhost:3000/api/auth/login', {
         email,
-        contraseña,
+        password,
       });
 
       // Guardar token y user en localStorage (o context, según tu auth)
@@ -46,7 +46,7 @@ export default function Login() {
         <input
           type="password"
           placeholder="Contraseña"
-          value={contraseña}
+          value={password}
           onChange={(e) => setContraseña(e.target.value)}
           className="w-full mb-3 p-2 border rounded"
           required

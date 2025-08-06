@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = 'clave_secreta_para_firma'; // <-- Cambiala en producción
 
 exports.login = async (req, res) => {
-  const { email, contrasenia } = req.body;
+  const { email, password } = req.body;
 
   try {
     // 1. Buscar el usuario por email
@@ -22,7 +22,7 @@ exports.login = async (req, res) => {
     const usuario = result.rows[0];
 
     // 2. Verificar contraseña
-    const esValida = await bcrypt.compare(contraseña, usuario.contraseña);
+    const esValida = await bcrypt.compare(password, usuario.contrasenia);
     if (!esValida) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
@@ -45,6 +45,12 @@ exports.login = async (req, res) => {
         rol: usuario.id_rol,
       },
     });
+
+    console.log(req.body);
+    console.log("Email recibido:", email);
+    console.log("Resultado DB:", result.rows);
+    console.log("Password en DB:", usuario.password);
+
   } catch (error) {
     console.error('Error en login:', error);
     res.status(500).json({ message: 'Error interno del servidor' });

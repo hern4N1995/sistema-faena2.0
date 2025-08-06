@@ -1,27 +1,29 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import LoginModal from './LoginModal';
 
-const navItems = ['Inicio', 'Faena', 'Decomisos', 'Remanentes'];
-
 export default function Header() {
-  const [showFaenaMenu, setShowFaenaMenu] = useState(false);
-  const [showAdminMenu, setShowAdminMenu] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loginAbierto, setLoginAbierto] = useState(false);
+  const [showAdminMenu, setShowAdminMenu] = useState(false);
+  const [user, setUser] = useState(null);
   const menuRef = useRef();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Detectar usuario logueado
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    setIsAdmin(user?.rol === 'admin');
+    try {
+      const userRaw = localStorage.getItem('user');
+      setUser(JSON.parse(userRaw));
+    } catch {
+      setUser(null);
+    }
   }, [location]);
 
+  // Cerrar el dropdown si se hace clic fuera
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setShowFaenaMenu(false);
         setShowAdminMenu(false);
       }
     };
@@ -35,63 +37,93 @@ export default function Header() {
     navigate('/inicio');
   };
 
+  const isSuperAdmin = user?.rol === 'superadmin';
+  const isAdmin = user?.rol === 'admin' || isSuperAdmin;
+
   return (
     <header
-      className="header py-2 px-4"
+      className="py-2 px-4"
       style={{
         backgroundImage: 'linear-gradient(to bottom, #00902f, #62ab44)',
       }}
     >
-      <nav className="nav flex items-center justify-between">
+      <nav className="flex items-center justify-between">
         <div className="flex items-center">
           <img src="/png/cteslogo.png" alt="ctes" className="h-20 w-auto" />
           <span className="text-white font-bold text-xl ml-4 font-roboto">
             SIFADECO
           </span>
         </div>
-        <ul className="flex gap-4 text-white items-center" ref={menuRef}>
-          {navItems.map((item) =>
-            item === 'Faena' ? (
-              <li key={item} className="relative">
-                <button
-                  onClick={() => navigate('/tropa')}
-                  className="px-4 py-2 rounded-md font-bold hover:text-[#98bf11] hover:bg-green-700 focus:outline-none"
-                >
-                  Tropa
-                </button>
-              </li>
-            ) : (
-              <li key={item}>
-                <NavLink
-                  to={`/${item.toLowerCase()}`}
-                  className={({ isActive }) =>
-                    `px-4 py-2 rounded-md hover:bg-green-700 ${
-                      isActive ? 'bg-green-800 font-semibold' : ''
-                    }`
-                  }
-                >
-                  {item}
-                </NavLink>
-              </li>
-            )
-          )}
 
-          {!isAdmin && (
+        <ul className="flex gap-4 text-white items-center" ref={menuRef}>
+          {/* Siempre mostrar Inicio */}
+          <li>
+            <NavLink
+              to="/inicio"
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-md hover:bg-green-700 ${
+                  isActive ? 'bg-green-800 font-semibold' : ''
+                }`
+              }
+            >
+              Inicio
+            </NavLink>
+          </li>
+
+          {/* Mostrar Faena solo si es admin o superadmin */}
+          {isAdmin && (
             <li>
-              <button
-                onClick={() => setLoginAbierto(true)}
-                className="px-4 py-2 font-bold rounded-md hover:bg-green-700 hover:text[#98bf11]"
+              <NavLink
+                to="/tropa"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-md hover:bg-green-700 ${
+                    isActive ? 'bg-green-800 font-semibold' : ''
+                  }`
+                }
               >
-                Iniciar Sesión
-              </button>
+                Tropa
+              </NavLink>
             </li>
           )}
 
+          {/* Mostrar Decomisos solo si es superadmin */}
+          {isSuperAdmin && (
+            <li>
+              <NavLink
+                to="/decomisos"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-md hover:bg-green-700 ${
+                    isActive ? 'bg-green-800 font-semibold' : ''
+                  }`
+                }
+              >
+                Decomisos
+              </NavLink>
+            </li>
+          )}
+
+          {/* Mostrar Remanentes para admin y superadmin */}
           {isAdmin && (
+            <li>
+              <NavLink
+                to="/remanentes"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-md hover:bg-green-700 ${
+                    isActive ? 'bg-green-800 font-semibold' : ''
+                  }`
+                }
+              >
+                Remanentes
+              </NavLink>
+            </li>
+          )}
+
+          {/* Dropdown admin: solo para superadmin */}
+          {isSuperAdmin && (
             <li className="relative">
               <button
                 onClick={() => setShowAdminMenu((prev) => !prev)}
-                className="px-4 py-2 rounded-md font-bold hover:text-white focus:outline-none hover:text-[#98bf11] hover:bg-green-700"
+                className="px-4 py-2 rounded-md font-bold hover:text-[#98bf11] hover:bg-green-700"
               >
                 Admin ▾
               </button>
@@ -106,25 +138,16 @@ export default function Header() {
                   <li>
                     <NavLink
                       to="/admin/agregar-usuario"
-                      className={({ isActive }) =>
-                        `block px-4 py-2 rounded-md hover:bg-[#008d36] ${
-                          isActive ? 'font-bold bg-[#008d36]' : ''
-                        }`
-                      }
+                      className="block px-4 py-2 rounded-md hover:bg-[#008d36]"
                       onClick={() => setShowAdminMenu(false)}
                     >
                       Agregar Usuario
                     </NavLink>
                   </li>
-
                   <li>
                     <NavLink
                       to="/admin/provincias"
-                      className={({ isActive }) =>
-                        `block px-4 py-2 rounded-md hover:bg-[#008d36] ${
-                          isActive ? 'font-bold bg-[#008d36]' : ''
-                        }`
-                      }
+                      className="block px-4 py-2 rounded-md hover:bg-[#008d36]"
                       onClick={() => setShowAdminMenu(false)}
                     >
                       Provincias
@@ -133,11 +156,7 @@ export default function Header() {
                   <li>
                     <NavLink
                       to="/admin/localidades"
-                      className={({ isActive }) =>
-                        `block px-4 py-2 rounded-md hover:bg-[#008d36] ${
-                          isActive ? 'font-bold bg-[#008d36]' : ''
-                        }`
-                      }
+                      className="block px-4 py-2 rounded-md hover:bg-[#008d36]"
                       onClick={() => setShowAdminMenu(false)}
                     >
                       Localidades
@@ -146,24 +165,31 @@ export default function Header() {
                   <li>
                     <NavLink
                       to="/admin/titulares"
-                      className={({ isActive }) =>
-                        `block px-4 py-2 rounded-md hover:bg-[#008d36] ${
-                          isActive ? 'font-bold bg-[#008d36]' : ''
-                        }`
-                      }
+                      className="block px-4 py-2 rounded-md hover:bg-[#008d36]"
                       onClick={() => setShowAdminMenu(false)}
                     >
                       Titulares
                     </NavLink>
                   </li>
-
-                  {/* Podés agregar más vistas admin acá */}
                 </ul>
               )}
             </li>
           )}
 
-          {isAdmin && (
+          {/* Mostrar login si no está logueado */}
+          {!user && (
+            <li>
+              <button
+                onClick={() => setLoginAbierto(true)}
+                className="px-4 py-2 font-bold rounded-md hover:bg-green-700"
+              >
+                Iniciar Sesión
+              </button>
+            </li>
+          )}
+
+          {/* Logout si está logueado */}
+          {user && (
             <li>
               <button
                 onClick={handleLogout}
@@ -174,6 +200,8 @@ export default function Header() {
             </li>
           )}
         </ul>
+
+        {/* 🛠️ El modal puede ser reemplazado por el formulario real */}
         <LoginModal
           isOpen={loginAbierto}
           onClose={() => setLoginAbierto(false)}

@@ -1,34 +1,4 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setContraseña] = useState('');
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    try {
-      const response = await axios.post('http://localhost:3000/api/auth/login', {
-        email,
-        password,
-      });
-
-      // Guardar token y user en localStorage (o context, según tu auth)
-      localStorage.setItem('token', response.data.token); // si tenés token
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-
-      navigate('/dashboard');
-    } catch (err) {
-      console.error('Error al iniciar sesión:', err);
-      setError(err.response?.data?.message || 'Error desconocido');
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-full max-w-sm">
@@ -63,3 +33,22 @@ export default function Login() {
     </div>
   );
 }
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  // Simular un usuario con rol "admin"
+  const fakeUser = {
+    id: 1,
+    email,
+    rol: 'admin',
+  };
+
+  const fakeToken = 'admin-token-123';
+
+  // Guardar en localStorage como si fuera una sesión real
+  localStorage.setItem('token', fakeToken);
+  localStorage.setItem('user', JSON.stringify(fakeUser));
+
+  navigate('/dashboard');
+};

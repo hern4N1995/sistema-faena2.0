@@ -17,6 +17,7 @@ const AgregarUsuarioPage = () => {
   const [editandoId, setEditandoId] = useState(null);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [filtro, setFiltro] = useState('');
 
   useEffect(() => {
     fetchUsuarios();
@@ -94,6 +95,15 @@ const AgregarUsuarioPage = () => {
     }
   };
 
+  const usuariosFiltrados = usuarios.filter((u) => {
+    const texto = filtro.toLowerCase();
+    return (
+      u.dni.toString().includes(texto) ||
+      u.nombre.toLowerCase().includes(texto) ||
+      u.apellido.toLowerCase().includes(texto)
+    );
+  });
+
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <h2 className="text-xl font-bold">
@@ -102,6 +112,7 @@ const AgregarUsuarioPage = () => {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
+          {/* Campos del formulario */}
           <div>
             <label className="block font-medium">Nombre</label>
             <input
@@ -204,35 +215,52 @@ const AgregarUsuarioPage = () => {
       <hr className="my-6" />
 
       <h3 className="text-lg font-semibold">Usuarios Registrados</h3>
-      <ul className="space-y-2">
-        {usuarios.map((u) => (
-          <li
-            key={u.id}
-            className="flex justify-between items-center border rounded px-4 py-2"
-          >
-            <div>
-              <strong>
-                {u.nombre} {u.apellido}
-              </strong>{' '}
-              — DNI: {u.dni} — {u.email} — {u.rol} — {u.estado}
-            </div>
-            <div className="space-x-2">
-              <button
-                onClick={() => handleEditar(u)}
-                className="text-blue-600 hover:underline"
+
+      {/* Filtro */}
+      <input
+        type="text"
+        placeholder="Buscar por DNI, nombre o apellido"
+        value={filtro}
+        onChange={(e) => setFiltro(e.target.value)}
+        className="mb-4 px-4 py-2 border rounded-md w-full"
+      />
+
+      {/* Lista con scroll */}
+      <div className="max-h-[400px] overflow-y-auto border rounded-md p-2 bg-white shadow">
+        {usuariosFiltrados.length > 0 ? (
+          <ul className="space-y-2">
+            {usuariosFiltrados.map((u) => (
+              <li
+                key={u.id}
+                className="flex justify-between items-center border rounded px-4 py-2"
               >
-                Editar
-              </button>
-              <button
-                onClick={() => handleEliminar(u.id)}
-                className="text-red-600 hover:underline"
-              >
-                Eliminar
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+                <div>
+                  <strong>
+                    {u.nombre} {u.apellido}
+                  </strong>{' '}
+                  — DNI: {u.dni} — {u.email} — {u.rol} — {u.estado}
+                </div>
+                <div className="space-x-2">
+                  <button
+                    onClick={() => handleEditar(u)}
+                    className="text-blue-600 hover:underline"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleEliminar(u.id)}
+                    className="text-red-600 hover:underline"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-500">No se encontraron usuarios.</p>
+        )}
+      </div>
     </div>
   );
 };

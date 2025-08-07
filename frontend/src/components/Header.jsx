@@ -38,7 +38,7 @@ export default function Header() {
   const rol = user?.rol;
   const isSuperAdmin = rol === 1;
   const isSupervisor = rol === 2;
-  const isUsuario = rol === 3;
+  const isUsuario = rol === 2;
   const isAdmin = isSuperAdmin || isSupervisor;
 
   return (

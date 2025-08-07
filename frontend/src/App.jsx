@@ -8,7 +8,6 @@ import Inicio from './pages/Inicio.jsx';
 import Tropa from './pages/Tropa.jsx';
 import DetalleTropa from './pages/DetalleTropa.jsx';
 import Decomisos from './pages/Decomisos.jsx';
-import Remanentes from './pages/Remanentes.jsx';
 import Login from './pages/Login.jsx';
 
 import FaenaPage from './pages/FaenaPage.jsx';
@@ -32,8 +31,6 @@ function App() {
           <Route path="tropa" element={<Tropa />} />
           <Route path="tropa/detalle/:id" element={<DetalleTropa />} />
           <Route path="decomisos" element={<Decomisos />} />
-          <Route path="remanentes" element={<Remanentes />} />
-
           {/* Faena y sus subrutas */}
           <Route path="faena">
             <Route index element={<FaenaPage />} />
@@ -41,15 +38,15 @@ function App() {
             <Route path="remanente" element={<RemanenteFaenaPage />} />
           </Route>
 
-          {/* Admin con rutas protegidas */}
           <Route
             path="admin/agregar-usuario"
             element={
-              <PrivateRoute>
+              <PrivateRoute allowedRoles={[1]}>
                 <AgregarUsuarioPage />
               </PrivateRoute>
             }
           />
+
           <Route
             path="admin/provincias"
             element={
@@ -74,7 +71,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
           {/* Fallback 404 */}
           <Route
             path="*"

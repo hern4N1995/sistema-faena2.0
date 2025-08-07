@@ -118,61 +118,14 @@ export default function Header() {
             </li>
           )}
 
-          {/* Dropdown admin: solo para superadmin */}
           {isSuperAdmin && (
-            <li className="relative">
-              <button
-                onClick={() => setShowAdminMenu((prev) => !prev)}
+            <li>
+              <NavLink
+                to="/admin/agregar-usuario"
                 className="px-4 py-2 rounded-md font-bold hover:text-[#98bf11] hover:bg-green-700"
               >
-                Admin ▾
-              </button>
-              {showAdminMenu && (
-                <ul
-                  className="absolute left-0 mt-1 w-48 bg-[#00902f] shadow-lg rounded-md z-50 text-white flex flex-col"
-                  style={{
-                    backgroundImage:
-                      'linear-gradient(to bottom, #00902f, #62ab44)',
-                  }}
-                >
-                  <li>
-                    <NavLink
-                      to="/admin/agregar-usuario"
-                      className="block px-4 py-2 rounded-md hover:bg-[#008d36]"
-                      onClick={() => setShowAdminMenu(false)}
-                    >
-                      Agregar Usuario
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/admin/provincias"
-                      className="block px-4 py-2 rounded-md hover:bg-[#008d36]"
-                      onClick={() => setShowAdminMenu(false)}
-                    >
-                      Provincias
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/admin/localidades"
-                      className="block px-4 py-2 rounded-md hover:bg-[#008d36]"
-                      onClick={() => setShowAdminMenu(false)}
-                    >
-                      Localidades
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/admin/titulares"
-                      className="block px-4 py-2 rounded-md hover:bg-[#008d36]"
-                      onClick={() => setShowAdminMenu(false)}
-                    >
-                      Titulares
-                    </NavLink>
-                  </li>
-                </ul>
-              )}
+                Admin
+              </NavLink>
             </li>
           )}
 

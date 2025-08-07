@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 // Clave secreta para firmar el token (usala desde .env en producción)
-const JWT_SECRET = 'clave_secreta_para_firma'; // <-- Cambiala en producción
+const JWT_SECRET = process.env.JWT_SECRET; // <-- Cambiala en producción
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;

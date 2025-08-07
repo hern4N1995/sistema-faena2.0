@@ -37,8 +37,8 @@ export default function Header() {
     navigate('/inicio');
   };
 
-  const isSuperAdmin = user?.rol === 'superadmin';
-  const isAdmin = user?.rol === 'admin' || isSuperAdmin;
+  const isSuperAdmin = user?.rol === 1;
+  const isAdmin = user?.rol === 2 || isSuperAdmin;
 
   return (
     <header

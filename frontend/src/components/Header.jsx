@@ -10,7 +10,6 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Detectar usuario logueado
   useEffect(() => {
     try {
       const userRaw = localStorage.getItem('user');
@@ -20,7 +19,6 @@ export default function Header() {
     }
   }, [location]);
 
-  // Cerrar el dropdown si se hace clic fuera
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -37,8 +35,11 @@ export default function Header() {
     navigate('/inicio');
   };
 
-  const isSuperAdmin = user?.rol === 1;
-  const isAdmin = user?.rol === 2 || isSuperAdmin;
+  const rol = user?.rol;
+  const isSuperAdmin = rol === 1;
+  const isSupervisor = rol === 2;
+  const isUsuario = rol === 3;
+  const isAdmin = isSuperAdmin || isSupervisor;
 
   return (
     <header
@@ -70,8 +71,8 @@ export default function Header() {
             </NavLink>
           </li>
 
-          {/* Mostrar Faena solo si es admin o superadmin */}
-          {isAdmin && (
+          {/* Mostrar Tropa para todos los roles */}
+          {(isAdmin || isUsuario) && (
             <li>
               <NavLink
                 to="/tropa"
@@ -82,6 +83,22 @@ export default function Header() {
                 }
               >
                 Tropa
+              </NavLink>
+            </li>
+          )}
+
+          {/* Mostrar Faena para todos los roles */}
+          {(isAdmin || isUsuario) && (
+            <li>
+              <NavLink
+                to="/faena"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-md hover:bg-green-700 ${
+                    isActive ? 'bg-green-800 font-semibold' : ''
+                  }`
+                }
+              >
+                Faena
               </NavLink>
             </li>
           )}
@@ -102,22 +119,7 @@ export default function Header() {
             </li>
           )}
 
-          {/* Mostrar Remanentes para admin y superadmin */}
-          {isAdmin && (
-            <li>
-              <NavLink
-                to="/remanentes"
-                className={({ isActive }) =>
-                  `px-4 py-2 rounded-md hover:bg-green-700 ${
-                    isActive ? 'bg-green-800 font-semibold' : ''
-                  }`
-                }
-              >
-                Remanentes
-              </NavLink>
-            </li>
-          )}
-
+          {/* Admin solo para superadmin */}
           {isSuperAdmin && (
             <li>
               <NavLink
@@ -154,7 +156,6 @@ export default function Header() {
           )}
         </ul>
 
-        {/* 🛠️ El modal puede ser reemplazado por el formulario real */}
         <LoginModal
           isOpen={loginAbierto}
           onClose={() => setLoginAbierto(false)}

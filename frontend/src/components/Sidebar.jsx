@@ -12,16 +12,32 @@ export default function Sidebar() {
 
   if (!user) return null;
 
+  const rol = user.rol;
+  const isSuperAdmin = rol === 1;
+  const isSupervisor = rol === 2;
+  const isUsuario = rol === 3;
+  const isAdmin = isSuperAdmin || isSupervisor;
+
   const linkClass = ({ isActive }) =>
     `block px-4 py-2 rounded hover:bg-green-200 ${
       isActive ? 'font-bold text-green-700 bg-green-100' : ''
     }`;
 
-  // Menús agrupados por prefijo de ruta
   const menuConfig = [
+    {
+      prefix: '/faena',
+      title: 'Gestión de Faena',
+      roles: ['1', '2', '3'],
+      menu: [
+        { to: '/faena', label: 'Titular Faena' },
+        { to: '/faena/detalle', label: 'Detalle Faena' },
+        { to: '/faena/remanente', label: 'Remanente' },
+      ],
+    },
     {
       prefix: '/tropa',
       title: 'Gestión de Tropa',
+      roles: ['1', '2', '3'],
       menu: [
         { to: '/tropa', label: 'Ingreso Tropa' },
         { to: '/tropa/detalle/123', label: 'Detalle Tropa' },
@@ -30,16 +46,19 @@ export default function Sidebar() {
     {
       prefix: '/decomisos',
       title: 'Gestión de Decomisos',
+      roles: ['1'],
       menu: [{ to: '/decomisos', label: 'Decomisos' }],
     },
     {
       prefix: '/remanentes',
       title: 'Gestión de Remanentes',
+      roles: ['1', '2', '3'],
       menu: [{ to: '/remanentes', label: 'Remanentes' }],
     },
     {
       prefix: '/admin',
       title: 'Gestión Administrativa',
+      roles: ['1'],
       menu: [
         { to: '/admin/agregar-usuario', label: 'Agregar Usuario' },
         { to: '/admin/provincias', label: 'Provincias' },
@@ -49,8 +68,12 @@ export default function Sidebar() {
     },
   ];
 
-  // Buscar coincidencia por prefijo de ruta
-  const match = menuConfig.find(({ prefix }) => pathname.startsWith(prefix));
+  // Buscar coincidencia por prefijo y rol
+  const match = menuConfig.find(
+    ({ prefix, roles }) =>
+      pathname.startsWith(prefix) && roles.includes(String(rol))
+  );
+
   if (!match) return null;
 
   const { title, menu: currentMenu } = match;

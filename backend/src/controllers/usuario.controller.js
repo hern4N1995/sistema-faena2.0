@@ -16,15 +16,15 @@ const obtenerUsuarios = async (req, res) => {
 // Crear nuevo usuario
 const crearUsuario = async (req, res) => {
   try {
-    const { nombre, apellido, email, password, rol, estado } = req.body;
+    const { nombre, apellido, dni, email, password, rol, estado } = req.body;
     const estadoBooleano = estado.toLowerCase() === 'true';
 
     const contraseniaHasheada = await bcrypt.hash(password, 10);
 
     const resultado = await pool.query(
-      `INSERT INTO usuario (nombre, apellido, email, contrasenia, id_rol, estado)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [nombre, apellido, email, contraseniaHasheada, mapRol(rol), estadoBooleano]
+      `INSERT INTO usuario (nombre, apellido,dni, email, contrasenia, id_rol, estado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [nombre, apellido, dni, email, contraseniaHasheada, mapRol(rol), estadoBooleano]
     );
 
     res.status(201).json(resultado.rows[0]);

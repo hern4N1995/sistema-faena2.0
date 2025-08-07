@@ -7,6 +7,7 @@ const AgregarUsuarioPage = () => {
   const [form, setForm] = useState({
     nombre: '',
     apellido: '',
+    dni: '',
     email: '',
     password: '',
     rol: 'Usuario',
@@ -17,7 +18,6 @@ const AgregarUsuarioPage = () => {
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
 
-  // Cargar usuarios al montar
   useEffect(() => {
     fetchUsuarios();
   }, []);
@@ -55,6 +55,7 @@ const AgregarUsuarioPage = () => {
       setForm({
         nombre: '',
         apellido: '',
+        dni: '',
         email: '',
         password: '',
         rol: 'Usuario',
@@ -71,8 +72,9 @@ const AgregarUsuarioPage = () => {
     setForm({
       nombre: usuario.nombre,
       apellido: usuario.apellido,
+      dni: usuario.dni,
       email: usuario.email,
-      password: '', // No se muestra la contraseña
+      password: '',
       rol: usuario.rol,
       estado: usuario.estado,
     });
@@ -93,7 +95,7 @@ const AgregarUsuarioPage = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
       <h2 className="text-xl font-bold">
         {editandoId ? 'Modificar Usuario' : 'Agregar Usuario'}
       </h2>
@@ -122,30 +124,39 @@ const AgregarUsuarioPage = () => {
               className="w-full border rounded px-3 py-2"
             />
           </div>
-        </div>
-        <div>
-          <label className="block font-medium">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            required
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-        <div>
-          <label className="block font-medium">Contraseña</label>
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2"
-            placeholder={editandoId ? 'Dejar vacío para no cambiar' : ''}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block font-medium">DNI</label>
+            <input
+              type="text"
+              name="dni"
+              value={form.dni}
+              onChange={handleChange}
+              required
+              className="w-full border rounded px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block font-medium">Email</label>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              required
+              className="w-full border rounded px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block font-medium">Contraseña</label>
+            <input
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              className="w-full border rounded px-3 py-2"
+              placeholder={editandoId ? 'Dejar vacío para no cambiar' : ''}
+            />
+          </div>
           <div>
             <label className="block font-medium">Rol</label>
             <select
@@ -176,13 +187,15 @@ const AgregarUsuarioPage = () => {
               ))}
             </select>
           </div>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full"
+            >
+              {editandoId ? 'Guardar Cambios' : 'Guardar'}
+            </button>
+          </div>
         </div>
-        <button
-          type="submit"
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-        >
-          {editandoId ? 'Guardar Cambios' : 'Guardar'}
-        </button>
       </form>
 
       {mensaje && <p className="text-green-600">{mensaje}</p>}
@@ -201,7 +214,7 @@ const AgregarUsuarioPage = () => {
               <strong>
                 {u.nombre} {u.apellido}
               </strong>{' '}
-              — {u.email} — {u.rol} — {u.estado}
+              — DNI: {u.dni} — {u.email} — {u.rol} — {u.estado}
             </div>
             <div className="space-x-2">
               <button

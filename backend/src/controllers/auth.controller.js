@@ -49,7 +49,7 @@ exports.login = async (req, res) => {
     console.log(req.body);
     console.log("Email recibido:", email);
     console.log("Resultado DB:", result.rows);
-    console.log("Password en DB:", usuario.password);
+    console.log("Usuario encontrado:", usuario.email);
 
   } catch (error) {
     console.error('Error en login:', error);

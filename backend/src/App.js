@@ -35,6 +35,7 @@ const cors = require('cors');
 
 const faenaRoutes = require('./routes/faena.routes');
 const authRoutes = require('./routes/auth.routes');
+const usuarioRoutes = require('./routes/usuario.routes');
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.get('/', (req, res) => {
 app.use('/api/faenas', faenaRoutes);
 app.use('/api/auth',authRoutes);
 
+app.use('/api/usuarios', usuarioRoutes);
 
 
 // Iniciar servidor

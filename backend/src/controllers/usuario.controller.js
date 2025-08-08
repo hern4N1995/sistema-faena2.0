@@ -98,13 +98,13 @@ const eliminarUsuario = async (req, res) => {
 
 // Mapear rol desde string a número
 const mapRol = (rol) => {
-  if (typeof rol !== 'string') return 2; // Rol por defecto: 'usuario'
-  
+  if (typeof rol !== 'string') return 3; // Rol por defecto: 'usuario'
+
   switch (rol.toLowerCase()) {
     case 'supervisor':
-      return 1;
-    case 'usuario':
       return 2;
+    case 'usuario':
+      return 3;
     default:
       return 3;
   }

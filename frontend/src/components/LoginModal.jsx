@@ -38,10 +38,10 @@ export default function LoginModal({ isOpen, onClose }) {
 
       // Redirección por rol
       switch (data.user.rol) {
-        case 'admin':
+        case 1:
           navigate('/inicio');
           break;
-        case 'superadmin':
+        case 2:
           navigate('/inicio');
           break;
         default:

@@ -1,6 +1,6 @@
 // src/middleware/auth.js
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = 'clave_secreta_para_firma'; // Usar process.env en producción
+const JWT_SECRET = process.env.JWT_SECRET; // Usar process.env en producción
 
 exports.verificarToken = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1]; // "Bearer <token>"

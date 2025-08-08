@@ -123,7 +123,7 @@ export default function Header() {
           {isSuperAdmin && (
             <li>
               <NavLink
-                to="/admin/agregar-usuario"
+                to="/admin/usuarios"
                 className="px-4 py-2 rounded-md font-bold hover:text-[#98bf11] hover:bg-green-700"
               >
                 Admin

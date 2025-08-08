@@ -39,7 +39,7 @@ function App() {
           </Route>
 
           <Route
-            path="admin/agregar-usuario"
+            path="admin/usuarios"
             element={
               <PrivateRoute allowedRoles={[1]}>
                 <AgregarUsuarioPage />

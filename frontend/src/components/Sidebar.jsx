@@ -60,7 +60,7 @@ export default function Sidebar() {
       title: 'Gestión Administrativa',
       roles: ['1'],
       menu: [
-        { to: '/admin/agregar-usuario', label: 'Agregar Usuario' },
+        { to: '/admin/usuarios', label: 'Usuarios' },
         { to: '/admin/provincias', label: 'Provincias' },
         { to: '/admin/localidades', label: 'Localidades' },
         { to: '/admin/titulares', label: 'Titulares' },

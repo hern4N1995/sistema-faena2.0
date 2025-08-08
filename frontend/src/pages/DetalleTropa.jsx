@@ -18,12 +18,23 @@ export default function DetalleTropa() {
   const [otrosPersonalizados, setOtrosPersonalizados] = useState([
     { tipo: '', cantidad: 0 },
   ]);
-  const [tropaInfo, setTropaInfo] = useState(null);
+  const [tropaInfo, setTropaInfo] = useState({
+    fecha: '',
+    dte: '',
+    titular: '',
+  });
 
   useEffect(() => {
     api
       .get(`/tropas/${id}`)
-      .then((res) => setTropaInfo(res.data))
+      .then((res) => {
+        const { fecha, dte, titular } = res.data;
+        setTropaInfo({
+          fecha: fecha || '',
+          dte: dte || '',
+          titular: titular || '',
+        });
+      })
       .catch((err) => console.error('Error al cargar tropa:', err));
   }, [id]);
 
@@ -60,6 +71,7 @@ export default function DetalleTropa() {
     e.preventDefault();
 
     const payload = {
+      fecha: tropaInfo.fecha,
       animales: counts,
       otros: otrosPersonalizados,
     };
@@ -74,24 +86,62 @@ export default function DetalleTropa() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 max-w-5xl mx-auto">
-      <h2 className="text-3xl font-bold text-center mb-6">
-        🧮 Detalle de Tropa
-      </h2>
+      <h2 className="text-3xl font-bold text-center mb-6">Detalle de Tropa</h2>
 
-      {tropaInfo && (
-        <div className="mb-6 text-sm text-gray-700">
-          <p>
-            <strong>DTE:</strong> {tropaInfo.dte}
-          </p>
-          <p>
-            <strong>Fecha:</strong> {tropaInfo.fecha}
-          </p>
-          <p>
-            <strong>Titular:</strong> {tropaInfo.titular}
-          </p>
+      {/* Datos generales */}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-700">
+        <div className="bg-white rounded shadow p-3">
+          <label className="block font-semibold text-gray-600 mb-1">
+            ID Tropa
+          </label>
+          <input
+            type="text"
+            value={id}
+            disabled
+            className="w-full border rounded px-3 py-2 bg-gray-100"
+          />
         </div>
-      )}
 
+        <div className="bg-white rounded shadow p-3">
+          <label className="block font-semibold text-gray-600 mb-1">
+            Fecha
+          </label>
+          <input
+            type="date"
+            value={tropaInfo.fecha}
+            onChange={(e) =>
+              setTropaInfo((prev) => ({ ...prev, fecha: e.target.value }))
+            }
+            className="w-full border rounded px-3 py-2"
+          />
+        </div>
+
+        <div className="bg-white rounded shadow p-3">
+          <label className="block font-semibold text-gray-600 mb-1">
+            DTE/DTU
+          </label>
+          <input
+            type="text"
+            value={tropaInfo.dte}
+            disabled
+            className="w-full border rounded px-3 py-2 bg-gray-100"
+          />
+        </div>
+
+        <div className="bg-white rounded shadow p-3">
+          <label className="block font-semibold text-gray-600 mb-1">
+            Titular
+          </label>
+          <input
+            type="text"
+            value={tropaInfo.titular}
+            disabled
+            className="w-full border rounded px-3 py-2 bg-gray-100"
+          />
+        </div>
+      </div>
+
+      {/* Formulario de animales */}
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {Object.entries(animalGroups).map(([groupName, categories]) => (

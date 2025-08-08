@@ -79,7 +79,7 @@ const AgregarUsuarioPage = () => {
       rol: usuario.rol,
       estado: usuario.estado,
     });
-    setEditandoId(usuario.id);
+    setEditandoId(usuario.id_usuario);
     setMensaje('');
     setError('');
   };
@@ -109,6 +109,9 @@ const AgregarUsuarioPage = () => {
       <h2 className="text-xl font-bold">
         {editandoId ? 'Modificar Usuario' : 'Agregar Usuario'}
       </h2>
+      {editandoId && (
+        <p className="text-sm text-gray-600">Editando usuario #{editandoId}</p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -248,7 +251,7 @@ const AgregarUsuarioPage = () => {
                     Editar
                   </button>
                   <button
-                    onClick={() => handleEliminar(u.id)}
+                    onClick={() => handleEliminar(u.id_usuario)}
                     className="text-red-600 hover:underline"
                   >
                     Eliminar

@@ -17,7 +17,7 @@ const obtenerUsuarios = async (req, res) => {
 const crearUsuario = async (req, res) => {
   try {
     const { nombre, apellido, dni, email, password, rol, estado } = req.body;
-    const estadoBooleano = typeof estado === 'string' && estado.toLowerCase() === 'Activo';
+    const estadoBooleano = normalizarEstado(estado);
 
 
     const contraseniaHasheada = await bcrypt.hash(password, 10);
@@ -40,19 +40,22 @@ const actualizarUsuario = async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, apellido, dni, email, password, rol, estado } = req.body;
-    const estadoBooleano = typeof estado === 'string' && estado.toLowerCase() === 'Activo';
+    const estadoBooleano = normalizarEstado(estado);
 
+    let query;
+    let params;
 
-    let query = `
-  UPDATE usuario SET nombre = $1, apellido = $2, dni = $3, email = $4, contrasenia = $5, id_rol = $6, estado = $7
-  WHERE id_usuario = $8 RETURNING *`;
-params = [nombre, apellido, dni, email, contraseniaHasheada, mapRol(rol), estadoBooleano, id];
-    if (password) {
+    if (password && password.trim() !== '') {
       const contraseniaHasheada = await bcrypt.hash(password, 10);
       query = `
         UPDATE usuario SET nombre = $1, apellido = $2, dni = $3, email = $4, contrasenia = $5, id_rol = $6, estado = $7
         WHERE id_usuario = $8 RETURNING *`;
       params = [nombre, apellido, dni, email, contraseniaHasheada, mapRol(rol), estadoBooleano, id];
+    } else {
+      query = `
+        UPDATE usuario SET nombre = $1, apellido = $2, dni = $3, email = $4, id_rol = $5, estado = $6
+        WHERE id_usuario = $7 RETURNING *`;
+      params = [nombre, apellido, dni, email, mapRol(rol), estadoBooleano, id];
     }
 
     const resultado = await pool.query(query, params);
@@ -66,23 +69,32 @@ params = [nombre, apellido, dni, email, contraseniaHasheada, mapRol(rol), estado
 // Eliminar usuario
 const eliminarUsuario = async (req, res) => {
   try {
-    const id_usuario = parseInt(req.params.id_usuario, 10);
+    const id_usuario = parseInt(req.params.id, 10);
+    console.log('ID recibido para eliminar:', id_usuario);
+    console.log('Params recibidos:', req.params);
 
     if (isNaN(id_usuario)) {
       return res.status(400).json({ error: 'ID de usuario inválido' });
     }
-    
-    await pool.query(
+
+    const resultado = await pool.query(
       'UPDATE usuario SET estado = false WHERE id_usuario = $1',
       [id_usuario]
     );
 
+    console.log('Resultado de la query:', resultado.rowCount);
+
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
     res.status(200).json({ message: 'Usuario desactivado correctamente' });
   } catch (error) {
-   console.error('Error al desactivar usuario:', error);
+    console.error('Error al desactivar usuario:', error);
     res.status(500).json({ error: 'Error al desactivar usuario' });
   }
 };
+
 
 // Mapear rol desde string a número
 const mapRol = (rol) => {
@@ -104,3 +116,14 @@ module.exports = {
   actualizarUsuario,
   eliminarUsuario,
 };
+
+
+function normalizarEstado(valor) {
+  if (typeof valor === 'boolean') return valor;
+  if (typeof valor === 'string') {
+    const limpio = valor.trim().toLowerCase();
+    return limpio === 'activo' || limpio === 'true' || limpio === '1';
+  }
+  if (typeof valor === 'number') return valor === 1;
+  return false;
+}

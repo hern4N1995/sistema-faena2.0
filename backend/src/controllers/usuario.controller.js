@@ -101,6 +101,8 @@ const mapRol = (rol) => {
   if (typeof rol !== 'string') return 3; // Rol por defecto: 'usuario'
 
   switch (rol.toLowerCase()) {
+    case 'superadmin':
+      return 1;
     case 'supervisor':
       return 2;
     case 'usuario':

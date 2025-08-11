@@ -51,6 +51,8 @@ exports.login = async (req, res) => {
     console.log("Resultado DB:", result.rows);
     console.log("Usuario encontrado:", usuario.email);
     console.log("Rol del usuario:", usuario.id_rol);
+    console.log(`Login exitoso para ${usuario.email} con rol ${usuario.id_rol}`);
+
 
   } catch (error) {
     console.error('Error en login:', error);

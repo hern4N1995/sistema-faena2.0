@@ -11,13 +11,15 @@ export default function Header() {
   const location = useLocation();
 
   useEffect(() => {
-    try {
-      const userRaw = localStorage.getItem('user');
-      setUser(JSON.parse(userRaw));
-    } catch {
-      setUser(null);
-    }
-  }, [location]);
+  try {
+    const userRaw = localStorage.getItem('user');
+    const parsedUser = JSON.parse(userRaw);
+    console.log('Usuario logueado:', parsedUser);
+    setUser(parsedUser);
+  } catch {
+    setUser(null);
+  }
+}, [location]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -38,7 +40,7 @@ export default function Header() {
   const rol = user?.rol;
   const isSuperAdmin = rol === 1;
   const isSupervisor = rol === 2;
-  const isUsuario = rol === 2;
+  const isUsuario = rol === 3;
   const isAdmin = isSuperAdmin || isSupervisor;
 
   return (

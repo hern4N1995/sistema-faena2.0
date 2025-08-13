@@ -58,7 +58,7 @@ export default function Sidebar() {
     {
       prefix: '/admin',
       title: 'Gestión Administrativa',
-      roles: ['1'],
+      roles: ['1', '2'],
       menu: [
         { to: '/admin/usuarios', label: 'Usuarios' },
         { to: '/admin/provincias', label: 'Provincias' },

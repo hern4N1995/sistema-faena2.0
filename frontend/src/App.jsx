@@ -41,7 +41,7 @@ function App() {
           <Route
             path="admin/usuarios"
             element={
-              <PrivateRoute allowedRoles={[1]}>
+              <PrivateRoute allowedRoles={[1, 2]}>
                 <AgregarUsuarioPage />
               </PrivateRoute>
             }
@@ -50,7 +50,7 @@ function App() {
           <Route
             path="admin/provincias"
             element={
-              <PrivateRoute>
+              <PrivateRoute allowedRoles={[1, 2]}>
                 <ProvinciaAdmin />
               </PrivateRoute>
             }
@@ -58,7 +58,7 @@ function App() {
           <Route
             path="admin/departamentos"
             element={
-              <PrivateRoute>
+              <PrivateRoute allowedRoles={[1, 2]}>
                 <DepartamentoAdmin />
               </PrivateRoute>
             }
@@ -66,7 +66,7 @@ function App() {
           <Route
             path="admin/titulares"
             element={
-              <PrivateRoute>
+              <PrivateRoute allowedRoles={[1, 2]}>
                 <TitularAdmin />
               </PrivateRoute>
             }

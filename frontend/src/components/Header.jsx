@@ -106,7 +106,7 @@ export default function Header() {
           )}
 
           {/* Mostrar Decomisos solo si es superadmin */}
-          {isSuperAdmin && (
+          {(isAdmin || isUsuario || isSupervisor) && (
             <li>
               <NavLink
                 to="/decomisos"
@@ -122,7 +122,7 @@ export default function Header() {
           )}
 
           {/* Admin solo para superadmin */}
-          {isSuperAdmin && (
+          {(isAdmin || isSupervisor) && (
             <li>
               <NavLink
                 to="/admin/usuarios"

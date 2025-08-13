@@ -13,6 +13,7 @@ export default function LoginModal({ isOpen, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(''); // ✅ Limpiar error antes de intentar
 
     if (!email || !password) {
       setError('Por favor completa los campos');
@@ -20,10 +21,13 @@ export default function LoginModal({ isOpen, onClose }) {
     }
 
     try {
-      const response = await axios.post('http://localhost:3000/api/auth/login', {
-        email,
-        password,
-      });
+      const response = await axios.post(
+        'http://localhost:3000/api/auth/login',
+        {
+          email,
+          password,
+        }
+      );
 
       const data = response.data;
 
@@ -36,20 +40,19 @@ export default function LoginModal({ isOpen, onClose }) {
 
       onClose();
 
-      // Redirección por rol
       switch (data.user.rol) {
         case 1:
-          navigate('/inicio');
-          break;
         case 2:
-          navigate('/inicio');
-          break;
         default:
           navigate('/inicio');
           break;
-    }
+      }
     } catch (err) {
-      setError(err.message || 'Error desconocido');
+      if (err.response?.status === 401) {
+        setError('Credenciales inválidas o usuario no registrado');
+      } else {
+        setError(err.message || 'Error desconocido');
+      }
     }
   };
 
@@ -62,26 +65,38 @@ export default function LoginModal({ isOpen, onClose }) {
         >
           ×
         </button>
-        <h2 className="text-xl mb-4 font-bold">Login</h2>
-        {error && <p className="text-red-600 mb-2">{error}</p>}
+        <h2 className="text-xl mb-4 font-bold text-center">Login</h2>
+
+        {error && (
+          <div className="text-red-600 bg-red-100 px-4 py-2 rounded mb-4 text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <input
             type="text"
             placeholder="Correo electrónico"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full mb-2 p-2 border rounded"
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError('');
+            }}
+            className="w-full mb-3 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <input
             type="password"
             placeholder="Contraseña"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full mb-4 p-2 border rounded"
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError('');
+            }}
+            className="w-full mb-4 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             type="submit"
-            className="w-full bg-green-700 text-white py-2 rounded hover:bg-green-800"
+            className="w-full bg-green-700 text-white py-2 rounded hover:bg-green-800 transition"
           >
             Entrar
           </button>

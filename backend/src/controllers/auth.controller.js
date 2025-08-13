@@ -9,9 +9,9 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // 1. Buscar el usuario por email
+    // Solo buscar usuarios activos
     const result = await pool.query(
-      'SELECT * FROM usuario WHERE email = $1',
+      'SELECT * FROM usuario WHERE email = $1 AND estado = true',
       [email]
     );
 

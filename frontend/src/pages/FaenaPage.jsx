@@ -54,7 +54,7 @@ const FaenaPage = () => {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Tropas Cargadas</h1>
 
-      {/* Filtros */}
+      {/*       {/* Filtros *}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block font-medium mb-1">Fecha</label>
@@ -90,7 +90,7 @@ const FaenaPage = () => {
         >
           Aplicar Filtros
         </button>
-      </div>
+      </div> */}
 
       {/* Tabla de resultados */}
       <div className="overflow-x-auto mt-6">
@@ -100,7 +100,7 @@ const FaenaPage = () => {
               <th className="px-4 py-2 text-left">Fecha</th>
               <th className="px-4 py-2 text-left">DTE/DTU</th>
               <th className="px-4 py-2 text-left">Guía Policial</th>
-              <th className="px-4 py-2 text-left">Usuario</th>
+              <th className="px-4 py-2 text-left">Nº Tropa</th>
               <th className="px-4 py-2 text-left">Guía Extendida Por</th>
               <th className="px-4 py-2 text-left">Procedencia</th>
               <th className="px-4 py-2 text-left">Titular Faena</th>
@@ -112,7 +112,7 @@ const FaenaPage = () => {
                 <td className="px-4 py-2">{tropa.fecha}</td>
                 <td className="px-4 py-2">{tropa.dte_dtu}</td>
                 <td className="px-4 py-2">{tropa.guia_policial}</td>
-                <td className="px-4 py-2">{tropa.usuario}</td>
+                <td className="px-4 py-2">{tropa.nroTropa}</td>
                 <td className="px-4 py-2">{tropa.guia_extendida_por}</td>
                 <td className="px-4 py-2">{tropa.procedencia}</td>
                 <td className="px-4 py-2">{tropa.titular_faena}</td>

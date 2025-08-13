@@ -62,7 +62,7 @@ export default function Sidebar() {
       menu: [
         { to: '/admin/usuarios', label: 'Usuarios' },
         { to: '/admin/provincias', label: 'Provincias' },
-        { to: '/admin/localidades', label: 'Localidades' },
+        { to: '/admin/departamentos', label: 'Departamentos' },
         { to: '/admin/titulares', label: 'Titulares' },
       ],
     },

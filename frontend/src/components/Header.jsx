@@ -11,15 +11,15 @@ export default function Header() {
   const location = useLocation();
 
   useEffect(() => {
-  try {
-    const userRaw = localStorage.getItem('user');
-    const parsedUser = JSON.parse(userRaw);
-    console.log('Usuario logueado:', parsedUser);
-    setUser(parsedUser);
-  } catch {
-    setUser(null);
-  }
-}, [location]);
+    try {
+      const userRaw = localStorage.getItem('user');
+      const parsedUser = JSON.parse(userRaw);
+      console.log('Usuario logueado:', parsedUser);
+      setUser(parsedUser);
+    } catch {
+      setUser(null);
+    }
+  }, [location]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {

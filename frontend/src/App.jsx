@@ -15,10 +15,10 @@ import DetalleFaenaPage from './pages/DetalleFaenaPage.jsx';
 import RemanenteFaenaPage from './pages/RemanenteFaenaPage.jsx';
 
 import ProvinciaAdmin from './pages/ProvinciaAdmin.jsx';
-import LocalidadAdmin from './pages/LocalidadAdmin.jsx';
 import TitularAdmin from './pages/TitularAdmin.jsx';
 import AgregarUsuarioPage from './pages/AgregarUsuarioPage.jsx';
 import PrivateRoute from './components/PrivateRoute.jsx';
+import DepartamentoAdmin from './pages/DepartamentoAdmin.jsx';
 
 function App() {
   return (
@@ -56,10 +56,10 @@ function App() {
             }
           />
           <Route
-            path="admin/localidades"
+            path="admin/departamentos"
             element={
               <PrivateRoute>
-                <LocalidadAdmin />
+                <DepartamentoAdmin />
               </PrivateRoute>
             }
           />

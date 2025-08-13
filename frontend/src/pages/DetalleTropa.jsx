@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { animalGroups } from '../data/animalCategories';
+import React from 'react';
 
 export default function DetalleTropa() {
   const { id } = useParams();
-
   const getInitialCounts = () =>
     Object.fromEntries(
       Object.entries(animalGroups).map(([group, cats]) => {
@@ -13,17 +13,18 @@ export default function DetalleTropa() {
         return [group, { ...emptyCats, TOTAL: 0 }];
       })
     );
-
   const [counts, setCounts] = useState(getInitialCounts);
   const [otrosPersonalizados, setOtrosPersonalizados] = useState([
     { tipo: '', cantidad: 0 },
   ]);
+  const [nombreEspecie, setNombreEspecie] = useState('');
+  const [especieConfirmada, setEspecieConfirmada] = useState(null);
+
   const [tropaInfo, setTropaInfo] = useState({
     fecha: '',
     dte: '',
     titular: '',
   });
-
   useEffect(() => {
     api
       .get(`/tropas/${id}`)
@@ -37,45 +38,34 @@ export default function DetalleTropa() {
       })
       .catch((err) => console.error('Error al cargar tropa:', err));
   }, [id]);
-
   const handleChange = (group, cat, value) => {
     setCounts((prev) => {
       const updatedGroup = { ...prev[group], [cat]: value };
       const total = Object.entries(updatedGroup)
         .filter(([key]) => key !== 'TOTAL')
         .reduce((sum, [, val]) => sum + (parseInt(val, 10) || 0), 0);
-
-      return {
-        ...prev,
-        [group]: { ...updatedGroup, TOTAL: total },
-      };
+      return { ...prev, [group]: { ...updatedGroup, TOTAL: total } };
     });
   };
-
   const agregarFilaOtro = () =>
     setOtrosPersonalizados([...otrosPersonalizados, { tipo: '', cantidad: 0 }]);
-
   const actualizarOtro = (index, campo, valor) => {
     const nuevos = [...otrosPersonalizados];
     nuevos[index][campo] = campo === 'cantidad' ? parseInt(valor) || 0 : valor;
     setOtrosPersonalizados(nuevos);
   };
-
   const calcularTotalOtros = () =>
     otrosPersonalizados.reduce(
       (acc, item) => acc + (parseInt(item.cantidad) || 0),
       0
     );
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const payload = {
       fecha: tropaInfo.fecha,
       animales: counts,
       otros: otrosPersonalizados,
     };
-
     try {
       await api.post(`/tropas/${id}/detalle`, payload);
       alert('Detalle guardado correctamente');
@@ -83,29 +73,34 @@ export default function DetalleTropa() {
       console.error('Error al guardar detalle:', err);
     }
   };
-
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 max-w-5xl mx-auto">
-      <h2 className="text-3xl font-bold text-center mb-6">Detalle de Tropa</h2>
-
-      {/* Datos generales */}
+      {' '}
+      <h2 className="text-3xl font-bold text-center mb-6">
+        Detalle de Tropa
+      </h2>{' '}
+      {/* Datos generales */}{' '}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-700">
+        {' '}
         <div className="bg-white rounded shadow p-3">
+          {' '}
           <label className="block font-semibold text-gray-600 mb-1">
-            ID Tropa
-          </label>
+            {' '}
+            ID Tropa{' '}
+          </label>{' '}
           <input
             type="text"
             value={id}
             disabled
             className="w-full border rounded px-3 py-2 bg-gray-100"
-          />
-        </div>
-
+          />{' '}
+        </div>{' '}
         <div className="bg-white rounded shadow p-3">
+          {' '}
           <label className="block font-semibold text-gray-600 mb-1">
-            Fecha
-          </label>
+            {' '}
+            Fecha{' '}
+          </label>{' '}
           <input
             type="date"
             value={tropaInfo.fecha}
@@ -113,40 +108,88 @@ export default function DetalleTropa() {
               setTropaInfo((prev) => ({ ...prev, fecha: e.target.value }))
             }
             className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
+          />{' '}
+        </div>{' '}
         <div className="bg-white rounded shadow p-3">
+          {' '}
           <label className="block font-semibold text-gray-600 mb-1">
-            DTE/DTU
-          </label>
+            {' '}
+            DTE/DTU{' '}
+          </label>{' '}
           <input
             type="text"
             value={tropaInfo.dte}
             disabled
             className="w-full border rounded px-3 py-2 bg-gray-100"
-          />
-        </div>
-
+          />{' '}
+        </div>{' '}
         <div className="bg-white rounded shadow p-3">
+          {' '}
           <label className="block font-semibold text-gray-600 mb-1">
-            Titular
-          </label>
+            {' '}
+            Titular{' '}
+          </label>{' '}
           <input
             type="text"
             value={tropaInfo.titular}
             disabled
             className="w-full border rounded px-3 py-2 bg-gray-100"
-          />
-        </div>
-      </div>
-
-      {/* Formulario de animales */}
+          />{' '}
+        </div>{' '}
+      </div>{' '}
+      {/* Formulario de animales */}{' '}
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {Object.entries(animalGroups).map(([groupName, categories]) => (
             <div key={groupName} className="overflow-x-auto">
-              <h3 className="text-xl font-semibold mb-2">{groupName}</h3>
+              {/* Título del grupo */}
+              <div className="flex items-center gap-3 mb-2">
+                {groupName === 'Otros' ? (
+                  !especieConfirmada ? (
+                    <>
+                      <span className="text-xl font-semibold">Otros:</span>
+                      <input
+                        type="text"
+                        value={nombreEspecie}
+                        onChange={(e) => setNombreEspecie(e.target.value)}
+                        placeholder="Inserte especie"
+                        className="border rounded px-3 py-1 w-64"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (nombreEspecie.trim()) {
+                            setEspecieConfirmada(nombreEspecie.trim());
+                          }
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                      >
+                        Guardar especie
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-xl font-semibold">
+                        {especieConfirmada}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNombreEspecie(especieConfirmada);
+                          setEspecieConfirmada(null);
+                        }}
+                        className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded"
+                      >
+                        Modificar especie
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  <h3 className="text-xl font-semibold">{groupName}</h3>
+                )}
+              </div>
+
+              {/* Tabla de categorías */}
               <table className="min-w-full border">
                 <thead>
                   <tr className="bg-gray-100">
@@ -156,63 +199,67 @@ export default function DetalleTropa() {
                 </thead>
                 <tbody>
                   {groupName === 'Otros' ? (
-                    <>
-                      {otrosPersonalizados.map((item, index) => (
-                        <tr key={index}>
-                          <td className="border px-3 py-1 bg-gray-300">
-                            <input
-                              type="text"
-                              value={item.tipo}
-                              onChange={(e) =>
-                                actualizarOtro(index, 'tipo', e.target.value)
-                              }
-                              className="w-full bg-gray-200 rounded px-2 py-1"
-                              placeholder="Nombre del tipo"
-                            />
-                          </td>
-                          <td className="border px-3 py-1 text-right bg-gray-300">
-                            <input
-                              type="number"
-                              value={item.cantidad}
-                              min="0"
-                              onChange={(e) =>
-                                actualizarOtro(
-                                  index,
-                                  'cantidad',
-                                  e.target.value
-                                )
-                              }
-                              className="w-20 bg-gray-200 rounded px-2 py-1 text-right"
-                            />
+                    especieConfirmada && (
+                      <>
+                        {otrosPersonalizados.map((item, index) => (
+                          <tr key={index}>
+                            <td className="border px-3 py-1 bg-gray-300">
+                              <input
+                                type="text"
+                                value={item.tipo}
+                                onChange={(e) =>
+                                  actualizarOtro(index, 'tipo', e.target.value)
+                                }
+                                className="w-full bg-gray-200 rounded px-2 py-1"
+                                placeholder="Nombre del tipo"
+                              />
+                            </td>
+                            <td className="border px-3 py-1 text-right bg-gray-300">
+                              <input
+                                type="number"
+                                value={item.cantidad}
+                                min="0"
+                                onChange={(e) =>
+                                  actualizarOtro(
+                                    index,
+                                    'cantidad',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-20 bg-gray-200 rounded px-2 py-1 text-right"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+
+                        <tr>
+                          <td colSpan="2" className="text-center py-2">
+                            <button
+                              type="button"
+                              onClick={agregarFilaOtro}
+                              className="bg-[#62ab44] hover:bg-[#4ca92b] text-white px-4 py-2 rounded"
+                            >
+                              ➕ Agregar tipo
+                            </button>
                           </td>
                         </tr>
-                      ))}
-                      <tr>
-                        <td colSpan="2" className="text-center py-2">
-                          <button
-                            type="button"
-                            onClick={agregarFilaOtro}
-                            className="bg-[#62ab44] hover:bg-[#4ca92b] text-white px-4 py-2 rounded"
+
+                        <tr className="font-semibold bg-gray-300">
+                          <td
+                            className="border px-3 py-1"
+                            style={{ backgroundColor: '#62ab44' }}
                           >
-                            ➕ Agregar tipo
-                          </button>
-                        </td>
-                      </tr>
-                      <tr className="font-semibold bg-gray-300">
-                        <td
-                          className="border px-3 py-1"
-                          style={{ backgroundColor: '#62ab44' }}
-                        >
-                          TOTAL
-                        </td>
-                        <td
-                          className="border px-3 py-1 text-right"
-                          style={{ backgroundColor: '#62ab44' }}
-                        >
-                          {calcularTotalOtros()}
-                        </td>
-                      </tr>
-                    </>
+                            TOTAL
+                          </td>
+                          <td
+                            className="border px-3 py-1 text-right"
+                            style={{ backgroundColor: '#62ab44' }}
+                          >
+                            {calcularTotalOtros()}
+                          </td>
+                        </tr>
+                      </>
+                    )
                   ) : (
                     <>
                       {categories.map((cat) => (
@@ -233,6 +280,7 @@ export default function DetalleTropa() {
                           </td>
                         </tr>
                       ))}
+
                       <tr className="font-semibold bg-gray-300">
                         <td
                           className="border px-3 py-1"

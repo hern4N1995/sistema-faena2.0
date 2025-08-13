@@ -86,9 +86,7 @@ export default function DetalleFaenaPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 max-w-5xl mx-auto">
-      <h2 className="text-3xl font-bold text-center mb-6">
-        🧮 Detalle de Faena
-      </h2>
+      <h2 className="text-3xl font-bold text-center mb-6">Detalle de Faena</h2>
 
       {/* Datos generales */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-700">

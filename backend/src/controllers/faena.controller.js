@@ -56,16 +56,28 @@ module.exports = { obtenerFaenas, crearFaena };
 
 //ACA EMPIEZO A METER MANO by HERNAN//
 
-const pool = require('../config/db');
+const pool = require('../db');
 
-// Obtener todas las faenas
 const obtenerFaenas = async (req, res) => {
   try {
-    const resultado = await pool.query('SELECT * FROM faenas');
-    res.json(resultado.rows);
-  } catch (error) {
-    console.error('Error al listar faenas:', error);
-    res.status(500).json({ error: 'Error al obtener faenas' });
+    const result = await pool.query(`
+      SELECT 
+        t.id_tropa,
+        t.fecha,
+        t.dte_dtu,
+        t.guia_policial,
+        t.n_tropa AS nroTropa,
+        t.extendida_por, -- ✅ corregido
+        t.localidad,     -- ✅ agregado si lo querés mostrar
+        tf.nombre AS titular_faena
+      FROM tropa t
+      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      ORDER BY t.fecha DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener faenas:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 

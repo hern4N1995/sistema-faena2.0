@@ -7,6 +7,7 @@ import Sidebar from './components/Sidebar.jsx';
 import Inicio from './pages/Inicio.jsx';
 import Tropa from './pages/Tropa.jsx';
 import DetalleTropa from './pages/DetalleTropa.jsx';
+import InformeTropa from './pages/InformeTropa.jsx';
 import Decomisos from './pages/Decomisos.jsx';
 import Login from './pages/Login.jsx';
 
@@ -30,6 +31,7 @@ function App() {
           <Route path="inicio" element={<Inicio />} />
           <Route path="tropa" element={<Tropa />} />
           <Route path="tropa/detalle/:id" element={<DetalleTropa />} />
+          <Route path="/tropa/informe/:id" element={<InformeTropa />} />
           <Route path="decomisos" element={<Decomisos />} />
           {/* Faena y sus subrutas */}
           <Route path="faena">

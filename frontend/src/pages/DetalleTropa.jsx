@@ -38,6 +38,17 @@ export default function DetalleTropa() {
       })
       .catch((err) => console.error('Error al cargar tropa:', err));
   }, [id]);
+  
+  const [detalleBD, setDetalleBD] = useState([]);
+
+  useEffect(() => {
+  api
+    .get(`/tropas/${id}/detalle`)
+    .then((res) => setDetalleBD(res.data))
+    .catch((err) => console.error('Error al cargar detalle:', err));
+  }, [id]);
+
+
   const handleChange = (group, cat, value) => {
     setCounts((prev) => {
       const updatedGroup = { ...prev[group], [cat]: value };

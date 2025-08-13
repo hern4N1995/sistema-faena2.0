@@ -36,6 +36,8 @@ const cors = require('cors');
 const faenaRoutes = require('./routes/faena.routes');
 const authRoutes = require('./routes/auth.routes');
 const usuarioRoutes = require('./routes/usuario.routes');
+const tropaRoutes = require('./routes/tropa.routes');
+
 
 const app = express();
 
@@ -62,7 +64,7 @@ app.use('/api/faenas', faenaRoutes);
 app.use('/api/auth',authRoutes);
 
 app.use('/api/usuarios', usuarioRoutes);
-
+app.use('/api/tropas',tropaRoutes);
 
 // Iniciar servidor
 const PORT = process.env.PORT || 3000;

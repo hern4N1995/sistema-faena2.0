@@ -144,11 +144,23 @@ export default function Tropa() {
       <ul className="space-y-2">
         {tropas.map((tropa) => (
           <li
-            key={tropa.id}
+            key={tropa.id_tropa}
             className="bg-white p-3 rounded shadow flex justify-between items-center"
           >
-            <span>{tropa.titular}</span>
-            <span className="text-sm text-gray-500">{tropa.fecha}</span>
+            <div>
+              <div className="font-semibold">{tropa.titular}</div>
+              <div className="text-sm text-gray-600">
+                Tropa Nº {tropa.n_tropa}
+              </div>
+              <div className="text-sm text-gray-600">DTE: {tropa.dte_dtu}</div>
+            </div>
+            <div className="text-sm text-gray-500">{tropa.fecha}</div>
+            <button
+              onClick={() => navigate(`/tropa/informe/${tropa.id_tropa}`)}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              Ver informe
+            </button>
           </li>
         ))}
       </ul>

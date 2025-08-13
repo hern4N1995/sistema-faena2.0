@@ -68,7 +68,6 @@ export default function Sidebar() {
     },
   ];
 
-  // Buscar coincidencia por prefijo y rol
   const match = menuConfig.find(
     ({ prefix, roles }) =>
       pathname.startsWith(prefix) && roles.includes(String(rol))
@@ -79,11 +78,16 @@ export default function Sidebar() {
   const { title, menu: currentMenu } = match;
 
   return (
-    <aside className="w-64 bg-gray-100 h-full p-4 shadow-md">
-      <h2 className="text-lg font-semibold mb-4">{title}</h2>
+    <aside className="w-64 bg-[#62ab44] h-full p-4 shadow-md">
+      <h2 className="text-lg font-semibold mb-4 text-white">{title}</h2>
       <nav className="flex flex-col gap-2">
         {currentMenu.map(({ to, label }) => (
-          <NavLink key={to} to={to} className={linkClass}>
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/faena'} // ✅ solo aplica end a /faena
+            className={linkClass}
+          >
             {label}
           </NavLink>
         ))}

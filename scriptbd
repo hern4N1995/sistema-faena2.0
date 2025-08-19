@@ -19,6 +19,29 @@ CREATE TABLE IF NOT EXISTS categoria_especie(
     descripcion VARCHAR(25) NOT NULL
 );
 
+
+CREATE TABLE IF NOT EXISTS productor(
+	id_productor SERIAL PRIMARY KEY,
+	cuit VARCHAR(30),
+	nombre VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS planta(
+    id_planta SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    fecha_habilitacion DATE,
+    norma_legal varchar(20),
+    estado BOOLEAN DEFAULT TRUE
+)
+
+CREATE TABLE IF NOT EXISTS departamento(
+	id_departamento SERIAL PRIMARY KEY,
+	id_provincia INTEGER NOT NULL,
+	nombre_departamento VARCHAR(50),
+
+	CONSTRAINT FK_id_provincia FOREIGN KEY (id_provincia) REFERENCES provincia(id_provincia)
+);
+
 CREATE TABLE IF NOT EXISTS especie(
     id_especie SERIAL PRIMARY KEY,
     id_cat_especie SMALLINT NOT NULL,
@@ -27,12 +50,7 @@ CREATE TABLE IF NOT EXISTS especie(
     CONSTRAINT FK_id_categoria_especie FOREIGN KEY (id_cat_especie) REFERENCES categoria_especie(id_cat_especie)
 );
 
-CREATE TABLE IF NOT EXISTS localidad(
-	id_localidad SERIAL PRIMARY KEY,
-    descripcion VARCHAR(20) NOT NULL,
-	id_provincia SMALLINT NOT NULL,
-	CONSTRAINT FK_id_provincia FOREIGN KEY (id_provincia) REFERENCES provincia(id_provincia)
-);
+
 
 CREATE TABLE IF NOT EXISTS titular_faena(
 	id_titular_faena SERIAL PRIMARY KEY, 
@@ -43,20 +61,24 @@ CREATE TABLE IF NOT EXISTS titular_faena(
 
 
 
-CREATE TABLE IF NOT EXISTS tropa(
-    id_tropa SERIAL INTEGER PRIMARY KEY,
-    /*num_usuario INTEGER NOT NULL,  SE DEBE TENER UN NUMERO DE USUARIO EN TROPA, AL TENER DTE_DTU Y un IDTROPA AUTOINCREMENTAL?*/
-    extendida_por VARCHAR(50) NOT NULL,
-    n_tropa INTEGER NOT NULL,
-    localidad VARCHAR(25) NOT NULL,
+CREATE TABLE IF NOT EXISTS tropa (
+    id_tropa SERIAL PRIMARY KEY,
+    id_departamento INTEGER NOT NULL,
     dte_dtu VARCHAR(30) NOT NULL,
     guia_policial VARCHAR(30) NOT NULL,
-    fecha DATE NOT NULL,
-    --creado en TIMESTAMPTZ DEFAULT NOW(); sirve para auditar eventos del sistema (creación, modificación), DEFAULT NOW() para timestamps automaticos.
-    id_titular_faena SMALLINT, 
+    fecha TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    id_titular_faena INTEGER,
+    id_productor INTEGER,
+    n_tropa INTEGER NOT NULL,
+    id_planta INTEGER NOT NULL,
 
-    CONSTRAINT FK_id_titular_faena FOREIGN KEY (id_titular_faena) REFERENCES titular_faena(id_titular_faena)
+    -- Foreign Keys
+    CONSTRAINT fk_id_titular_faena FOREIGN KEY (id_titular_faena) REFERENCES titular_faena(id_titular_faena),
+    CONSTRAINT fk_id_departamento FOREIGN KEY (id_departamento) REFERENCES departamento(id_departamento),
+    CONSTRAINT fk_id_productor FOREIGN KEY (id_productor) REFERENCES productor(id_productor),
+    CONSTRAINT fk_id_planta FOREIGN KEY (id_planta) REFERENCES planta(id_planta)
 );
+
 
 CREATE TABLE IF NOT EXISTS tropa_detalle(
     id_tropa_detalle SERIAL INTEGER PRIMARY KEY,
@@ -112,15 +134,22 @@ CREATE TABLE IF NOT EXISTS rol_usuario(
 CREATE TABLE IF NOT EXISTS usuario (
     id_usuario SERIAL PRIMARY KEY,
     dni INTEGER NOT NULL,
-    nombre VARCHAR(20) NOT NULL,
-    apellido VARCHAR(20) NOT NULL,
-    contraseña VARCHAR(255) NOT NULL,
-    email VARCHAR(100) NOT NULL,
-    creado_en TIMESTAMPTZ DEFAULT NOW(),
+    nombre VARCHAR(50) NOT NULL,
+    apellido VARCHAR(50) NOT NULL,
+    contrasenia VARCHAR(255) NOT NULL,        -- encriptado (bcrypt)
+    email VARCHAR(100) NOT NULL UNIQUE,    -- único para login
+    estado BOOLEAN DEFAULT TRUE,           -- TRUE = activo / FALSE = inactivo
+    fecha_creacion TIMESTAMPTZ DEFAULT NOW(),
     id_rol INTEGER NOT NULL,
+    id_planta INTEGER,
+    n_telefono VARCHAR(20),
 
-    CONSTRAINT fk_id_rol FOREIGN KEY id_rol REFERENCES rol_usuario(id_rol)
-    )
+    CONSTRAINT fk_id_rol FOREIGN KEY (id_rol) REFERENCES rol_usuario(id_rol),
+    CONSTRAINT fk_id_planta FOREIGN KEY (id_planta) REFERENCES planta(id_planta)
+);
+
+
+
 
 
 -------CONSULTAS---------

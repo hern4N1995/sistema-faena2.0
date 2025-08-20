@@ -64,6 +64,8 @@ export default function Sidebar() {
         { to: '/admin/provincias', label: 'Provincias' },
         { to: '/admin/departamentos', label: 'Departamentos' },
         { to: '/admin/titulares', label: 'Titulares' },
+        { to: '/admin/plantas', label: 'Plantas' },
+        { to: '/admin/productores', label: 'Productores' },
       ],
     },
   ];

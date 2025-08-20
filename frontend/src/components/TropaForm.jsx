@@ -105,10 +105,10 @@ export default function TropaForm({ onCreated }) {
     const fetchData = async () => {
       try {
         const [depRes, plRes, prodRes, titRes] = await Promise.all([
-          api.get('/tropa/departamentos'),
-          api.get('/tropa/plantas'),
-          api.get('/tropa/productores'),
-          api.get('/tropa/titulares'),
+          api.get('/tropas/departamentos'),
+          api.get('/tropas/plantas'),
+          api.get('/tropas/productores'),
+          api.get('/tropas/titulares'),
         ]);
 
         setDepartamentos(depRes.data);
@@ -145,7 +145,6 @@ export default function TropaForm({ onCreated }) {
         id_productor: '',
         id_titular_faena: '',
       });
-      console.log('Payload enviado:', form);
     } catch (err) {
       console.error(
         'Error al guardar tropa:',
@@ -154,7 +153,7 @@ export default function TropaForm({ onCreated }) {
       alert('Error al guardar tropa. Verificá los datos.');
     }
   };
-  console.log('Departamentos cargados:', departamentos);
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -162,131 +161,82 @@ export default function TropaForm({ onCreated }) {
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
         {/* DTE/DTU */}
-        <div className="flex flex-col">
-          <label className="mb-1 font-medium text-gray-700 text-sm">
-            DTE/DTU
-          </label>
-          <input
-            type="text"
-            name="dte_dtu"
-            value={form.dte_dtu}
-            onChange={handleChange}
-            required
-            className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-          />
-        </div>
+        <InputField
+          label="DTE/DTU"
+          name="dte_dtu"
+          value={form.dte_dtu}
+          onChange={handleChange}
+          required
+        />
 
         {/* Guía Policial */}
-        <div className="flex flex-col">
-          <label className="mb-1 font-medium text-gray-700 text-sm">
-            Guía Policial
-          </label>
-          <input
-            type="text"
-            name="guia_policial"
-            value={form.guia_policial}
-            onChange={handleChange}
-            required
-            className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-          />
-        </div>
+        <InputField
+          label="Guía Policial"
+          name="guia_policial"
+          value={form.guia_policial}
+          onChange={handleChange}
+          required
+        />
 
         {/* N° Tropa */}
-        <div className="flex flex-col">
-          <label className="mb-1 font-medium text-gray-700 text-sm">
-            N° Tropa
-          </label>
-          <input
-            type="number"
-            name="n_tropa"
-            value={form.n_tropa}
-            onChange={handleChange}
-            required
-            className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-          />
-        </div>
+        <InputField
+          label="N° Tropa"
+          name="n_tropa"
+          type="number"
+          value={form.n_tropa}
+          onChange={handleChange}
+          required
+        />
 
         {/* Departamento */}
-        <div className="flex flex-col">
-          <label className="mb-1 font-medium text-gray-700 text-sm">
-            Departamento
-          </label>
-          <select
-            name="id_departamento"
-            value={form.id_departamento}
-            onChange={handleChange}
-            required
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">Seleccione un departamento</option>
-            {departamentos.map((d) => (
-              <option key={d.id_departamento} value={d.id_departamento}>
-                {d.nombre_departamento}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SelectField
+          label="Departamento"
+          name="id_departamento"
+          value={form.id_departamento}
+          onChange={handleChange}
+          options={departamentos}
+          optionKey="id_departamento"
+          optionLabel="nombre_departamento"
+          placeholder="Seleccione un departamento"
+          required
+        />
 
         {/* Planta */}
-        <div className="flex flex-col">
-          <label className="mb-1 font-medium text-gray-700 text-sm">
-            Planta
-          </label>
-          <select
-            name="id_planta"
-            value={form.id_planta}
-            onChange={handleChange}
-            required
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">Seleccionar</option>
-            {plantas.map((pl) => (
-              <option key={pl.id_planta} value={pl.id_planta}>
-                {pl.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SelectField
+          label="Planta"
+          name="id_planta"
+          value={form.id_planta}
+          onChange={handleChange}
+          options={plantas}
+          optionKey="id_planta"
+          optionLabel="nombre"
+          placeholder="Seleccione una planta"
+          required
+        />
 
         {/* Productor */}
-        <div className="flex flex-col">
-          <label className="mb-1 font-medium text-gray-700 text-sm">
-            Productor
-          </label>
-          <select
-            name="id_productor"
-            value={form.id_productor}
-            onChange={handleChange}
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">—</option>
-            {productores.map((p) => (
-              <option key={p.id_productor} value={p.id_productor}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SelectField
+          label="Productor"
+          name="id_productor"
+          value={form.id_productor}
+          onChange={handleChange}
+          options={productores}
+          optionKey="id_productor"
+          optionLabel="nombre"
+          placeholder="Seleccione un productor"
+        />
 
         {/* Titular Faena */}
-        <div className="flex flex-col">
-          <label className="mb-1 font-medium text-gray-700 text-sm">
-            Titular Faena
-          </label>
-          <select
-            name="id_titular_faena"
-            value={form.id_titular_faena}
-            onChange={handleChange}
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">—</option>
-            {titulares.map((t) => (
-              <option key={t.id_titular_faena} value={t.id_titular_faena}>
-                {t.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SelectField
+          label="Titular Faena"
+          name="id_titular_faena"
+          value={form.id_titular_faena}
+          onChange={handleChange}
+          options={titulares}
+          optionKey="id_titular_faena"
+          optionLabel="nombre"
+          placeholder="Seleccione un titular"
+        />
       </div>
 
       <button
@@ -296,5 +246,66 @@ export default function TropaForm({ onCreated }) {
         GUARDAR TROPA
       </button>
     </form>
+  );
+}
+
+// 🔧 Componentes reutilizables
+
+function InputField({
+  label,
+  name,
+  value,
+  onChange,
+  required = false,
+  type = 'text',
+}) {
+  return (
+    <div className="flex flex-col">
+      <label className="mb-1 font-medium text-gray-700 text-sm">{label}</label>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+      />
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  name,
+  value,
+  onChange,
+  options,
+  optionKey,
+  optionLabel,
+  placeholder,
+  required = false,
+}) {
+  return (
+    <div className="flex flex-col">
+      <label className="mb-1 font-medium text-gray-700 text-sm">{label}</label>
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        className="border rounded px-3 py-2 text-sm"
+      >
+        <option value="">{placeholder}</option>
+        {options.length > 0 ? (
+          options.map((opt) => (
+            <option key={opt[optionKey]} value={opt[optionKey]}>
+              {opt[optionLabel]}
+            </option>
+          ))
+        ) : (
+          <option disabled>Cargando...</option>
+        )}
+      </select>
+    </div>
   );
 }

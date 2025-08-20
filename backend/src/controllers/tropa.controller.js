@@ -93,21 +93,34 @@ exports.createTropa = async (req, res) => {
 
 exports.getById = async (req, res) => {
   const { id } = req.params;
+
+  // Validación: el ID debe ser un número entero positivo
+  if (!/^\d+$/.test(id)) {
+    console.warn(`ID inválido recibido: ${id}`);
+    return res
+      .status(400)
+      .json({ error: 'ID inválido. Debe ser un número entero.' });
+  }
+
   try {
     const result = await pool.query(
       `
-  SELECT 
-    t.id_tropa,
-    t.n_tropa,
-    t.fecha,
-    t.dte_dtu,
-    tf.nombre AS titular
-  FROM tropa t
-  LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
-  WHERE t.id_tropa = $1
-`,
-      [id],
+      SELECT 
+        t.id_tropa,
+        t.n_tropa,
+        t.fecha,
+        t.dte_dtu,
+        tf.nombre AS titular
+      FROM tropa t
+      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      WHERE t.id_tropa = $1
+      `,
+      [parseInt(id)],
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tropa no encontrada' });
+    }
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -116,16 +129,23 @@ exports.getById = async (req, res) => {
   }
 };
 
-exports.getDepartamentos = async (req, res) => {
+exports.getTitulares = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id_departamento, nombre_departamento FROM departamento ORDER BY nombre_departamento
+      SELECT id_titular_faena, nombre FROM titular_faena ORDER BY nombre
     `);
     res.json(result.rows);
   } catch (err) {
-    console.error('Error al obtener departamentos:', err);
+    console.error('Error al obtener titulares:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
+};
+
+exports.getDepartamentos = async (req, res) => {
+  const result = await pool.query(
+    'SELECT id_departamento, nombre_departamento FROM departamento',
+  );
+  res.json(result.rows);
 };
 
 exports.getPlantas = async (req, res) => {

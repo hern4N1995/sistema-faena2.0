@@ -67,8 +67,8 @@ const obtenerFaenas = async (req, res) => {
         t.dte_dtu,
         t.guia_policial,
         t.n_tropa AS nroTropa,
-        t.extendida_por, -- ✅ corregido
-        t.localidad,     -- ✅ agregado si lo querés mostrar
+        t.productor, -- ✅ corregido
+        t.departamento,     -- ✅ agregado si lo querés mostrar
         tf.nombre AS titular_faena
       FROM tropa t
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena

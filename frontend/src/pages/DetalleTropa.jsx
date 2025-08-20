@@ -6,6 +6,7 @@ import React from 'react';
 
 export default function DetalleTropa() {
   const { id } = useParams();
+
   const getInitialCounts = () =>
     Object.fromEntries(
       Object.entries(animalGroups).map(([group, cats]) => {
@@ -13,6 +14,7 @@ export default function DetalleTropa() {
         return [group, { ...emptyCats, TOTAL: 0 }];
       })
     );
+
   const [counts, setCounts] = useState(getInitialCounts);
   const [otrosPersonalizados, setOtrosPersonalizados] = useState([
     { tipo: '', cantidad: 0 },
@@ -24,30 +26,29 @@ export default function DetalleTropa() {
     fecha: '',
     dte: '',
     titular: '',
+    productor: '',
+    planta: '',
   });
-  useEffect(() => {
-    api
-      .get(`/tropas/${id}`)
-      .then((res) => {
-        const { fecha, dte, titular } = res.data;
-        setTropaInfo({
-          fecha: fecha || '',
-          dte: dte || '',
-          titular: titular || '',
-        });
-      })
-      .catch((err) => console.error('Error al cargar tropa:', err));
-  }, [id]);
-  
   const [detalleBD, setDetalleBD] = useState([]);
+  const [especiesBD, setEspeciesBD] = useState([]);
+  const [categoriasBD, setCategoriasBD] = useState([]);
 
   useEffect(() => {
-  api
-    .get(`/tropas/${id}/detalle`)
-    .then((res) => setDetalleBD(res.data))
-    .catch((err) => console.error('Error al cargar detalle:', err));
-  }, [id]);
+    api.get(`/tropas/${id}`).then((res) => {
+      const { fecha, dte, titular, productor, planta } = res.data;
+      setTropaInfo({
+        fecha: fecha || '',
+        dte: dte || '',
+        titular: titular || '',
+        productor: productor || '',
+        planta: planta || '',
+      });
+    });
 
+    api.get(`/tropas/${id}/detalle`).then((res) => setDetalleBD(res.data));
+    api.get('/especies').then((res) => setEspeciesBD(res.data));
+    api.get('/categorias').then((res) => setCategoriasBD(res.data));
+  }, [id]);
 
   const handleChange = (group, cat, value) => {
     setCounts((prev) => {
@@ -58,60 +59,136 @@ export default function DetalleTropa() {
       return { ...prev, [group]: { ...updatedGroup, TOTAL: total } };
     });
   };
+
   const agregarFilaOtro = () =>
     setOtrosPersonalizados([...otrosPersonalizados, { tipo: '', cantidad: 0 }]);
+
   const actualizarOtro = (index, campo, valor) => {
     const nuevos = [...otrosPersonalizados];
     nuevos[index][campo] = campo === 'cantidad' ? parseInt(valor) || 0 : valor;
     setOtrosPersonalizados(nuevos);
   };
+
   const calcularTotalOtros = () =>
     otrosPersonalizados.reduce(
       (acc, item) => acc + (parseInt(item.cantidad) || 0),
       0
     );
+
+  useEffect(() => {
+    api.get('/especies').then((res) => setEspeciesBD(res.data));
+    api.get('/categorias').then((res) => setCategoriasBD(res.data));
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = {
-      fecha: tropaInfo.fecha,
-      animales: counts,
-      otros: otrosPersonalizados,
-    };
+
+    const detalles = [];
+
+    // Detalles por grupo/categoría
+    Object.entries(counts).forEach(([grupo, categorias]) => {
+      Object.entries(categorias).forEach(([catNombre, cantidad]) => {
+        if (catNombre === 'TOTAL' || !cantidad || parseInt(cantidad) === 0)
+          return;
+
+        const especie = especiesBD.find((e) => e.descripcion === grupo);
+        const categoria = categoriasBD.find((c) => c.descripcion === catNombre);
+
+        if (especie && categoria) {
+          detalles.push({
+            id_tropa: parseInt(id),
+            id_especie: especie.id_especie,
+            id_cat_especie: categoria.id_cat_especie,
+            cantidad: parseInt(cantidad),
+          });
+        }
+      });
+    });
+
+    // Detalles personalizados
+    if (especieConfirmada) {
+      const especie = especiesBD.find(
+        (e) => e.descripcion === especieConfirmada
+      );
+      if (!especie) {
+        alert(`La especie "${especieConfirmada}" no existe en la base.`);
+        return;
+      }
+
+      otrosPersonalizados.forEach((item) => {
+        if (!item.tipo || !item.cantidad || parseInt(item.cantidad) === 0)
+          return;
+
+        const categoria = categoriasBD.find((c) => c.descripcion === item.tipo);
+        if (!categoria) return;
+
+        detalles.push({
+          id_tropa: parseInt(id),
+          id_especie: especie.id_especie,
+          id_cat_especie: categoria.id_cat_especie,
+          cantidad: parseInt(item.cantidad),
+        });
+      });
+    }
+
+    // Validación final
+    if (detalles.length === 0) {
+      alert('No hay datos válidos para guardar.');
+      return;
+    }
+
+    // Envío al backend
     try {
-      await api.post(`/tropas/${id}/detalle`, payload);
+      await api.post('/tropa_detalle', detalles);
       alert('Detalle guardado correctamente');
     } catch (err) {
       console.error('Error al guardar detalle:', err);
+      alert('Error al guardar detalle. Verificá los datos.');
     }
   };
+
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 max-w-5xl mx-auto">
-      {' '}
-      <h2 className="text-3xl font-bold text-center mb-6">
-        Detalle de Tropa
-      </h2>{' '}
-      {/* Datos generales */}{' '}
+      <h2 className="text-3xl font-bold text-center mb-6">Detalle de Tropa</h2>
+
+      {/* Datos generales */}
+      <div className="bg-white rounded shadow p-3">
+        <label className="block font-semibold text-gray-600 mb-1">
+          Productor
+        </label>
+        <input
+          type="text"
+          value={tropaInfo.productor}
+          disabled
+          className="w-full border rounded px-3 py-2 bg-gray-100"
+        />
+      </div>
+      <div className="bg-white rounded shadow p-3">
+        <label className="block font-semibold text-gray-600 mb-1">Planta</label>
+        <input
+          type="text"
+          value={tropaInfo.planta}
+          disabled
+          className="w-full border rounded px-3 py-2 bg-gray-100"
+        />
+      </div>
+
       <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-700">
-        {' '}
         <div className="bg-white rounded shadow p-3">
-          {' '}
           <label className="block font-semibold text-gray-600 mb-1">
-            {' '}
-            ID Tropa{' '}
-          </label>{' '}
+            ID Tropa
+          </label>
           <input
             type="text"
             value={id}
             disabled
             className="w-full border rounded px-3 py-2 bg-gray-100"
-          />{' '}
-        </div>{' '}
+          />
+        </div>
         <div className="bg-white rounded shadow p-3">
-          {' '}
           <label className="block font-semibold text-gray-600 mb-1">
-            {' '}
-            Fecha{' '}
-          </label>{' '}
+            Fecha
+          </label>
           <input
             type="date"
             value={tropaInfo.fecha}
@@ -119,36 +196,33 @@ export default function DetalleTropa() {
               setTropaInfo((prev) => ({ ...prev, fecha: e.target.value }))
             }
             className="w-full border rounded px-3 py-2"
-          />{' '}
-        </div>{' '}
+          />
+        </div>
         <div className="bg-white rounded shadow p-3">
-          {' '}
           <label className="block font-semibold text-gray-600 mb-1">
-            {' '}
-            DTE/DTU{' '}
-          </label>{' '}
+            DTE/DTU
+          </label>
           <input
             type="text"
             value={tropaInfo.dte}
             disabled
             className="w-full border rounded px-3 py-2 bg-gray-100"
-          />{' '}
-        </div>{' '}
+          />
+        </div>
         <div className="bg-white rounded shadow p-3">
-          {' '}
           <label className="block font-semibold text-gray-600 mb-1">
-            {' '}
-            Titular{' '}
-          </label>{' '}
+            Titular
+          </label>
           <input
             type="text"
             value={tropaInfo.titular}
             disabled
             className="w-full border rounded px-3 py-2 bg-gray-100"
-          />{' '}
-        </div>{' '}
-      </div>{' '}
-      {/* Formulario de animales */}{' '}
+          />
+        </div>
+      </div>
+
+      {/* Formulario de animales */}
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {Object.entries(animalGroups).map(([groupName, categories]) => (
@@ -201,6 +275,7 @@ export default function DetalleTropa() {
               </div>
 
               {/* Tabla de categorías */}
+              {/* Tabla de categorías */}
               <table className="min-w-full border">
                 <thead>
                   <tr className="bg-gray-100">
@@ -242,7 +317,6 @@ export default function DetalleTropa() {
                             </td>
                           </tr>
                         ))}
-
                         <tr>
                           <td colSpan="2" className="text-center py-2">
                             <button
@@ -254,7 +328,6 @@ export default function DetalleTropa() {
                             </button>
                           </td>
                         </tr>
-
                         <tr className="font-semibold bg-gray-300">
                           <td
                             className="border px-3 py-1"
@@ -291,7 +364,6 @@ export default function DetalleTropa() {
                           </td>
                         </tr>
                       ))}
-
                       <tr className="font-semibold bg-gray-300">
                         <td
                           className="border px-3 py-1"

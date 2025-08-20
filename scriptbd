@@ -63,13 +63,13 @@ CREATE TABLE IF NOT EXISTS titular_faena(
 
 CREATE TABLE IF NOT EXISTS tropa (
     id_tropa SERIAL PRIMARY KEY,
-    id_departamento INTEGER NOT NULL,
     dte_dtu VARCHAR(30) NOT NULL,
     guia_policial VARCHAR(30) NOT NULL,
     fecha TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     id_titular_faena INTEGER,
-    id_productor INTEGER,
     n_tropa INTEGER NOT NULL,
+    id_departamento INTEGER NOT NULL,
+    id_productor INTEGER,
     id_planta INTEGER NOT NULL,
 
     -- Foreign Keys

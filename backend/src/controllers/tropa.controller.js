@@ -48,6 +48,49 @@ exports.getTodosLosDetalles = async (req, res) => {
   }
 };
 
+exports.createTropa = async (req, res) => {
+  const {
+    dte_dtu,
+    guia_policial,
+    fecha,
+    id_titular_faena,
+    n_tropa,
+    id_departamento,
+    id_productor,
+    id_planta,
+  } = req.body;
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO tropa (
+        dte_dtu, guia_policial, fecha,
+        id_titular_faena, n_tropa,
+        id_departamento, id_productor, id_planta
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id_tropa`,
+      [
+        dte_dtu,
+        guia_policial,
+        fecha || new Date(), // si no viene, usa NOW()
+        id_titular_faena,
+        n_tropa,
+        id_departamento,
+        id_productor,
+        id_planta,
+      ],
+    );
+
+    res.status(201).json({
+      message: 'Tropa creada correctamente',
+      id_tropa: result.rows[0].id_tropa,
+    });
+  } catch (err) {
+    console.error('Error al crear tropa:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
 exports.getById = async (req, res) => {
   const { id } = req.params;
   try {
@@ -69,6 +112,42 @@ exports.getById = async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Error al obtener tropa:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+exports.getDepartamentos = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id_departamento, nombre_departamento FROM departamento ORDER BY nombre_departamento
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener departamentos:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+exports.getPlantas = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id_planta, nombre FROM planta ORDER BY nombre
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener plantas:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+exports.getProductores = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id_productor, nombre FROM productor ORDER BY nombre
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener productores:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

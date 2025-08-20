@@ -20,6 +20,8 @@ import TitularAdmin from './pages/TitularAdmin.jsx';
 import AgregarUsuarioPage from './pages/AgregarUsuarioPage.jsx';
 import PrivateRoute from './components/PrivateRoute.jsx';
 import DepartamentoAdmin from './pages/DepartamentoAdmin.jsx';
+import PlantaAdmin from './pages/PlantaAdmin.jsx';
+import ProductorAdmin from './pages/ProductorAdmin.jsx';
 
 function App() {
   return (
@@ -70,6 +72,22 @@ function App() {
             element={
               <PrivateRoute allowedRoles={[1, 2]}>
                 <TitularAdmin />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/plantas"
+            element={
+              <PrivateRoute allowedRoles={[1, 2]}>
+                <PlantaAdmin />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/productores"
+            element={
+              <PrivateRoute allowedRoles={[1, 2]}>
+                <ProductorAdmin />
               </PrivateRoute>
             }
           />

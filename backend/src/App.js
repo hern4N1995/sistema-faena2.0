@@ -37,6 +37,11 @@ const authRoutes = require('./routes/auth.routes');
 const usuarioRoutes = require('./routes/usuario.routes');
 const tropaRoutes = require('./routes/tropa.routes');
 const faenaRoutes = require('./routes/faena.routes');
+<<<<<<< HEAD
+=======
+const plantaRoutes = require('./routes/planta.routes');
+
+>>>>>>> d593d337fab93fb0bf5f6db9973b3f29cd466ade
 const app = express();
 
 // Configurar CORS
@@ -65,6 +70,7 @@ app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/tropas', tropaRoutes);
 
 app.use('/api/faena', faenaRoutes);
+app.use('/api/plantas', plantaRoutes);
 
 // Iniciar servidor
 const PORT = process.env.PORT || 3000;

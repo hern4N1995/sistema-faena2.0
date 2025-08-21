@@ -84,10 +84,11 @@ export default function Sidebar() {
       <h2 className="text-lg font-semibold mb-4 text-white">{title}</h2>
       <nav className="flex flex-col gap-2">
         {currentMenu.map(({ to, label }) => (
+          /* end={to === '/faena'} // esto lo cambie porque quedaba seleccionado ingreso tropa */
           <NavLink
             key={to}
             to={to}
-            end={to === '/faena'} // ✅ solo aplica end a /faena
+            end={to === match.prefix} // ✅ solo aplica end a /faena
             className={linkClass}
           >
             {label}

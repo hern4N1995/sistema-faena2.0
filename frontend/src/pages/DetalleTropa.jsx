@@ -150,9 +150,15 @@ export default function DetalleTropa() {
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 max-w-5xl mx-auto">
       <h2 className="text-3xl font-bold text-center mb-6">Detalle de Tropa</h2>
+      <input
+        type="text"
+        value={tropaInfo.planta?.nombre || tropaInfo.planta || ''}
+        disabled
+        className="w-full rounded px-3 py-2 bg-gray-100"
+      />
 
       {/* Datos generales */}
-      <div className="bg-white rounded shadow p-3">
+      <div className="mb-6 grid grid-cols-1 bg-white rounded shadow p-3">
         <label className="block font-semibold text-gray-600 mb-1">
           Productor
         </label>
@@ -163,20 +169,11 @@ export default function DetalleTropa() {
           className="w-full border rounded px-3 py-2 bg-gray-100"
         />
       </div>
-      <div className="bg-white rounded shadow p-3">
-        <label className="block font-semibold text-gray-600 mb-1">Planta</label>
-        <input
-          type="text"
-          value={tropaInfo.planta}
-          disabled
-          className="w-full border rounded px-3 py-2 bg-gray-100"
-        />
-      </div>
 
       <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-700">
         <div className="bg-white rounded shadow p-3">
           <label className="block font-semibold text-gray-600 mb-1">
-            ID Tropa
+            Nº Tropa
           </label>
           <input
             type="text"

@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getCategoriasPorEspecie,
+  getCategoriasEspecie,
 } = require('../controllers/categoriaEspecie.controller');
 
-router.get('/especie/:id/categorias', getCategoriasPorEspecie);
+router.get('/categoria-especie', getCategoriasEspecie);
 
 module.exports = router;

@@ -1,46 +1,22 @@
 const pool = require('../db');
 
+/**
+ * Obtener todas las especies ordenadas alfabéticamente
+ */
 const getEspecies = async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id_especie AS id, descripcion AS nombre FROM especie',
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error al obtener especies:', err);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-};
-
-// Express - especieController.js
-const getCategoriasPorEspecie = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const result = await pool.query(
-      `
-      SELECT id_cat_especie AS id, descripcion AS nombre
-      FROM categoria_especie
-      WHERE id_especie = $1
+    const query = `
+      SELECT id_especie AS id, descripcion AS nombre
+      FROM especie
       ORDER BY descripcion
-      `,
-      [id],
-    );
+    `;
 
-    if (result.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ error: 'No hay categorías para esta especie' });
-    }
-
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error al obtener categorías:', err);
+    const { rows } = await pool.query(query);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error al obtener especies desde la base de datos:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
-module.exports = {
-  getEspecies,
-  getCategoriasPorEspecie,
-};
+module.exports = { getEspecies };

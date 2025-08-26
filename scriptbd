@@ -148,11 +148,6 @@ CREATE TABLE IF NOT EXISTS usuario (
     CONSTRAINT fk_id_planta FOREIGN KEY (id_planta) REFERENCES planta(id_planta)
 );
 
-CREATE TABLE especie_categoria (
-  id_especie INTEGER REFERENCES especie(id_especie),
-  id_cat_especie INTEGER REFERENCES categoria_especie(id_cat_especie),
-  PRIMARY KEY (id_especie, id_cat_especie)
-);
 
 
 

@@ -22,6 +22,7 @@ import PrivateRoute from './components/PrivateRoute.jsx';
 import DepartamentoAdmin from './pages/DepartamentoAdmin.jsx';
 import PlantaAdmin from './pages/PlantaAdmin.jsx';
 import ProductorAdmin from './pages/ProductorAdmin.jsx';
+import AgregarEspeciePage from './pages/AgregarEspeciePage.jsx';
 
 function App() {
   return (
@@ -88,6 +89,14 @@ function App() {
             element={
               <PrivateRoute allowedRoles={[1, 2]}>
                 <ProductorAdmin />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/especies"
+            element={
+              <PrivateRoute allowedRoles={[1, 2]}>
+                <AgregarEspeciePage />
               </PrivateRoute>
             }
           />

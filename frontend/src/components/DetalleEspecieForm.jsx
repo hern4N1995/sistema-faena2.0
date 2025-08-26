@@ -10,23 +10,50 @@ export default function DetalleEspecieForm({ idTropa }) {
   const [cantidad, setCantidad] = useState('');
 
   useEffect(() => {
-    api.get('/especies').then((res) => setEspecies(res.data));
+    api
+      .get('/especies')
+      .then((res) => {
+        setEspecies(res.data);
+      })
+      .catch((err) => {
+        console.error('Error al obtener especies:', err);
+      });
   }, []);
 
   useEffect(() => {
-    if (especieSeleccionada) {
-      api
-        .get(`/categorias/especie/${especieSeleccionada}`)
-        .then((res) => setCategorias(res.data));
-    }
+    if (!especieSeleccionada) return;
+
+    console.log(
+      `Consultando categorías para especie ID: ${especieSeleccionada}`
+    );
+
+    api
+      .get(`/especie/${especieSeleccionada}/categorias`)
+      .then((res) => {
+        setCategorias(res.data);
+        setCategoria('');
+      })
+      .catch((err) => {
+        if (err.response?.status === 404) {
+          console.warn('Sin categorías para esta especie');
+          setCategorias([]);
+        } else {
+          console.error('Error al obtener categorías:', err);
+        }
+      });
   }, [especieSeleccionada]);
 
   const agregarDetalle = () => {
     if (!categoria || !cantidad) return;
 
+    const especieObj = especies.find((e) => e.id === especieSeleccionada);
+    const categoriaObj = categorias.find((c) => c.id === Number(categoria));
+
     const nuevo = {
       especie_id: especieSeleccionada,
-      categoria_id: categoria,
+      especie_nombre: especieObj?.nombre || '',
+      categoria_id: Number(categoria),
+      categoria_nombre: categoriaObj?.nombre || '',
       cantidad: parseInt(cantidad),
     };
 
@@ -36,12 +63,6 @@ export default function DetalleEspecieForm({ idTropa }) {
   };
 
   const guardarDetalles = () => {
-<<<<<<< Updated upstream
-    api.post(`/tropa_detalle/${idTropa}`, { detalles: detalle }).then(() => {
-      setDetalle([]);
-      alert('Detalles guardados correctamente');
-    });
-=======
     if (detalle.length === 0) {
       alert('No hay detalles para guardar');
       return;
@@ -60,23 +81,18 @@ export default function DetalleEspecieForm({ idTropa }) {
         alert('Detalles guardados correctamente');
       })
       .catch((err) => {
-        console.error(
-          'Error al guardar detalles:',
-          err.response?.data || err.message
-        );
+        console.error('Error al guardar detalles:', err);
         alert('Hubo un problema al guardar. Revisá la consola.');
       });
->>>>>>> Stashed changes
   };
 
   return (
     <div className="space-y-6">
-      {/* Selección única de especie */}
       <div>
         <label className="block font-semibold mb-1">Especie</label>
         <select
           value={especieSeleccionada}
-          onChange={(e) => setEspecieSeleccionada(e.target.value)}
+          onChange={(e) => setEspecieSeleccionada(Number(e.target.value))}
           className="w-full border rounded px-3 py-2"
         >
           <option value="">Seleccionar especie</option>
@@ -88,7 +104,6 @@ export default function DetalleEspecieForm({ idTropa }) {
         </select>
       </div>
 
-      {/* Formulario de categoría + cantidad */}
       {especieSeleccionada && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           <div>
@@ -105,7 +120,13 @@ export default function DetalleEspecieForm({ idTropa }) {
                 </option>
               ))}
             </select>
+            {categorias.length === 0 && (
+              <p className="text-sm text-gray-500 mt-1">
+                No hay categorías disponibles para esta especie.
+              </p>
+            )}
           </div>
+
           <div>
             <label className="block font-semibold mb-1">Cantidad</label>
             <input
@@ -116,6 +137,7 @@ export default function DetalleEspecieForm({ idTropa }) {
               min={0}
             />
           </div>
+
           <button
             onClick={agregarDetalle}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -125,7 +147,6 @@ export default function DetalleEspecieForm({ idTropa }) {
         </div>
       )}
 
-      {/* Tabla visual de lo agregado */}
       {detalle.length > 0 && (
         <div className="mt-6">
           <h4 className="font-bold mb-2">Detalle agregado</h4>
@@ -140,10 +161,8 @@ export default function DetalleEspecieForm({ idTropa }) {
             <tbody>
               {detalle.map((d, i) => (
                 <tr key={i} className="text-center border-t">
-                  <td>{especies.find((e) => e.id === d.especie_id)?.nombre}</td>
-                  <td>
-                    {categorias.find((c) => c.id === d.categoria_id)?.nombre}
-                  </td>
+                  <td>{d.especie_nombre}</td>
+                  <td>{d.categoria_nombre}</td>
                   <td>{d.cantidad}</td>
                 </tr>
               ))}

@@ -23,23 +23,23 @@ exports.getAll = async (req, res) => {
 exports.getTodosLosDetalles = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT 
-        td.id_tropa_detalle,
-        td.id_tropa,
-        t.n_tropa,
-        t.fecha,
-        t.dte_dtu,
-        tf.nombre AS titular,
-        e.descripcion AS nombre_especie,
-        ce.descripcion AS nombre_categoria,
-        td.cantidad
-      FROM tropa_detalle td
-      JOIN tropa t ON td.id_tropa = t.id_tropa
-      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
-      JOIN especie e ON td.id_especie = e.id_especie
-      JOIN categoria_especie ce ON e.id_cat_especie = ce.id_cat_especie
-      ORDER BY t.fecha DESC, e.descripcion, ce.descripcion
-    `);
+  SELECT 
+    td.id_tropa_detalle,
+    td.id_tropa,
+    t.n_tropa,
+    t.fecha,
+    t.dte_dtu,
+    tf.nombre AS titular,
+    e.descripcion AS nombre_especie,
+    ce.descripcion AS nombre_categoria,
+    td.cantidad
+  FROM tropa_detalle td
+  JOIN tropa t ON td.id_tropa = t.id_tropa
+  LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+  JOIN especie e ON td.id_especie = e.id_especie
+  JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
+  ORDER BY t.fecha DESC, e.descripcion, ce.descripcion
+`);
 
     res.json(result.rows);
   } catch (err) {
@@ -178,15 +178,8 @@ exports.getProductores = async (req, res) => {
 
 exports.saveDetalle = async (req, res) => {
   const { id } = req.params;
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
+
   const detalles = req.body; // array de objetos con id_especie, id_cat_especie, cantidad
-=======
-  const { detalles } = req.body;
->>>>>>> Stashed changes
-=======
-  const { detalles } = req.body;
->>>>>>> Stashed changes
 
   if (!Array.isArray(detalles) || detalles.length === 0) {
     return res

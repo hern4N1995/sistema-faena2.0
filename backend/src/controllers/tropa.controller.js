@@ -178,7 +178,7 @@ exports.getProductores = async (req, res) => {
 
 exports.saveDetalle = async (req, res) => {
   const { id } = req.params;
-  const detalles = req.body; // array de objetos con id_especie, id_cat_especie, cantidad
+  const { detalles } = req.body; // array de objetos con id_especie, id_cat_especie, cantidad
 
   // Validación básica
   if (!Array.isArray(detalles) || detalles.length === 0) {

@@ -179,7 +179,11 @@ exports.getProductores = async (req, res) => {
 exports.saveDetalle = async (req, res) => {
   const { id } = req.params;
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   const detalles = req.body; // array de objetos con id_especie, id_cat_especie, cantidad
+=======
+  const { detalles } = req.body;
+>>>>>>> Stashed changes
 =======
   const { detalles } = req.body;
 >>>>>>> Stashed changes

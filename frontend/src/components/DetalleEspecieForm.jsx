@@ -10,23 +10,44 @@ export default function DetalleEspecieForm({ idTropa }) {
   const [cantidad, setCantidad] = useState('');
 
   useEffect(() => {
-    api.get('/especies').then((res) => setEspecies(res.data));
+    api
+      .get('/especies')
+      .then((res) => {
+        console.log('Especies recibidas:', res.data); // ← esto ya debería aparecer
+        setEspecies(res.data);
+      })
+      .catch((err) => {
+        console.error('Error al obtener especies:', err);
+      });
   }, []);
 
   useEffect(() => {
     if (especieSeleccionada) {
       api
-        .get(`/categorias/especie/${especieSeleccionada}`)
-        .then((res) => setCategorias(res.data));
+        .get(`/especie/${especieSeleccionada}/categorias`)
+        .then((res) => {
+          console.log('Categorías recibidas:', res.data);
+          setCategorias(res.data);
+          setCategoria(''); // ya no se preselecciona
+        })
+        .catch((err) => {
+          console.error('Error al obtener categorías:', err);
+          setCategorias([]);
+        });
     }
   }, [especieSeleccionada]);
 
   const agregarDetalle = () => {
     if (!categoria || !cantidad) return;
 
+    const especieObj = especies.find((e) => e.id === especieSeleccionada);
+    const categoriaObj = categorias.find((c) => c.id === Number(categoria));
+
     const nuevo = {
       especie_id: especieSeleccionada,
-      categoria_id: categoria,
+      especie_nombre: especieObj?.nombre || '',
+      categoria_id: Number(categoria),
+      categoria_nombre: categoriaObj?.nombre || '',
       cantidad: parseInt(cantidad),
     };
 
@@ -36,10 +57,21 @@ export default function DetalleEspecieForm({ idTropa }) {
   };
 
   const guardarDetalles = () => {
-    api.post(`/tropa_detalle/${idTropa}`, { detalles: detalle }).then(() => {
-      setDetalle([]);
-      alert('Detalles guardados correctamente');
-    });
+    if (detalle.length === 0) {
+      alert('No hay detalles para guardar');
+      return;
+    }
+
+    api
+      .post(`/tropa_detalle/${idTropa}`, { detalles: detalle })
+      .then(() => {
+        setDetalle([]);
+        alert('Detalles guardados correctamente');
+      })
+      .catch((err) => {
+        console.error('Error al guardar detalles:', err);
+        alert('Hubo un problema al guardar. Revisá la consola.');
+      });
   };
 
   return (
@@ -49,7 +81,7 @@ export default function DetalleEspecieForm({ idTropa }) {
         <label className="block font-semibold mb-1">Especie</label>
         <select
           value={especieSeleccionada}
-          onChange={(e) => setEspecieSeleccionada(e.target.value)}
+          onChange={(e) => setEspecieSeleccionada(Number(e.target.value))}
           className="w-full border rounded px-3 py-2"
         >
           <option value="">Seleccionar especie</option>
@@ -113,10 +145,8 @@ export default function DetalleEspecieForm({ idTropa }) {
             <tbody>
               {detalle.map((d, i) => (
                 <tr key={i} className="text-center border-t">
-                  <td>{especies.find((e) => e.id === d.especie_id)?.nombre}</td>
-                  <td>
-                    {categorias.find((c) => c.id === d.categoria_id)?.nombre}
-                  </td>
+                  <td>{d.especie_nombre}</td>
+                  <td>{d.categoria_nombre}</td>
                   <td>{d.cantidad}</td>
                 </tr>
               ))}

@@ -66,7 +66,6 @@ export default function Sidebar() {
         { to: '/admin/titulares', label: 'Titulares' },
         { to: '/admin/plantas', label: 'Plantas' },
         { to: '/admin/productores', label: 'Productores' },
-        { to: '/admin/especies', label: 'Especies' },
       ],
     },
   ];

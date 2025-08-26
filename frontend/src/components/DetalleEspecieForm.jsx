@@ -36,10 +36,37 @@ export default function DetalleEspecieForm({ idTropa }) {
   };
 
   const guardarDetalles = () => {
+<<<<<<< Updated upstream
     api.post(`/tropa_detalle/${idTropa}`, { detalles: detalle }).then(() => {
       setDetalle([]);
       alert('Detalles guardados correctamente');
     });
+=======
+    if (detalle.length === 0) {
+      alert('No hay detalles para guardar');
+      return;
+    }
+
+    const payload = detalle.map((d) => ({
+      id_especie: d.especie_id,
+      id_cat_especie: d.categoria_id,
+      cantidad: d.cantidad,
+    }));
+
+    api
+      .post(`/tropa_detalle/${idTropa}`, { detalles: payload })
+      .then(() => {
+        setDetalle([]);
+        alert('Detalles guardados correctamente');
+      })
+      .catch((err) => {
+        console.error(
+          'Error al guardar detalles:',
+          err.response?.data || err.message
+        );
+        alert('Hubo un problema al guardar. Revisá la consola.');
+      });
+>>>>>>> Stashed changes
   };
 
   return (

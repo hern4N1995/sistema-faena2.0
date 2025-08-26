@@ -178,9 +178,12 @@ exports.getProductores = async (req, res) => {
 
 exports.saveDetalle = async (req, res) => {
   const { id } = req.params;
+<<<<<<< Updated upstream
   const detalles = req.body; // array de objetos con id_especie, id_cat_especie, cantidad
+=======
+  const { detalles } = req.body;
+>>>>>>> Stashed changes
 
-  // Validación básica
   if (!Array.isArray(detalles) || detalles.length === 0) {
     return res
       .status(400)
@@ -188,8 +191,29 @@ exports.saveDetalle = async (req, res) => {
   }
 
   try {
+    const detallesInsertados = [];
+
     for (const detalle of detalles) {
       const { id_especie, id_cat_especie, cantidad } = detalle;
+
+      // Validación de existencia en DB
+      const especieExiste = await pool.query(
+        'SELECT 1 FROM especie WHERE id_especie = $1',
+        [id_especie],
+      );
+      if (especieExiste.rowCount === 0) {
+        console.warn('Especie inválida:', id_especie);
+        continue;
+      }
+
+      const categoriaExiste = await pool.query(
+        'SELECT 1 FROM categoria_especie WHERE id_cat_especie = $1',
+        [id_cat_especie],
+      );
+      if (categoriaExiste.rowCount === 0) {
+        console.warn('Categoría inválida:', id_cat_especie);
+        continue;
+      }
 
       // Validación defensiva por registro
       if (
@@ -208,9 +232,15 @@ exports.saveDetalle = async (req, res) => {
          VALUES ($1, $2, $3, $4)`,
         [parseInt(id), id_especie, id_cat_especie, parseInt(cantidad)],
       );
+
+      detallesInsertados.push({ id_especie, id_cat_especie, cantidad });
     }
 
-    res.status(201).json({ message: 'Detalles guardados correctamente' });
+    res.status(201).json({
+      message: 'Detalles guardados correctamente',
+      cantidad: detallesInsertados.length,
+      detalles: detallesInsertados,
+    });
   } catch (err) {
     console.error('Error al guardar detalles de tropa:', err);
     res.status(500).json({ error: 'Error interno del servidor' });

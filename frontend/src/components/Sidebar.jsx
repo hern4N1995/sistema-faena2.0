@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { HiMenu, HiX } from 'react-icons/hi';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Sidebar() {
   const { pathname } = useLocation();
+  const [open, setOpen] = useState(false);
 
   let user = null;
   try {
@@ -9,19 +13,9 @@ export default function Sidebar() {
   } catch {
     user = null;
   }
-
   if (!user) return null;
 
-  const rol = user.rol;
-  const isSuperAdmin = rol === 1;
-  const isSupervisor = rol === 2;
-  const isUsuario = rol === 3;
-  const isAdmin = isSuperAdmin || isSupervisor;
-
-  const linkClass = ({ isActive }) =>
-    `block px-4 py-2 rounded hover:bg-green-200 ${
-      isActive ? 'font-bold text-green-700 bg-green-100' : ''
-    }`;
+  const rol = String(user.rol);
 
   const menuConfig = [
     {
@@ -71,30 +65,78 @@ export default function Sidebar() {
   ];
 
   const match = menuConfig.find(
-    ({ prefix, roles }) =>
-      pathname.startsWith(prefix) && roles.includes(String(rol))
+    ({ prefix, roles }) => pathname.startsWith(prefix) && roles.includes(rol)
   );
-
   if (!match) return null;
 
   const { title, menu: currentMenu } = match;
 
+  const linkClass = ({ isActive }) =>
+    `block px-4 py-3 rounded-xl transition-all duration-200 ` +
+    (isActive
+      ? 'bg-white/20 text-white font-semibold shadow-lg'
+      : 'text-white/80 hover:bg-white/10 hover:text-white');
+
   return (
-    <aside className="w-64 bg-[#62ab44] h-full p-4 shadow-md">
-      <h2 className="text-lg font-semibold mb-4 text-white">{title}</h2>
-      <nav className="flex flex-col gap-2">
-        {currentMenu.map(({ to, label }) => (
-          /* end={to === '/faena'} // esto lo cambie porque quedaba seleccionado ingreso tropa */
-          <NavLink
-            key={to}
-            to={to}
-            end={to === match.prefix} // ✅ solo aplica end a /faena
-            className={linkClass}
+    <>
+      {/* Botón móvil moderno */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="lg:hidden fixed top-24 left-4 z-50 bg-primary/90 backdrop-blur text-white p-3 rounded-full shadow-xl"
+      >
+        {open ? <HiX size={22} /> : <HiMenu size={22} />}
+      </button>
+
+      {/* Sidebar móvil con animación */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'tween', duration: 0.3 }}
+            className="fixed inset-y-0 left-0 z-40 w-72 bg-gradient-to-b from-primary to-secondary flex flex-col shadow-2xl"
           >
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-    </aside>
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-white/90 mb-6 tracking-tight">
+                {title}
+              </h2>
+              <nav className="space-y-2">
+                {currentMenu.map(({ to, label }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={to === match.prefix}
+                    className={linkClass}
+                    onClick={() => setOpen(false)}
+                  >
+                    {label}
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar desktop que llega hasta el footer */}
+      <aside className="hidden lg:flex flex-col w-72 bg-gradient-to-b from-primary to-secondary min-h-screen p-6 shadow-xl">
+        <div className="flex-1">
+          <h2 className="text-xl font-bold text-white/90 mb-6">{title}</h2>
+          <nav className="space-y-2">
+            {currentMenu.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === match.prefix}
+                className={linkClass}
+              >
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+      </aside>
+    </>
   );
 }

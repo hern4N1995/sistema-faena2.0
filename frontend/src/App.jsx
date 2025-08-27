@@ -1,7 +1,7 @@
 // App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import React from 'react';
-
+import './index.css';
 import Layout from './components/Layout.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Inicio from './pages/Inicio.jsx';

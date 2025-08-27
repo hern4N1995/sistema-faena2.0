@@ -28,7 +28,7 @@ export default function Layout() {
 
   // Rutas donde no se muestran elementos de navegación
   const cleanPathname = pathname.replace(/\/$/, '');
-  const hideSidebar = ['/inicio', '/login'].includes(cleanPathname);
+  const hideSidebar = pathname === '/inicio' || pathname.startsWith('/login');
   const hideHeaderFooter = ['/login'].includes(pathname); // Podés ajustar esto
 
   return (

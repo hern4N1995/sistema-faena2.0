@@ -1,13 +1,17 @@
-/** @type {import('tailwindcss').Config} */
+// tailwind.config.js
 module.exports = {
-  content: ["./index.html", "./src/**/*.{js,jsx}"],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       fontFamily: {
-        roboto: ["Roboto", "sans-serif"],
+        sans: ['Montserrat', 'sans-serif'],
       },
       colors: {
-        corrientesBlue: "#005BAC",
+        primary: '#00902f',
+        secondary: '#62ab44',
+        accent: '#98bf11',
+        dark: '#111827',
+        darker: '#030712',
       },
     },
   },

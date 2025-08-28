@@ -59,8 +59,9 @@ const FaenaPage = () => {
                 <th className="px-4 py-2 text-left">Nº Tropa</th>
                 <th className="px-4 py-2 text-left">Productor</th>
                 <th className="px-4 py-2 text-left">Departamento</th>
-                <th className="px-4 py-2 text-left">Planta</th>
                 <th className="px-4 py-2 text-left">Titular Faena</th>
+                <th className="px-4 py-2 text-left">Especie</th>
+                <th className="px-4 py-2 text-left">Total a Faenar</th>
                 <th className="px-4 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -73,8 +74,9 @@ const FaenaPage = () => {
                   <td className="px-4 py-2">{tropa.n_tropa || '—'}</td>
                   <td className="px-4 py-2">{tropa.productor || '—'}</td>
                   <td className="px-4 py-2">{tropa.departamento || '—'}</td>
-                  <td className="px-4 py-2">{tropa.planta || '—'}</td>
                   <td className="px-4 py-2">{tropa.titular_faena || '—'}</td>
+                  <td className="px-4 py-2">{tropa.especie || '—'}</td>
+                  <td className="px-4 py-2">{tropa.total_a_faenar ?? '—'}</td>
                   <td className="px-4 py-2 space-x-2">
                     <button
                       onClick={() => handleVerDetalle(tropa.id_tropa)}

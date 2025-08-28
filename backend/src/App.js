@@ -30,7 +30,8 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/tropas', tropaRoutes);
-app.use('/api/faena', faenaRoutes);
+app.use('/api', require('./routes/faena.routes'));
+
 app.use('/api/plantas', plantaRoutes);
 app.use('/api', especieRoutes);
 app.use('/', categoriaEspecieRoutes); // o '/api' si usás prefijo

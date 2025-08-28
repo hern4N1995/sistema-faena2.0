@@ -61,19 +61,24 @@ const pool = require('../db');
 const obtenerFaenas = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT 
-        t.id_tropa,
-        t.fecha,
-        t.dte_dtu,
-        t.guia_policial,
-        t.n_tropa AS nroTropa,
-        t.productor, -- ✅ corregido
-        t.departamento,     -- ✅ agregado si lo querés mostrar
-        tf.nombre AS titular_faena
-      FROM tropa t
-      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
-      ORDER BY t.fecha DESC
-    `);
+  SELECT 
+    t.id_tropa,
+    t.fecha,
+    t.dte_dtu,
+    t.guia_policial,
+    t.n_tropa,
+    pr.nombre AS productor,
+    d.nombre_departamento AS departamento,
+    p.nombre AS planta,
+    tf.nombre AS titular_faena
+  FROM tropa t
+  LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+  LEFT JOIN productor pr ON t.id_productor = pr.id_productor
+  LEFT JOIN departamento d ON t.id_departamento = d.id_departamento
+  LEFT JOIN planta p ON t.id_planta = p.id_planta
+  ORDER BY t.fecha DESC
+`);
+
     res.json(result.rows);
   } catch (err) {
     console.error('Error al obtener faenas:', err);

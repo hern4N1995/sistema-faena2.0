@@ -37,7 +37,7 @@ const { permitirRoles } = require('../middleware/roles');
 // Rutas protegidas
 router.get('/', verificarToken, permitirRoles(1, 2), obtenerFaenas);
 router.post('/', verificarToken, permitirRoles(2), crearFaena);
-router.get('/tropas', obtenerFaenas); // ← si renombraste getTropas
+router.get('/faena/tropas', obtenerFaenas);
 router.get(
   '/remanente',
   verificarToken,

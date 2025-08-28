@@ -8,9 +8,11 @@ exports.getAll = async (req, res) => {
         t.n_tropa,
         t.fecha,
         t.dte_dtu,
-        tf.nombre AS titular
+        tf.nombre AS titular,
+        pr.nombre AS productor_nombre
       FROM tropa t
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      LEFT JOIN productor pr ON t.id_productor = pr.id_productor
       ORDER BY t.fecha DESC
     `);
     res.json(result.rows);

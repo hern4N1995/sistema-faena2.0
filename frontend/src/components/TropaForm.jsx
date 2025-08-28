@@ -1,87 +1,3 @@
-/*
-import React, { useState } from 'react';
-import api from '../services/api';
-
-export default function TropaForm({ onCreated }) {
-  const [generalData, setGeneralData] = useState({
-    fecha: '',
-    dte: '',
-    guiaPolicial: '',
-    nroTropa: '',
-    guiaExtendida: '',
-    procedencia: '',
-    titular: '',
-  });
-
-  const handleGeneralChange = (e) => {
-    const { name, value } = e.target;
-    setGeneralData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      const res = await api.post('/tropas', generalData);
-      console.log('Tropa creada:', res.data);
-
-      if (onCreated) onCreated(res.data);
-
-      setGeneralData({
-        fecha: '',
-        dte: '',
-        guiaPolicial: '',
-        nroTropa: '',
-        guiaExtendida: '',
-        procedencia: '',
-        titular: '',
-      });
-    } catch (err) {
-      console.error('Error al guardar tropa:', err);
-    }
-  };
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-md space-y-8"
-    >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-        {[
-          { label: 'Fecha', name: 'fecha', type: 'date' },
-          { label: 'DTE/DTU', name: 'dte' },
-          { label: 'Nº Guía Policial', name: 'guiaPolicial' },
-          { label: 'Nº Tropa', name: 'nroTropa' },
-          { label: 'Guía Extendida Por', name: 'guiaExtendida' },
-          { label: 'Procedencia', name: 'procedencia' },
-          { label: 'Titular Faena', name: 'titular' },
-        ].map(({ label, name, type = 'text' }) => (
-          <div key={name} className="flex flex-col">
-            <label className="mb-1 font-medium text-gray-700 text-sm">
-              {label}
-            </label>
-            <input
-              type={type}
-              name={name}
-              value={generalData[name]}
-              onChange={handleGeneralChange}
-              className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-            />
-          </div>
-        ))}
-      </div>
-
-      <button
-        type="submit"
-        className="w-full bg-[#00902f] text-white py-2 rounded hover:bg-[#008d36] transition"
-      >
-        GUARDAR
-      </button>
-    </form>
-  );
-}
-*/
-
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
@@ -100,6 +16,7 @@ export default function TropaForm({ onCreated }) {
   const [plantas, setPlantas] = useState([]);
   const [productores, setProductores] = useState([]);
   const [titulares, setTitulares] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -133,6 +50,26 @@ export default function TropaForm({ onCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // ✅ Validación previa
+    const camposObligatorios = [
+      'dte_dtu',
+      'guia_policial',
+      'n_tropa',
+      'id_departamento',
+      'id_planta',
+      'id_productor',
+      'id_titular_faena',
+    ];
+
+    const faltantes = camposObligatorios.filter((campo) => !form[campo]);
+
+    if (faltantes.length > 0) {
+      alert('Completá todos los campos obligatorios antes de continuar.');
+      return;
+    }
+
+    setLoading(true);
     try {
       const res = await api.post('/tropas', form);
       if (onCreated) onCreated(res.data.id_tropa);
@@ -151,6 +88,8 @@ export default function TropaForm({ onCreated }) {
         err.response?.data || err.message
       );
       alert('Error al guardar tropa. Verificá los datos.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -224,6 +163,7 @@ export default function TropaForm({ onCreated }) {
           optionKey="id_productor"
           optionLabel="nombre"
           placeholder="Seleccione un productor"
+          required
         />
 
         {/* Titular Faena */}
@@ -236,14 +176,18 @@ export default function TropaForm({ onCreated }) {
           optionKey="id_titular_faena"
           optionLabel="nombre"
           placeholder="Seleccione un titular"
+          required
         />
       </div>
 
       <button
         type="submit"
-        className="w-full bg-[#00902f] text-white py-2 rounded hover:bg-[#008d36] transition"
+        disabled={loading}
+        className={`w-full bg-[#00902f] text-white py-2 rounded transition ${
+          loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#008d36]'
+        }`}
       >
-        GUARDAR TROPA
+        {loading ? 'Guardando...' : 'Siguiente'}
       </button>
     </form>
   );

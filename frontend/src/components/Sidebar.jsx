@@ -34,7 +34,7 @@ export default function Sidebar() {
       roles: ['1', '2', '3'],
       menu: [
         { to: '/tropa', label: 'Ingreso Tropa' },
-        { to: '/tropa/detalle/123', label: 'Detalle Tropa' },
+        /* { to: '/tropa/detalle/123', label: 'Detalle Tropa' }, */
       ],
     },
     {

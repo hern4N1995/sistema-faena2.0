@@ -39,7 +39,15 @@ export default function InformeTropa() {
           <label className="block font-semibold text-gray-600 mb-1">
             Fecha
           </label>
-          <div className="bg-gray-100 px-3 py-2 rounded">{tropaInfo.fecha}</div>
+          <div className="bg-gray-100 px-3 py-2 rounded">
+            {tropaInfo.fecha
+              ? new Date(tropaInfo.fecha).toLocaleDateString('es-AR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                })
+              : '—'}
+          </div>
         </div>
         <div className="bg-white rounded shadow p-3">
           <label className="block font-semibold text-gray-600 mb-1">

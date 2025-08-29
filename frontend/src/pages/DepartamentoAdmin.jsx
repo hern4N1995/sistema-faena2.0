@@ -2,250 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 
 export default function DepartamentoAdmin() {
   const departamentosPorProvincia = {
-    'Ciudad Autónoma de Buenos Aires': [
-      'Comuna 1',
-      'Comuna 2',
-      'Comuna 3',
-      'Comuna 4',
-      'Comuna 5',
-      'Comuna 6',
-      'Comuna 7',
-      'Comuna 8',
-      'Comuna 9',
-      'Comuna 10',
-      'Comuna 11',
-      'Comuna 12',
-      'Comuna 13',
-      'Comuna 14',
-      'Comuna 15',
-    ],
-    'Buenos Aires': [
-      'Adolfo Alsina',
-      'Adolfo Gonzales Chaves',
-      'Alberti',
-      'Almirante Brown',
-      'Avellaneda',
-      'Ayacucho',
-      'Azul',
-      'Bahía Blanca',
-      'Balcarce',
-      'Baradero',
-      'Arrecifes',
-      'Benito Juárez',
-      'Berazategui',
-      'Berisso',
-      'Bolívar',
-      'Bragado',
-      'Brandsen',
-      'Campana',
-      'Cañuelas',
-      'Capitán Sarmiento',
-      'Carlos Casares',
-      'Carlos Tejedor',
-      'Carmen de Areco',
-      'Castelli',
-      'Colón',
-      'Coronel de Marina Leonardo Rosales',
-      'Coronel Dorrego',
-      'Coronel Pringles',
-      'Coronel Suárez',
-      'Chacabuco',
-      'Chascomús',
-      'Chivilcoy',
-      'Daireaux',
-      'Dolores',
-      'Ensenada',
-      'Escobar',
-      'Esteban Echeverría',
-      'Exaltación de la Cruz',
-      'Ezeiza',
-      'Florencio Varela',
-      'Florentino Ameghino',
-      'General Alvarado',
-      'General Alvear',
-      'General Arenales',
-      'General Belgrano',
-      'General Guido',
-      'General Juan Madariaga',
-      'General La Madrid',
-      'General Las Heras',
-      'General Lavalle',
-      'General Paz',
-      'General Pinto',
-      'General Pueyrredón',
-      'General Rodríguez',
-      'General San Martín',
-      'General Viamonte',
-      'General Villegas',
-      'Guaminí',
-      'Hipólito Yrigoyen',
-      'Hurlingham',
-      'Ituzaingó',
-      'José C. Paz',
-      'Junín',
-      'La Costa',
-      'La Matanza',
-      'Lanús',
-      'La Plata',
-      'Laprida',
-      'Las Flores',
-      'Leandro N. Alem',
-      'Lezama',
-      'Lincoln',
-      'Lobería',
-      'Lobos',
-      'Lomas de Zamora',
-      'Luján',
-      'Magdalena',
-      'Maipú',
-      'Malvinas Argentinas',
-      'Mar Chiquita',
-      'Marcos Paz',
-      'Mercedes',
-      'Merlo',
-      'Monte',
-      'Monte Hermoso',
-      'Moreno',
-      'Morón',
-      'Navarro',
-      'Necochea',
-      '9 de Julio',
-      'Olavarría',
-      'Patagones',
-      'Pehuajó',
-      'Pellegrini',
-      'Pergamino',
-      'Pila',
-      'Pilar',
-      'Pinamar',
-      'Presidente Perón',
-      'Puán',
-      'Punta Indio',
-      'Quilmes',
-      'Ramallo',
-      'Rauch',
-      'Rivadavia',
-      'Rojas',
-      'Roque Pérez',
-      'Saavedra',
-      'Saladillo',
-      'Salto',
-      'Salliqueló',
-      'San Andrés de Giles',
-      'San Antonio de Areco',
-      'San Cayetano',
-      'San Fernando',
-      'San Isidro',
-      'San Miguel',
-      'San Nicolás',
-      'San Pedro',
-      'San Vicente',
-      'Suipacha',
-      'Tandil',
-      'Tapalqué',
-      'Tigre',
-      'Tordillo',
-      'Tornquist',
-      'Trenque Lauquen',
-      'Tres Arroyos',
-      'Tres de Febrero',
-      'Tres Lomas',
-      '25 de Mayo',
-      'Vicente López',
-      'Villa Gesell',
-      'Villarino',
-      'Zárate',
-    ],
-    Catamarca: [
-      'Ambato',
-      'Ancasti',
-      'Andalgalá',
-      'Antofagasta de la Sierra',
-      'Belén',
-      'Capayán',
-      'Capital',
-      'El Alto',
-      'Fray Mamerto Esquiú',
-      'La Paz',
-      'Paclín',
-      'Pomán',
-      'Santa María',
-      'Santa Rosa',
-      'Tinogasta',
-      'Valle Viejo',
-    ],
-    Chaco: [
-      'Almirante Brown',
-      'Bermejo',
-      'Comandante Fernández',
-      'Chacabuco',
-      '12 de Octubre',
-      '2 de Abril',
-      'Fray Justo Santa María de Oro',
-      'General Belgrano',
-      'General Donovan',
-      'General Güemes',
-      'Independencia',
-      'Libertad',
-      'Libertador General San Martín',
-      'Maipú',
-      'Mayor Luis J. Fontana',
-      '9 de Julio',
-      "O'Higgins",
-      'Presidencia de la Plaza',
-      '1º de Mayo',
-      'Quitilipi',
-      'San Fernando',
-      'San Lorenzo',
-      'Sargento Cabral',
-      'Tapenagá',
-      '25 de Mayo',
-    ],
-    Chubut: [
-      'Biedma',
-      'Cushamen',
-      'Escalante',
-      'Florentino Ameghino',
-      'Futaleufú',
-      'Gaiman',
-      'Gastre',
-      'Languiñeo',
-      'Mártires',
-      'Paso de Indios',
-      'Rawson',
-      'Río Senguer',
-      'Sarmiento',
-      'Tehuelches',
-      'Telsen',
-    ],
-    Córdoba: [
-      'Calamuchita',
-      'Capital',
-      'Colón',
-      'Cruz del Eje',
-      'General Roca',
-      'General San Martín',
-      'Ischilín',
-      'Juárez Celman',
-      'Marcos Juárez',
-      'Minas',
-      'Pocho',
-      'Presidente Roque Sáenz Peña',
-      'Punilla',
-      'Río Cuarto',
-      'Río Primero',
-      'Río Seco',
-      'Río Segundo',
-      'San Alberto',
-      'San Javier',
-      'San Justo',
-      'Santa María',
-      'Sobremonte',
-      'Tercero Arriba',
-      'Totoral',
-      'Tulumba',
-      'Unión',
-    ],
     Corrientes: [
       'Bella Vista',
       'Berón de Astrada',
@@ -273,328 +29,41 @@ export default function DepartamentoAdmin() {
       'Santo Tomé',
       'Sauce',
     ],
-    'Entre Ríos': [
-      'Colón',
-      'Concordia',
-      'Diamante',
-      'Federación',
-      'Federal',
-      'Feliciano',
-      'Gualeguay',
-      'Gualeguaychú',
-      'Islas del Ibicuy',
-      'La Paz',
-      'Nogoyá',
-      'Paraná',
-      'San Salvador',
-      'Tala',
-      'Uruguay',
-      'Victoria',
-      'Villaguay',
-    ],
-    Formosa: [
-      'Bermejo',
-      'Formosa',
-      'Laishi',
-      'Matacos',
-      'Patiño',
-      'Pilagás',
-      'Pilcomayo',
-      'Pirané',
-      'Ramón Lista',
-    ],
-    Jujuy: [
-      'Cochinoca',
-      'El Carmen',
-      'Dr. Manuel Belgrano',
-      'Humahuaca',
-      'Ledesma',
-      'Palpalá',
-      'Rinconada',
-      'San Antonio',
-      'San Pedro',
-      'Santa Bárbara',
-      'Santa Catalina',
-      'Susques',
-      'Tilcara',
-      'Tumbaya',
-      'Valle Grande',
-      'Yavi',
-    ],
-    'La Pampa': [
-      'Atreucó',
-      'Caleu Caleu',
-      'Capital',
-      'Catriló',
-      'Conhelo',
-      'Curacó',
-      'Chalileo',
-      'Chapaleufú',
-      'Chical Co',
-      'Guatraché',
-      'Hucal',
-      'Lihuel Calel',
-      'Limay Mahuida',
-      'Loventué',
-      'Maracó',
-      'Puelén',
-      'Quemú Quemú',
-      'Rancul',
-      'Realicó',
-      'Toay',
-      'Trenel',
-      'Utracán',
-    ],
-    'La Rioja': [
-      'Arauco',
-      'Capital',
-      'Castro Barros',
-      'General Felipe Varela',
-      'Chamical',
-      'Chilecito',
-      'Famatina',
-      'Ángel Vicente Peñaloza',
-      'General Belgrano',
-      'General Juan Facundo Quiroga',
-      'General Lamadrid',
-      'General Ortiz de Ocampo',
-      'General San Martín',
-      'Vinchina',
-      'Independencia',
-      'Rosario Vera Peñaloza',
-      'San Blas de Los Sauces',
-      'Sanagasta',
-    ],
-    Mendoza: [
-      'Capital',
-      'General Alvear',
-      'Godoy Cruz',
-      'Guaymallén',
-      'Junín',
-      'La Paz',
-      'Las Heras',
-      'Lavalle',
-      'Luján de Cuyo',
-      'Maipú',
-      'Malargüe',
-      'Rivadavia',
-      'San Carlos',
-      'San Martín',
-      'San Rafael',
-      'Santa Rosa',
-      'Tunuyán',
-      'Tupungato',
-    ],
-    Misiones: [
-      'Apóstoles',
-      'Cainguás',
-      'Candelaria',
-      'Capital',
-      'Concepción',
-      'Eldorado',
-      'General Manuel Belgrano',
-      'Guaraní',
-      'Iguazú',
-      'Leandro N. Alem',
-      'Libertador General San Martín',
-      'Montecarlo',
-      'Oberá',
-      'San Ignacio',
-      'San Javier',
-      'San Pedro',
-      '25 de Mayo',
-    ],
-    Neuquén: [
-      'Aluminé',
-      'Añelo',
-      'Catán Lil',
-      'Collón Curá',
-      'Confluencia',
-      'Chos Malal',
-      'Huiliches',
-      'Lácar',
-      'Loncopué',
-      'Los Lagos',
-      'Minas',
-      'Ñorquín',
-      'Pehuenches',
-      'Picún Leufú',
-      'Picunches',
-      'Zapala',
-    ],
-    'Río Negro': [
-      'Adolfo Alsina',
-      'Avellaneda',
-      'Bariloche',
-      'Conesa',
-      'El Cuy',
-      'General Roca',
-      '9 de Julio',
-      'Ñorquinco',
-      'Pichi Mahuida',
-      'Pilcaniyeu',
-      'San Antonio',
-      'Valcheta',
-      '25 de Mayo',
-    ],
-    Salta: [
-      'Anta',
-      'Cachi',
-      'Cafayate',
-      'Capital',
-      'Cerrillos',
-      'Chicoana',
-      'General Güemes',
-      'General José de San Martín',
-      'Guachipas',
-      'Iruya',
-      'La Caldera',
-      'La Candelaria',
-      'La Poma',
-      'La Viña',
-      'Los Andes',
-      'Metán',
-      'Molinos',
-      'Orán',
-      'Rivadavia',
-      'Rosario de la Frontera',
-      'Rosario de Lerma',
-      'San Carlos',
-      'Santa Victoria',
-    ],
-    'San Juan': [
-      'Albardón',
-      'Angaco',
-      'Calingasta',
-      'Capital',
-      'Caucete',
-      'Chimbas',
-      'Iglesia',
-      'Jáchal',
-      '9 de Julio',
-      'Pocito',
-      'Rawson',
-      'Rivadavia',
-      'San Martín',
-      'Santa Lucía',
-      'Sarmiento',
-      'Ullum',
-      'Valle Fértil',
-      '25 de Mayo',
-      'Zonda',
-    ],
-    'San Luis': [
-      'Ayacucho',
-      'Belgrano',
-      'Coronel Pringles',
-      'Chacabuco',
-      'General Pedernera',
-      'Gobernador Dupuy',
-      'Junín',
-      'Juan Martín de Pueyrredón',
-      'Libertador General San Martín',
-    ],
-    'Santa Cruz': [
-      'Corpen Aike',
-      'Deseado',
-      'Güer Aike',
-      'Lago Argentino',
-      'Lago Buenos Aires',
-      'Magallanes',
-      'Río Chico',
-    ],
-    'Santa Fe': [
-      'Belgrano',
-      'Caseros',
-      'Castellanos',
-      'Constitución',
-      'Garay',
-      'General López',
-      'General Obligado',
-      'Iriondo',
-      'La Capital',
-      'Las Colonias',
-      '9 de Julio',
-      'Rosario',
-      'San Cristóbal',
-      'San Javier',
-      'San Jerónimo',
-      'San Justo',
-      'San Lorenzo',
-      'San Martín',
-      'Vera',
-    ],
-    'Santiago del Estero': [
-      'Aguirre',
-      'Alberdi',
-      'Atamisqui',
-      'Avellaneda',
-      'Banda',
-      'Belgrano',
-      'Capital',
-      'Copo',
-      'Choya',
-      'Figueroa',
-      'General Taboada',
-      'Guasayán',
-      'Jiménez',
-      'Juan Felipe Ibarra',
-      'Loreto',
-      'Mitre',
-      'Moreno',
-      'Ojo de Agua',
-      'Pellegrini',
-      'Quebrachos',
-      'Río Hondo',
-      'Rivadavia',
-      'Robles',
-      'Salavina',
-      'San Martín',
-      'Sarmiento',
-      'Silípica',
-    ],
-    Tucumán: [
-      'Burruyacú',
-      'Cruz Alta',
-      'Chicligasta',
-      'Famaillá',
-      'Graneros',
-      'Juan Bautista Alberdi',
-      'La Cocha',
-      'Leales',
-      'Lules',
-      'Monteros',
-      'Río Chico',
-      'Capital',
-      'Simoca',
-      'Tafí del Valle',
-      'Tafí Viejo',
-      'Trancas',
-      'Yerba Buena',
-    ],
-    'Tierra del Fuego': [
-      'Río Grande',
-      'Tolhuin',
-      'Ushuaia',
-      'Islas del Atlántico Sur',
-      'Antártida Argentina',
-    ],
+    // Podés agregar más provincias acá
   };
 
   const provincias = Object.keys(departamentosPorProvincia);
 
   const [registros, setRegistros] = useState([]);
+  useEffect(() => {
+    const cargarDepartamentosDesdeDB = async () => {
+      try {
+        const res = await fetch('http://localhost:3000/api/departamentos');
+        const data = await res.json();
+        setRegistros(data);
+      } catch (error) {
+        console.error('Error al cargar departamentos desde la base:', error);
+        setMensajeFeedback('❌ Error al conectar con el servidor.');
+        setTimeout(() => setMensajeFeedback(''), 4000);
+      }
+    };
+
+    cargarDepartamentosDesdeDB();
+  }, []);
+
   const [provinciaSeleccionada, setProvinciaSeleccionada] = useState('');
   const [departamentoSeleccionado, setDepartamentoSeleccionado] = useState('');
+  const [editandoId, setEditandoId] = useState(null);
+  const [departamentoEditado, setDepartamentoEditado] = useState('');
+  const [mensajeFeedback, setMensajeFeedback] = useState('');
   const [sugerenciasProvincia, setSugerenciasProvincia] = useState([]);
-
-  const provinciaRef = useRef(null);
-  const departamentoRef = useRef(null);
-
   const [mostrarSugerenciasProvincia, setMostrarSugerenciasProvincia] =
     useState(false);
   const [mostrarSugerenciasDepartamento, setMostrarSugerenciasDepartamento] =
     useState(false);
+
+  const provinciaRef = useRef(null);
+  const departamentoRef = useRef(null);
 
   useEffect(() => {
     const manejarClickFuera = (e) => {
@@ -609,9 +78,7 @@ export default function DepartamentoAdmin() {
       }
     };
     document.addEventListener('mousedown', manejarClickFuera);
-    return () => {
-      document.removeEventListener('mousedown', manejarClickFuera);
-    };
+    return () => document.removeEventListener('mousedown', manejarClickFuera);
   }, []);
 
   const manejarProvincia = (e) => {
@@ -623,6 +90,7 @@ export default function DepartamentoAdmin() {
     setSugerenciasProvincia(filtradas);
     setMostrarSugerenciasProvincia(true);
     setDepartamentoSeleccionado('');
+    setMensajeFeedback('');
   };
 
   const seleccionarProvincia = (nombre) => {
@@ -630,19 +98,21 @@ export default function DepartamentoAdmin() {
     setSugerenciasProvincia([]);
     setMostrarSugerenciasProvincia(false);
     setDepartamentoSeleccionado('');
+    setMensajeFeedback('');
   };
 
   const manejarDepartamento = (e) => {
-    const texto = e.target.value;
-    setDepartamentoSeleccionado(texto);
+    setDepartamentoSeleccionado(e.target.value);
+    setMensajeFeedback('');
   };
 
   const seleccionarDepartamento = (nombre) => {
     setDepartamentoSeleccionado(nombre);
     setMostrarSugerenciasDepartamento(false);
+    setMensajeFeedback('');
   };
 
-  const agregarRegistro = () => {
+  const agregarDepartamento = () => {
     if (!provinciaSeleccionada.trim() || !departamentoSeleccionado.trim())
       return;
 
@@ -653,19 +123,61 @@ export default function DepartamentoAdmin() {
         r.departamento.toLowerCase() ===
           departamentoSeleccionado.trim().toLowerCase()
     );
-    if (yaExiste) return;
+
+    if (yaExiste) {
+      setMensajeFeedback(
+        '❌ El departamento ya está registrado en esa provincia.'
+      );
+      setTimeout(() => setMensajeFeedback(''), 4000);
+      return;
+    }
 
     const nuevo = {
-      id: registros.length + 1,
       provincia: provinciaSeleccionada.trim(),
       departamento: departamentoSeleccionado.trim(),
     };
+
     setRegistros([...registros, nuevo]);
     setDepartamentoSeleccionado('');
+    setMensajeFeedback('✅ Departamento agregado correctamente.');
+    setTimeout(() => setMensajeFeedback(''), 4000);
   };
 
-  const eliminarRegistro = (id) => {
+  const modificarDepartamento = async (id) => {
+    if (!departamentoEditado.trim()) return;
+
+    const confirmar = window.confirm(
+      `¿Estás seguro de que querés modificar el departamento a "${departamentoEditado}"?`
+    );
+    if (!confirmar) return;
+
+    try {
+      await fetch(`http://localhost:3000/api/departamentos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descripcion: departamentoEditado.trim() }),
+      });
+
+      const actualizados = registros.map((r) =>
+        r.id === id ? { ...r, departamento: departamentoEditado.trim() } : r
+      );
+
+      setRegistros(actualizados);
+      setEditandoId(null);
+      setDepartamentoEditado('');
+      setMensajeFeedback('✅ Departamento modificado correctamente.');
+      setTimeout(() => setMensajeFeedback(''), 4000);
+    } catch (error) {
+      console.error('Error al modificar departamento:', error);
+      setMensajeFeedback('❌ Error al modificar departamento.');
+      setTimeout(() => setMensajeFeedback(''), 4000);
+    }
+  };
+
+  const eliminarDepartamento = (id) => {
     setRegistros(registros.filter((r) => r.id !== id));
+    setMensajeFeedback('✅ Departamento eliminado correctamente.');
+    setTimeout(() => setMensajeFeedback(''), 4000);
   };
 
   return (
@@ -705,8 +217,11 @@ export default function DepartamentoAdmin() {
 
       {/* Departamento */}
       {provinciaSeleccionada && (
-        <div className="relative flex gap-2 mt-4" ref={departamentoRef}>
-          <div className="flex-grow">
+        <div
+          className="relative flex flex-col gap-2 mt-4"
+          ref={departamentoRef}
+        >
+          <div className="flex gap-2">
             <input
               type="text"
               value={departamentoSeleccionado}
@@ -715,32 +230,45 @@ export default function DepartamentoAdmin() {
               placeholder="Ingresar departamento..."
               className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
             />
-            {mostrarSugerenciasDepartamento && (
-              <ul className="absolute z-10 bg-white border w-full mt-1 rounded shadow-lg max-h-60 overflow-y-auto">
-                {(departamentosPorProvincia[provinciaSeleccionada] || [])
-                  .filter((dep) =>
-                    dep
-                      .toLowerCase()
-                      .includes(departamentoSeleccionado.toLowerCase())
-                  )
-                  .map((dep, idx) => (
-                    <li
-                      key={idx}
-                      onClick={() => seleccionarDepartamento(dep)}
-                      className="px-4 py-2 hover:bg-green-100 cursor-pointer"
-                    >
-                      {dep}
-                    </li>
-                  ))}
-              </ul>
-            )}
+            <button
+              onClick={agregarDepartamento}
+              className="bg-[#00902f] text-white px-4 py-2 rounded hover:bg-[#008d36]"
+            >
+              Agregar
+            </button>
           </div>
-          <button
-            onClick={agregarRegistro}
-            className="bg-[#00902f] text-white px-4 py-2 rounded hover:bg-[#008d36]"
-          >
-            Agregar
-          </button>
+
+          {mostrarSugerenciasDepartamento && (
+            <ul className="absolute z-10 bg-white border w-full mt-1 rounded shadow-lg max-h-60 overflow-y-auto">
+              {(departamentosPorProvincia[provinciaSeleccionada] || [])
+                .filter((dep) =>
+                  dep
+                    .toLowerCase()
+                    .includes(departamentoSeleccionado.toLowerCase())
+                )
+                .map((dep, idx) => (
+                  <li
+                    key={idx}
+                    onClick={() => seleccionarDepartamento(dep)}
+                    className="px-4 py-2 hover:bg-green-100 cursor-pointer"
+                  >
+                    {dep}
+                  </li>
+                ))}
+            </ul>
+          )}
+
+          {mensajeFeedback && (
+            <span
+              className={`text-sm mt-2 block ${
+                mensajeFeedback.includes('✅')
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              }`}
+            >
+              {mensajeFeedback}
+            </span>
+          )}
         </div>
       )}
 
@@ -755,21 +283,34 @@ export default function DepartamentoAdmin() {
           </tr>
         </thead>
         <tbody>
-          {registros.map((r) => (
-            <tr key={r.id} className="hover:bg-gray-50">
-              <td className="border px-3 py-1">{r.id}</td>
-              <td className="border px-3 py-1">{r.provincia}</td>
-              <td className="border px-3 py-1">{r.departamento}</td>
-              <td className="border px-3 py-1">
-                <button
-                  onClick={() => eliminarRegistro(r.id)}
-                  className="text-red-600 hover:text-red-800 font-bold"
-                >
-                  🗑️
-                </button>
+          {registros.length === 0 ? (
+            <tr>
+              <td colSpan="4" className="text-center text-gray-500 py-4">
+                No hay departamentos registrados.
               </td>
             </tr>
-          ))}
+          ) : (
+            registros.map((r) => (
+              <tr key={r.id} className="hover:bg-gray-50">
+                <td className="border px-3 py-1">{r.id}</td>
+                <td className="border px-3 py-1">{r.provincia}</td>
+                <td className="border px-3 py-1">
+                  {editandoId === r.id ? (
+                    <input
+                      value={departamentoEditado}
+                      onChange={(e) => setDepartamentoEditado(e.target.value)}
+                      className="w-full px-2 py-1 border rounded bg-gray-100"
+                    />
+                  ) : (
+                    r.departamento
+                  )}
+                </td>
+                <td className="border px-3 py-1 space-x-2">
+                  {/* Botones de acción */}
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>

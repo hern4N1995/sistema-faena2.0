@@ -11,6 +11,8 @@ const plantaRoutes = require('./routes/planta.routes');
 const especieRoutes = require('./routes/especie.routes');
 const categoriaEspecieRoutes = require('./routes/categoriaEspecie.routes');
 const provinciaRoutes = require('./routes/provincia.routes');
+const departamentoRoutes = require('./routes/departamento.routes');
+
 const app = express();
 
 app.use(
@@ -33,6 +35,7 @@ app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/tropas', tropaRoutes);
 app.use('/api', require('./routes/faena.routes'));
 app.use('/api', provinciaRoutes);
+app.use('/api/departamentos', departamentoRoutes);
 app.use('/api/plantas', plantaRoutes);
 app.use('/api', especieRoutes);
 app.use('/', categoriaEspecieRoutes); // o '/api' si usás prefijo

@@ -27,19 +27,14 @@ export default function TropaForm({ onCreated }) {
           api.get('/tropas/productores'),
           api.get('/tropas/titulares'),
         ]);
-
         setDepartamentos(depRes.data);
         setPlantas(plRes.data);
         setProductores(prodRes.data);
         setTitulares(titRes.data);
       } catch (err) {
-        console.error(
-          'Error al cargar datos:',
-          err.response?.data || err.message
-        );
+        console.error('Error al cargar datos:', err);
       }
     };
-
     fetchData();
   }, []);
 
@@ -50,8 +45,6 @@ export default function TropaForm({ onCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // ✅ Validación previa
     const camposObligatorios = [
       'dte_dtu',
       'guia_policial',
@@ -61,11 +54,9 @@ export default function TropaForm({ onCreated }) {
       'id_productor',
       'id_titular_faena',
     ];
-
-    const faltantes = camposObligatorios.filter((campo) => !form[campo]);
-
-    if (faltantes.length > 0) {
-      alert('Completá todos los campos obligatorios antes de continuar.');
+    const faltantes = camposObligatorios.filter((c) => !form[c]);
+    if (faltantes.length) {
+      alert('Completá todos los campos obligatorios.');
       return;
     }
 
@@ -83,11 +74,7 @@ export default function TropaForm({ onCreated }) {
         id_titular_faena: '',
       });
     } catch (err) {
-      console.error(
-        'Error al guardar tropa:',
-        err.response?.data || err.message
-      );
-      alert('Error al guardar tropa. Verificá los datos.');
+      alert('Error al guardar tropa.');
     } finally {
       setLoading(false);
     }
@@ -96,9 +83,9 @@ export default function TropaForm({ onCreated }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-md space-y-8"
+      className="max-w-5xl mx-auto bg-white p-4 sm:p-6 rounded-xl shadow-md space-y-6"
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* DTE/DTU */}
         <InputField
           label="DTE/DTU"
@@ -183,18 +170,17 @@ export default function TropaForm({ onCreated }) {
       <button
         type="submit"
         disabled={loading}
-        className={`w-full bg-[#00902f] text-white py-2 rounded transition ${
+        className={`w-full bg-[#00902f] text-white py-2.5 rounded-md transition ${
           loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#008d36]'
         }`}
       >
-        {loading ? 'Guardando...' : 'Siguiente'}
+        {loading ? 'Guardando…' : 'Siguiente'}
       </button>
     </form>
   );
 }
 
-// 🔧 Componentes reutilizables
-
+// 🔧 Componentes reutilizables con estilos responsivos
 function InputField({
   label,
   name,
@@ -205,14 +191,16 @@ function InputField({
 }) {
   return (
     <div className="flex flex-col">
-      <label className="mb-1 font-medium text-gray-700 text-sm">{label}</label>
+      <label className="mb-1 font-medium text-gray-700 text-sm sm:text-base">
+        {label}
+      </label>
       <input
         type={type}
         name={name}
         value={value}
         onChange={onChange}
         required={required}
-        className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-green-400"
       />
     </div>
   );
@@ -231,23 +219,25 @@ function SelectField({
 }) {
   return (
     <div className="flex flex-col">
-      <label className="mb-1 font-medium text-gray-700 text-sm">{label}</label>
+      <label className="mb-1 font-medium text-gray-700 text-sm sm:text-base">
+        {label}
+      </label>
       <select
         name={name}
         value={value}
         onChange={onChange}
         required={required}
-        className="border rounded px-3 py-2 text-sm"
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
       >
         <option value="">{placeholder}</option>
-        {options.length > 0 ? (
+        {options.length ? (
           options.map((opt) => (
             <option key={opt[optionKey]} value={opt[optionKey]}>
               {opt[optionLabel]}
             </option>
           ))
         ) : (
-          <option disabled>Cargando...</option>
+          <option disabled>Cargando…</option>
         )}
       </select>
     </div>

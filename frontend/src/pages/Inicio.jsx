@@ -6,8 +6,22 @@ export default function Inicio() {
     <div className="min-h-screen bg-gray-50">
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary opacity-90"></div>
-        <div className="relative max-w-4xl mx-auto px-4 py-20 text-center text-white">
+        {/* Imagen de fondo */}
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: 'url("/png/portada.png")',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        ></div>
+
+        {/* Capa de gradiente encima de la imagen */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary opacity-80 z-10"></div>
+
+        {/* Contenido */}
+        <div className="relative z-20 max-w-4xl mx-auto px-4 py-20 text-center text-white">
           <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight">
             SIFADECO
           </h1>

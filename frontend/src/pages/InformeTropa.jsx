@@ -20,83 +20,119 @@ export default function InformeTropa() {
   }, {});
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 max-w-5xl mx-auto">
-      <h2 className="text-3xl font-bold text-center mb-6">
-        📄 Informe de Tropa
-      </h2>
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center mb-8">
+          📄 Informe de Tropa
+        </h1>
 
-      {/* Datos generales */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-700 mb-8">
-        <div className="bg-white rounded shadow p-3">
-          <label className="block font-semibold text-gray-600 mb-1">
-            ID Tropa
-          </label>
-          <div className="bg-gray-100 px-3 py-2 rounded">
-            {tropaInfo.id_tropa}
-          </div>
+        {/* Datos generales — SIEMPRE visibles */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Nº Tropa', value: tropaInfo.n_tropa },
+            {
+              label: 'Fecha',
+              value: tropaInfo.fecha
+                ? new Date(tropaInfo.fecha).toLocaleDateString('es-AR')
+                : '—',
+            },
+            { label: 'DTE/DTU', value: tropaInfo.dte_dtu },
+            { label: 'Titular', value: tropaInfo.titular },
+          ].map(({ label, value }) => (
+            <div key={label} className="bg-white rounded-xl shadow-md p-4">
+              <p className="text-xs font-semibold text-gray-500 mb-1">
+                {label}
+              </p>
+              <p className="text-sm sm:text-base text-gray-800 font-medium">
+                {value}
+              </p>
+            </div>
+          ))}
         </div>
-        <div className="bg-white rounded shadow p-3">
-          <label className="block font-semibold text-gray-600 mb-1">
-            Fecha
-          </label>
-          <div className="bg-gray-100 px-3 py-2 rounded">
-            {tropaInfo.fecha
-              ? new Date(tropaInfo.fecha).toLocaleDateString('es-AR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                })
-              : '—'}
+
+        {/* Detalle por especie — solo si hay animales */}
+        {Object.keys(agrupado).length === 0 ? (
+          <div className="bg-white rounded-xl shadow-md p-6 text-center">
+            <p className="text-gray-500">
+              No se han registrado animales en esta tropa.
+            </p>
           </div>
-        </div>
-        <div className="bg-white rounded shadow p-3">
-          <label className="block font-semibold text-gray-600 mb-1">
-            DTE/DTU
-          </label>
-          <div className="bg-gray-100 px-3 py-2 rounded">
-            {tropaInfo.dte_dtu}
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(agrupado).map(([especie, items]) => {
+              const totalEspecie = items.reduce(
+                (acc, i) => acc + i.cantidad,
+                0
+              );
+              return (
+                <section key={especie}>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3">
+                    {especie}
+                  </h2>
+
+                  {/* Móvil: cards */}
+                  <div className="sm:hidden space-y-2">
+                    {items.map((item) => (
+                      <div
+                        key={item.id_tropa_detalle}
+                        className="bg-white rounded-lg shadow p-3 flex justify-between items-center"
+                      >
+                        <span className="text-sm font-medium text-gray-700">
+                          {item.nombre_categoria}
+                        </span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {item.cantidad}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="bg-gray-100 rounded-lg p-3 flex justify-between items-center font-bold text-sm">
+                      <span>TOTAL {especie}</span>
+                      <span>{totalEspecie}</span>
+                    </div>
+                  </div>
+
+                  {/* sm+: tabla */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="min-w-full bg-white rounded-xl shadow-md">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">
+                            Categoría
+                          </th>
+                          <th className="px-4 py-2 text-right text-sm font-semibold text-gray-700">
+                            Cantidad
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((item) => (
+                          <tr
+                            key={item.id_tropa_detalle}
+                            className="border-t border-gray-200"
+                          >
+                            <td className="px-4 py-2 text-sm text-gray-800">
+                              {item.nombre_categoria}
+                            </td>
+                            <td className="px-4 py-2 text-right text-sm font-medium text-gray-900">
+                              {item.cantidad}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-gray-100 font-bold text-sm">
+                          <td className="px-4 py-2">TOTAL {especie}</td>
+                          <td className="px-4 py-2 text-right">
+                            {totalEspecie}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              );
+            })}
           </div>
-        </div>
-        <div className="bg-white rounded shadow p-3">
-          <label className="block font-semibold text-gray-600 mb-1">
-            Titular
-          </label>
-          <div className="bg-gray-100 px-3 py-2 rounded">
-            {tropaInfo.titular}
-          </div>
-        </div>
+        )}
       </div>
-
-      {/* Detalle por especie */}
-      {Object.entries(agrupado).map(([especie, items]) => (
-        <div key={especie} className="mb-6">
-          <h3 className="text-xl font-semibold mb-2">{especie}</h3>
-          <table className="min-w-full border">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border px-3 py-1">Categoría</th>
-                <th className="border px-3 py-1">Cantidad</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id_tropa_detalle}>
-                  <td className="border px-3 py-1">{item.nombre_categoria}</td>
-                  <td className="border px-3 py-1 text-right">
-                    {item.cantidad}
-                  </td>
-                </tr>
-              ))}
-              <tr className="font-semibold bg-gray-300">
-                <td className="border px-3 py-1">TOTAL</td>
-                <td className="border px-3 py-1 text-right">
-                  {items.reduce((acc, i) => acc + i.cantidad, 0)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      ))}
     </div>
   );
 }

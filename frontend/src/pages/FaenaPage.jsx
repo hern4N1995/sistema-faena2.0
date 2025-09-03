@@ -49,7 +49,6 @@ const FaenaPage = () => {
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center text-gray-800 mb-6 sm:mb-8">
           Tropas Cargadas
         </h1>
-
         {loading ? (
           <p className="text-center text-gray-500">Cargando tropas…</p>
         ) : tropas.length === 0 ? (
@@ -106,6 +105,50 @@ const FaenaPage = () => {
                     ))}
                   </div>
                 </div>
+      {loading ? (
+        <div className="text-center text-gray-500 mt-4">Cargando tropas...</div>
+      ) : tropas.length === 0 ? (
+        <div className="text-center text-gray-500 mt-4">
+          No hay tropas cargadas aún.
+        </div>
+      ) : (
+        <div className="overflow-x-auto mt-6">
+          <table className="min-w-full border rounded shadow">
+            <thead className="bg-green-700 text-white">
+              <tr>
+                <th className="px-4 py-2 text-left">Fecha</th>
+                <th className="px-4 py-2 text-left">DTE/DTU</th>
+                <th className="px-4 py-2 text-left">Guía Policial</th>
+                <th className="px-4 py-2 text-left">Nº Tropa</th>
+                <th className="px-4 py-2 text-left">Productor</th>
+                <th className="px-4 py-2 text-left">Departamento</th>
+                <th className="px-4 py-2 text-left">Titular Faena</th>
+                <th className="px-4 py-2 text-left">Especie</th>
+                <th className="px-4 py-2 text-left">Total tropa</th>
+                <th className="px-4 py-2 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tropas.map((tropa) => (
+                <tr key={tropa.id_tropa} className="border-b hover:bg-gray-100">
+                  <td className="px-4 py-2">{normalizarFecha(tropa.fecha)}</td>
+                  <td className="px-4 py-2">{tropa.dte_dtu || '—'}</td>
+                  <td className="px-4 py-2">{tropa.guia_policial || '—'}</td>
+                  <td className="px-4 py-2">{tropa.n_tropa || '—'}</td>
+                  <td className="px-4 py-2">{tropa.productor || '—'}</td>
+                  <td className="px-4 py-2">{tropa.departamento || '—'}</td>
+                  <td className="px-4 py-2">{tropa.titular_faena || '—'}</td>
+                  <td className="px-4 py-2">{tropa.especie || '—'}</td>
+                  <td className="px-4 py-2">{tropa.total_a_faenar ?? '—'}</td>
+                  <td className="px-4 py-2 space-x-2">
+                    <button
+                      onClick={() => handleFaenar(tropa.id_tropa)}
+                      className="text-green-600 hover:underline"
+                    >
+                      Faenar
+                    </button>
+                  </td>
+                </tr>
               ))}
             </div>
 

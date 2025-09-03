@@ -10,7 +10,7 @@ import DetalleTropa from './pages/DetalleTropa.jsx';
 import InformeTropa from './pages/InformeTropa.jsx';
 import Decomisos from './pages/Decomisos.jsx';
 import Login from './pages/Login.jsx';
-
+import TropasCargadas from './pages/TropasCargadas.jsx';
 import FaenaPage from './pages/FaenaPage.jsx';
 import DetalleFaenaPage from './pages/DetalleFaenaPage.jsx';
 import RemanenteFaenaPage from './pages/RemanenteFaenaPage.jsx';
@@ -32,8 +32,15 @@ function App() {
           <Route path="/" element={<Navigate to="/inicio" replace />} />
           <Route path="inicio" element={<Inicio />} />
           <Route path="tropa" element={<Tropa />} />
-          <Route path="tropa/detalle/:id" element={<DetalleTropa />} />
-          <Route path="/tropa/informe/:id" element={<InformeTropa />} />
+          <Route path="tropas-cargadas" element={<TropasCargadas />} />
+          <Route
+            path="tropas-cargadas/modificar/:id"
+            element={<DetalleTropa />}
+          />
+          <Route
+            path="/tropas-cargadas/resumen/:id"
+            element={<InformeTropa />}
+          />
           <Route path="decomisos" element={<Decomisos />} />
           {/* Faena y sus subrutas */}
           <Route path="faena">

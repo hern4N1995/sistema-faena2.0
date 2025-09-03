@@ -1,9 +1,9 @@
+// TropasCargadas.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import TropaForm from '../components/TropaForm.jsx';
 import api from '../services/api.js';
 
-export default function Tropa() {
+export default function TropasCargadas() {
   const [tropas, setTropas] = useState([]);
   const navigate = useNavigate();
 
@@ -14,24 +14,12 @@ export default function Tropa() {
       .catch((err) => console.error('Error al obtener tropas:', err));
   }, []);
 
-  const handleCreated = (id_tropa) => {
-    navigate(`/tropa/detalle/${id_tropa}`);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 py-6 sm:py-8 px-3 sm:px-4 lg:px-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center text-gray-800 mb-6 sm:mb-8">
-          🐄 Registro de Tropas
-        </h1>
-
-        <div className="bg-white rounded-xl shadow-xl p-4 sm:p-6 lg:p-8 mb-8 sm:mb-10">
-          <TropaForm onCreated={handleCreated} />
-        </div>
-
-        {/* <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-700 mb-4 sm:mb-6">
           📋 Tropas registradas
-        </h2>
+        </h1>
 
         {tropas.length === 0 ? (
           <p className="text-gray-500 text-center">
@@ -44,7 +32,7 @@ export default function Tropa() {
                 key={tropa.id_tropa}
                 className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-4 flex flex-col justify-between gap-3"
               >
-                {/* Info principal }
+                {/* Info principal */}
                 <div>
                   <p className="font-semibold text-gray-800 text-base sm:text-lg">
                     Titular: {tropa.titular || '—'}
@@ -62,12 +50,12 @@ export default function Tropa() {
                   </p>
                 </div>
 
-                {/* Acciones }
+                {/* Acciones */}
                 <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
                   <button
                     onClick={() => {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
-                      navigate(`/tropa/detalle/${tropa.id_tropa}`);
+                      navigate(`/tropas-cargadas/modificar/${tropa.id_tropa}`);
                     }}
                     className="flex-1 flex items-center justify-center gap-1 text-green-600 hover:text-green-800 font-medium hover:underline text-sm"
                   >
@@ -76,7 +64,7 @@ export default function Tropa() {
                   <button
                     onClick={() => {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
-                      navigate(`/tropa/informe/${tropa.id_tropa}`);
+                      navigate(`/tropas-cargadas/resumen/${tropa.id_tropa}`);
                     }}
                     className="flex-1 flex items-center justify-center gap-1 text-blue-600 hover:text-blue-800 font-medium hover:underline text-sm"
                   >
@@ -86,7 +74,7 @@ export default function Tropa() {
               </li>
             ))}
           </ul>
-        )} */}
+        )}
       </div>
     </div>
   );

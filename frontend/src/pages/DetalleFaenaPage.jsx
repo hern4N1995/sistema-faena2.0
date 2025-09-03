@@ -29,10 +29,7 @@ export default function DetalleFaenaPage() {
       .get(`/faena/${idFaena}`)
       .then((res) => {
         const { fecha, dte_dtu } = res.data;
-        setFaenaInfo({
-          fecha: fecha || '',
-          dte_dtu: dte_dtu || '',
-        });
+        setFaenaInfo({ fecha: fecha || '', dte_dtu: dte_dtu || '' });
       })
       .catch((err) => console.error('Error al cargar faena:', err));
   }, [idFaena]);
@@ -43,11 +40,7 @@ export default function DetalleFaenaPage() {
       const total = Object.entries(updatedGroup)
         .filter(([key]) => key !== 'TOTAL')
         .reduce((sum, [, val]) => sum + (parseInt(val, 10) || 0), 0);
-
-      return {
-        ...prev,
-        [group]: { ...updatedGroup, TOTAL: total },
-      };
+      return { ...prev, [group]: { ...updatedGroup, TOTAL: total } };
     });
   };
 
@@ -68,13 +61,11 @@ export default function DetalleFaenaPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const payload = {
       fecha: faenaInfo.fecha,
       animales: counts,
       otros: otrosPersonalizados,
     };
-
     try {
       await api.post(`/faena/${idFaena}/detalle`, payload);
       alert('Detalle guardado correctamente');
@@ -85,171 +76,168 @@ export default function DetalleFaenaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 max-w-5xl mx-auto">
-      <h2 className="text-3xl font-bold text-center mb-6">Detalle de Faena</h2>
+    <div className="min-h-screen bg-gray-50 py-6 sm:py-8 px-3 sm:px-4 lg:px-6">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center text-gray-800 mb-6 sm:mb-8">
+          Detalle de Faena
+        </h1>
 
-      {/* Datos generales */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-700">
-        <div className="bg-white rounded shadow p-3">
-          <label className="block font-semibold text-gray-600 mb-1">
-            ID Faena
-          </label>
-          <input
-            type="text"
-            value={idFaena}
-            disabled
-            className="w-full border rounded px-3 py-2 bg-gray-100"
-          />
+        {/* Datos generales */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <label className="block text-sm font-semibold text-gray-600">
+              ID Faena
+            </label>
+            <input
+              type="text"
+              value={idFaena}
+              disabled
+              className="w-full mt-1 border rounded-md px-3 py-2 bg-gray-100 text-sm sm:text-base"
+            />
+          </div>
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <label className="block text-sm font-semibold text-gray-600">
+              Fecha
+            </label>
+            <input
+              type="date"
+              value={faenaInfo.fecha}
+              onChange={(e) =>
+                setFaenaInfo({ ...faenaInfo, fecha: e.target.value })
+              }
+              className="w-full mt-1 border rounded-md px-3 py-2 text-sm sm:text-base"
+            />
+          </div>
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <label className="block text-sm font-semibold text-gray-600">
+              DTE/DTU
+            </label>
+            <input
+              type="text"
+              value={faenaInfo.dte_dtu}
+              disabled
+              className="w-full mt-1 border rounded-md px-3 py-2 bg-gray-100 text-sm sm:text-base"
+            />
+          </div>
         </div>
 
-        <div className="bg-white rounded shadow p-3">
-          <label className="block font-semibold text-gray-600 mb-1">
-            Fecha
-          </label>
-          <input
-            type="date"
-            value={faenaInfo.fecha}
-            onChange={(e) =>
-              setFaenaInfo((prev) => ({ ...prev, fecha: e.target.value }))
-            }
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
+        {/* Formulario de animales */}
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {Object.entries(animalGroups).map(([groupName, categories]) => (
+              <section
+                key={groupName}
+                className="bg-white rounded-xl shadow-md p-4 space-y-3"
+              >
+                <h2 className="text-lg font-semibold text-gray-800">
+                  {groupName}
+                </h2>
 
-        <div className="bg-white rounded shadow p-3">
-          <label className="block font-semibold text-gray-600 mb-1">
-            DTE/DTU
-          </label>
-          <input
-            type="text"
-            value={faenaInfo.dte_dtu}
-            disabled
-            className="w-full border rounded px-3 py-2 bg-gray-100"
-          />
-        </div>
-      </div>
-
-      {/* Formulario de animales */}
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {Object.entries(animalGroups).map(([groupName, categories]) => (
-            <div key={groupName} className="overflow-x-auto">
-              <h3 className="text-xl font-semibold mb-2">{groupName}</h3>
-              <table className="min-w-full border">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-3 py-1">Categoría</th>
-                    <th className="border px-3 py-1">Cantidad</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupName === 'Otros' ? (
-                    <>
-                      {otrosPersonalizados.map((item, index) => (
-                        <tr key={index}>
-                          <td className="border px-3 py-1 bg-gray-300">
-                            <input
-                              type="text"
-                              value={item.tipo}
-                              onChange={(e) =>
-                                actualizarOtro(index, 'tipo', e.target.value)
-                              }
-                              className="w-full bg-gray-200 rounded px-2 py-1"
-                              placeholder="Nombre del tipo"
-                            />
-                          </td>
-                          <td className="border px-3 py-1 text-right bg-gray-300">
-                            <input
-                              type="number"
-                              value={item.cantidad}
-                              min="0"
-                              onChange={(e) =>
-                                actualizarOtro(
-                                  index,
-                                  'cantidad',
-                                  e.target.value
-                                )
-                              }
-                              className="w-20 bg-gray-200 rounded px-2 py-1 text-right"
-                            />
-                          </td>
-                        </tr>
-                      ))}
+                {/* Vista cards en móvil / Vista tabla desktop */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-100">
                       <tr>
-                        <td colSpan="2" className="text-center py-2">
-                          <button
-                            type="button"
-                            onClick={agregarFilaOtro}
-                            className="bg-[#62ab44] hover:bg-[#4ca92b] text-white px-4 py-2 rounded"
-                          >
-                            ➕ Agregar tipo
-                          </button>
-                        </td>
+                        <th className="px-2 py-1 text-left">Categoría</th>
+                        <th className="px-2 py-1 text-right">Cant.</th>
                       </tr>
-                      <tr className="font-semibold bg-gray-300">
-                        <td
-                          className="border px-3 py-1"
-                          style={{ backgroundColor: '#62ab44' }}
-                        >
-                          TOTAL
-                        </td>
-                        <td
-                          className="border px-3 py-1 text-right"
-                          style={{ backgroundColor: '#62ab44' }}
-                        >
-                          {calcularTotalOtros()}
-                        </td>
-                      </tr>
-                    </>
-                  ) : (
-                    <>
-                      {categories.map((cat) => (
-                        <tr key={cat}>
-                          <td className="border px-3 py-1 bg-gray-300">
-                            {cat}
-                          </td>
-                          <td className="border px-3 py-1 bg-gray-300 text-right">
-                            <input
-                              type="number"
-                              min="0"
-                              value={counts[groupName][cat]}
-                              onChange={(e) =>
-                                handleChange(groupName, cat, e.target.value)
-                              }
-                              className="w-20 bg-gray-200 border-none rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-green-400"
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                      <tr className="font-semibold bg-gray-300">
-                        <td
-                          className="border px-3 py-1"
-                          style={{ backgroundColor: '#62ab44' }}
-                        >
-                          TOTAL
-                        </td>
-                        <td
-                          className="border px-3 py-1 text-right"
-                          style={{ backgroundColor: '#62ab44' }}
-                        >
-                          {counts[groupName].TOTAL}
-                        </td>
-                      </tr>
-                    </>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          ))}
-        </div>
+                    </thead>
+                    <tbody>
+                      {groupName === 'Otros' ? (
+                        <>
+                          {otrosPersonalizados.map((item, index) => (
+                            <tr key={index}>
+                              <td className="px-2 py-1">
+                                <input
+                                  type="text"
+                                  value={item.tipo}
+                                  onChange={(e) =>
+                                    actualizarOtro(
+                                      index,
+                                      'tipo',
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="Nombre del tipo"
+                                  className="w-full border rounded px-2 py-1 text-sm"
+                                />
+                              </td>
+                              <td className="px-2 py-1 text-right">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.cantidad}
+                                  onChange={(e) =>
+                                    actualizarOtro(
+                                      index,
+                                      'cantidad',
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-16 border rounded px-2 py-1 text-right text-sm"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                          <tr>
+                            <td colSpan={2} className="text-center py-2">
+                              <button
+                                type="button"
+                                onClick={agregarFilaOtro}
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
+                              >
+                                ➕ Agregar
+                              </button>
+                            </td>
+                          </tr>
+                          <tr className="font-bold bg-green-100">
+                            <td>TOTAL Otros</td>
+                            <td className="text-right">
+                              {calcularTotalOtros()}
+                            </td>
+                          </tr>
+                        </>
+                      ) : (
+                        <>
+                          {categories.map((cat) => (
+                            <tr key={cat}>
+                              <td className="px-2 py-1">{cat}</td>
+                              <td className="px-2 py-1 text-right">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={counts[groupName][cat]}
+                                  onChange={(e) =>
+                                    handleChange(groupName, cat, e.target.value)
+                                  }
+                                  className="w-16 border rounded px-2 py-1 text-right text-sm"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="font-bold bg-green-100">
+                            <td>TOTAL {groupName}</td>
+                            <td className="text-right">
+                              {counts[groupName].TOTAL}
+                            </td>
+                          </tr>
+                        </>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ))}
+          </div>
 
-        <button
-          type="submit"
-          className="w-full bg-[#00902f] text-white py-2 rounded hover:bg-[#008d36] transition"
-        >
-          GUARDAR DETALLE
-        </button>
-      </form>
+          <button
+            type="submit"
+            className="w-full sm:w-auto mx-auto block bg-[#00902f] hover:bg-[#008d36] text-white px-6 py-3 rounded-lg text-base font-semibold transition"
+          >
+            GUARDAR DETALLE
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

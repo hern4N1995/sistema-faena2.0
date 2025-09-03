@@ -92,14 +92,15 @@ CREATE TABLE IF NOT EXISTS tropa_detalle(
     CONSTRAINT FK_id_especie FOREIGN KEY (id_especie) REFERENCES especie(id_especie)
 );
 
-CREATE TABLE IF NOT EXISTS faena(
-    id_faena SERIAL INTEGER PRIMARY KEY,
-    id_tropa INTEGER NOT NULL,
+CREATE TABLE IF NOT EXISTS faena (
+    id_faena SERIAL PRIMARY KEY,
+    id_tropa_detalle INTEGER NOT NULL,
     fecha_faena DATE NOT NULL,
     cantidad_faena SMALLINT NOT NULL,
 
-    CONSTRAINT FK_id_tropa FOREIGN KEY (id_tropa) REFERENCES tropa (id_tropa)
+    CONSTRAINT FK_id_tropa_detalle FOREIGN KEY (id_tropa_detalle) REFERENCES tropa_detalle(id_tropa_detalle)
 );
+
 
 
 CREATE TABLE IF NOT EXISTS decomiso(

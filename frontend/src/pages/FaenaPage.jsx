@@ -61,7 +61,7 @@ const FaenaPage = () => {
                 <th className="px-4 py-2 text-left">Departamento</th>
                 <th className="px-4 py-2 text-left">Titular Faena</th>
                 <th className="px-4 py-2 text-left">Especie</th>
-                <th className="px-4 py-2 text-left">Total a Faenar</th>
+                <th className="px-4 py-2 text-left">Total tropa</th>
                 <th className="px-4 py-2 text-left">Acciones</th>
               </tr>
             </thead>
@@ -78,18 +78,6 @@ const FaenaPage = () => {
                   <td className="px-4 py-2">{tropa.especie || '—'}</td>
                   <td className="px-4 py-2">{tropa.total_a_faenar ?? '—'}</td>
                   <td className="px-4 py-2 space-x-2">
-                    <button
-                      onClick={() => handleVerDetalle(tropa.id_tropa)}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Ver
-                    </button>
-                    <button
-                      onClick={() => handleEditar(tropa.id_tropa)}
-                      className="text-yellow-600 hover:underline"
-                    >
-                      Editar
-                    </button>
                     <button
                       onClick={() => handleFaenar(tropa.id_tropa)}
                       className="text-green-600 hover:underline"

@@ -38,7 +38,7 @@ function App() {
           {/* Faena y sus subrutas */}
           <Route path="faena">
             <Route index element={<FaenaPage />} />
-            <Route path="detalle" element={<DetalleFaenaPage />} />
+            <Route path=":idFaena" element={<DetalleFaenaPage />} />
             <Route path="remanente" element={<RemanenteFaenaPage />} />
           </Route>
 

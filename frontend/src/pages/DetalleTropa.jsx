@@ -90,7 +90,7 @@ export default function DetalleTropa() {
             </label>
             <input
               type="date"
-              value={tropaInfo.fecha}
+              value={tropaInfo.fecha ? tropaInfo.fecha.split('T')[0] : ''}
               onChange={(e) =>
                 setTropaInfo((prev) => ({ ...prev, fecha: e.target.value }))
               }

@@ -10,7 +10,8 @@ router.get('/titulares', tropaController.getTitulares);
 
 // 🧩 Detalles de tropa (ubicados antes que /:id para evitar colisión)
 router.get('/detalle-todas', tropaController.getTodosLosDetalles);
-router.get('/:id/detalle', tropaController.getDetalle);
+router.get('/:id/detalle-agrupado', tropaController.getDetalleAgrupado);
+router.get('/:id/detalle', tropaController.getDetalle); // ← esta es la versión plana
 router.post('/:id/detalle', tropaController.saveDetalle);
 
 // 📋 Tropas

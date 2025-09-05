@@ -246,45 +246,70 @@ exports.saveDetalle = async (req, res) => {
   }
 };
 
-/* exports.getDetalle = async (req, res) => {
+exports.getDetalleAgrupado = async (req, res) => {
   const { id } = req.params;
 
-  // Validación defensiva
   if (!id || isNaN(id)) {
     return res.status(400).json({ error: 'ID de tropa inválido' });
   }
 
   try {
-    const result = await pool.query(
-      `
-      SELECT 
-        td.id_tropa_detalle,
-        td.id_especie,
-        e.descripcion AS nombre_especie,
-        td.id_cat_especie,
-        ce.descripcion AS nombre_categoria,
-        td.cantidad
-      FROM tropa_detalle td
-      JOIN especie e ON td.id_especie = e.id_especie
-      JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
-      WHERE td.id_tropa = $1
-      ORDER BY e.descripcion, ce.descripcion
-      `,
+    const tropaRes = await pool.query(
+      `SELECT n_tropa, dte_dtu, fecha FROM tropa WHERE id_tropa = $1`,
       [parseInt(id)],
     );
 
-    if (result.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ message: 'No se encontraron detalles para esta tropa' });
+    if (tropaRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Tropa no encontrada' });
     }
 
-    res.status(200).json(result.rows);
+    const { n_tropa, dte_dtu, fecha } = tropaRes.rows[0];
+
+    const detalleRes = await pool.query(
+      `SELECT e.descripcion AS nombre_especie, ce.descripcion AS nombre_categoria, td.cantidad
+       FROM tropa_detalle td
+       JOIN especie e ON td.id_especie = e.id_especie
+       JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
+       WHERE td.id_tropa = $1
+       ORDER BY ce.descripcion`,
+      [parseInt(id)],
+    );
+
+    if (detalleRes.rows.length === 0) {
+      return res.status(200).json({
+        n_tropa,
+        dte_dtu,
+        fecha,
+        especie: '',
+        categorias: [],
+      });
+    }
+
+    const especie = detalleRes.rows[0].nombre_especie;
+
+    const agrupadas = {};
+    detalleRes.rows.forEach((row) => {
+      const nombre = row.nombre_categoria;
+      if (!agrupadas[nombre]) {
+        agrupadas[nombre] = { nombre, remanente: 0 };
+      }
+      agrupadas[nombre].remanente += row.cantidad;
+    });
+
+    const categorias = Object.values(agrupadas);
+
+    res.status(200).json({
+      n_tropa,
+      dte_dtu,
+      fecha,
+      especie,
+      categorias,
+    });
   } catch (err) {
-    console.error('Error al obtener detalle de tropa:', err);
+    console.error('Error al obtener detalle agrupado:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
-}; */
+};
 
 exports.getDetalle = async (req, res) => {
   const { id } = req.params;

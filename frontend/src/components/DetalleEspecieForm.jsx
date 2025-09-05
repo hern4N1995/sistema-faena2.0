@@ -75,7 +75,7 @@ export default function DetalleEspecieForm({ idTropa }) {
     }));
 
     api
-      .post(`/${idTropa}/detalle`, payload)
+      .post(`/tropas/${idTropa}/detalle`, payload)
       .then(() => {
         setDetalle([]);
         alert('Detalles guardados correctamente');

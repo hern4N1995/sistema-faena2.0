@@ -1,11 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const useMediaQuery = (query) => {
+  const [matches, setMatches] = useState(window.matchMedia(query).matches);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const listener = () => setMatches(media.matches);
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, [query]);
+  return matches;
+};
+
 const FaenaPage = () => {
   const [tropas, setTropas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [redirigiendoId, setRedirigiendoId] = useState(null);
   const navigate = useNavigate();
+  const isMobile = useMediaQuery('(max-width: 767px)');
 
   useEffect(() => {
     const fetchTropas = async () => {
@@ -35,6 +47,53 @@ const FaenaPage = () => {
     navigate(destino);
   };
 
+  const TropaCard = ({ t }) => (
+    <div className="bg-white rounded-xl shadow border border-slate-200 p-4 mb-4">
+      <div className="flex justify-between items-start mb-2">
+        <span className="text-xs text-slate-500">{formatDate(t.fecha)}</span>
+        <span className="text-sm font-semibold text-green-800">
+          Tropa #{t.n_tropa}
+        </span>
+      </div>
+      <div className="text-sm text-slate-700 space-y-1">
+        <p>
+          <strong>DTE/DTU:</strong> {t.dte_dtu || '—'}
+        </p>
+        <p>
+          <strong>Guía Policial:</strong> {t.guia_policial || '—'}
+        </p>
+        <p>
+          <strong>Productor:</strong> {t.productor || '—'}
+        </p>
+        <p>
+          <strong>Departamento:</strong> {t.departamento || '—'}
+        </p>
+        <p>
+          <strong>Titular Faena:</strong> {t.titular_faena || '—'}
+        </p>
+        <p>
+          <strong>Especie:</strong> {t.especie || '—'}
+        </p>
+        <p>
+          <strong>Total a faenar:</strong> {t.total_a_faenar ?? '—'}
+        </p>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => handleFaenar(t)}
+          disabled={redirigiendoId === t.id_tropa}
+          className={`text-sm px-3 py-2 rounded font-semibold transition ${
+            redirigiendoId === t.id_tropa
+              ? 'bg-green-300 text-white cursor-not-allowed'
+              : 'bg-green-700 text-white hover:bg-green-800'
+          }`}
+        >
+          {redirigiendoId === t.id_tropa ? 'Redirigiendo...' : 'Faenar'}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
       <header className="mb-8">
@@ -50,6 +109,12 @@ const FaenaPage = () => {
       ) : tropas.length === 0 ? (
         <div className="text-center text-slate-500 mt-10">
           <p className="text-lg">No hay tropas cargadas aún.</p>
+        </div>
+      ) : isMobile ? (
+        <div className="max-w-2xl mx-auto">
+          {tropas.map((t) => (
+            <TropaCard key={t.id_tropa} t={t} />
+          ))}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl shadow-lg ring-1 ring-slate-200">
@@ -90,21 +155,19 @@ const FaenaPage = () => {
                     {t.total_a_faenar ?? '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2 flex-wrap">
-                      <button
-                        onClick={() => handleFaenar(t)}
-                        disabled={redirigiendoId === t.id_tropa}
-                        className={`text-xs px-2 py-1 rounded font-semibold transition ${
-                          redirigiendoId === t.id_tropa
-                            ? 'bg-green-300 text-white cursor-not-allowed'
-                            : 'bg-green-100 text-green-800 hover:bg-green-200'
-                        }`}
-                      >
-                        {redirigiendoId === t.id_tropa
-                          ? 'Redirigiendo...'
-                          : 'Faenar'}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleFaenar(t)}
+                      disabled={redirigiendoId === t.id_tropa}
+                      className={`text-xs px-2 py-1 rounded font-semibold transition ${
+                        redirigiendoId === t.id_tropa
+                          ? 'bg-green-300 text-white cursor-not-allowed'
+                          : 'bg-green-100 text-green-800 hover:bg-green-200'
+                      }`}
+                    >
+                      {redirigiendoId === t.id_tropa
+                        ? 'Redirigiendo...'
+                        : 'Faenar'}
+                    </button>
                   </td>
                 </tr>
               ))}

@@ -1,22 +1,3 @@
-/* import React from 'react';
-import Header from './Header.jsx';
-import Footer from './Footer.jsx';
-
-export default function Layout({ children }) {
-  return (
-    <>
-      <Header />
-
-      <main className="content-wrapper">
-        {children}
-      </main>
-
-      <Footer />
-    </>
-  );
-}
- */
-
 // components/Layout.jsx
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';

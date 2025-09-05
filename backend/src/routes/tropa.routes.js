@@ -8,14 +8,14 @@ router.get('/plantas', tropaController.getPlantas);
 router.get('/productores', tropaController.getProductores);
 router.get('/titulares', tropaController.getTitulares);
 
-// 📋 Tropas
-router.get('/', tropaController.getAll);
-router.get('/:id', tropaController.getById);
-router.post('/', tropaController.createTropa);
-
-// 🧩 Detalles de tropa
+// 🧩 Detalles de tropa (ubicados antes que /:id para evitar colisión)
 router.get('/detalle-todas', tropaController.getTodosLosDetalles);
 router.get('/:id/detalle', tropaController.getDetalle);
-router.post('/:id/detalle', tropaController.saveDetalle); // 🔄 renombrado para consistencia
+router.post('/:id/detalle', tropaController.saveDetalle);
+
+// 📋 Tropas
+router.get('/', tropaController.getAll);
+router.post('/', tropaController.createTropa);
+router.get('/:id', tropaController.getById); // ⬅️ esta debe ir al final
 
 module.exports = router;

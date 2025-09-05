@@ -25,8 +25,7 @@ export default function Sidebar() {
       title: 'Gestión de Faena',
       roles: ['1', '2', '3'],
       menu: [
-        { to: '/faena', label: 'Titular Faena' },
-        { to: '/faena/detalle', label: 'Detalle Faena' },
+        { to: '/faena', label: 'Tropas a Faenar' },
         { to: '/faena/remanente', label: 'Remanente' },
       ],
     },

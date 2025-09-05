@@ -246,7 +246,7 @@ exports.saveDetalle = async (req, res) => {
   }
 };
 
-exports.getDetalle = async (req, res) => {
+/* exports.getDetalle = async (req, res) => {
   const { id } = req.params;
 
   // Validación defensiva
@@ -280,6 +280,80 @@ exports.getDetalle = async (req, res) => {
     }
 
     res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener detalle de tropa:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}; */
+
+exports.getDetalle = async (req, res) => {
+  const { id } = req.params;
+
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ error: 'ID de tropa inválido' });
+  }
+
+  try {
+    // 1. Obtener datos generales de la tropa
+    const tropaRes = await pool.query(
+      `
+      SELECT n_tropa, dte_dtu, fecha
+      FROM tropa
+      WHERE id_tropa = $1
+      `,
+      [parseInt(id)],
+    );
+
+    if (tropaRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Tropa no encontrada' });
+    }
+
+    const { n_tropa, dte_dtu, fecha } = tropaRes.rows[0];
+
+    // 2. Obtener detalles de especie y categoría
+    const detalleRes = await pool.query(
+      `
+      SELECT 
+        e.descripcion AS nombre_especie,
+        ce.descripcion AS nombre_categoria,
+        td.cantidad
+      FROM tropa_detalle td
+      JOIN especie e ON td.id_especie = e.id_especie
+      JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
+      WHERE td.id_tropa = $1
+      ORDER BY ce.descripcion
+      `,
+      [parseInt(id)],
+    );
+
+    if (detalleRes.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ message: 'No se encontraron detalles para esta tropa' });
+    }
+
+    const especie = detalleRes.rows[0].nombre_especie;
+
+    // 3. Agrupar categorías
+    const agrupadas = {};
+    detalleRes.rows.forEach((row) => {
+      const nombre = row.nombre_categoria;
+      if (!agrupadas[nombre]) {
+        agrupadas[nombre] = { nombre, remanente: 0 };
+      }
+      agrupadas[nombre].remanente += row.cantidad;
+    });
+
+    const categorias = Object.values(agrupadas);
+
+    // 4. Respuesta completa
+    res.status(200).json({
+      n_tropa,
+      dte_dtu,
+      fecha,
+      especie,
+      categorias,
+    });
   } catch (err) {
     console.error('Error al obtener detalle de tropa:', err);
     res.status(500).json({ error: 'Error interno del servidor' });

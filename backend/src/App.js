@@ -39,7 +39,7 @@ app.use('/api/departamentos', departamentoRoutes);
 app.use('/api/plantas', plantaRoutes);
 app.use('/api', especieRoutes);
 app.use('/', categoriaEspecieRoutes); // o '/api' si usás prefijo
-app.use('/api', require('./routes/tropa.routes'));
+/* app.use('/api', require('./routes/tropa.routes'));  COMENTADO 04-09*/
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

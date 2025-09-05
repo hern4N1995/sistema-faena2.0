@@ -15,7 +15,7 @@ export default function Tropa() {
   }, []);
 
   const handleCreated = (id_tropa) => {
-    navigate(`/tropa/detalle/${id_tropa}`);
+    navigate(`/tropas-cargadas/modificar/${id_tropa}`);
   };
 
   return (

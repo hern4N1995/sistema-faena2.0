@@ -45,8 +45,10 @@ function App() {
           {/* Faena y sus subrutas */}
           <Route path="faena">
             <Route index element={<FaenaPage />} />
-            <Route path=":idFaena" element={<DetalleFaenaPage />} />
-            <Route path="remanente" element={<RemanenteFaenaPage />} />
+            <Route path="nueva/:idTropa" element={<DetalleFaenaPage />} />{' '}
+            {/* modo creación */}
+            <Route path=":idFaena" element={<DetalleFaenaPage />} />{' '}
+            {/* modo edición */}
           </Route>
 
           <Route

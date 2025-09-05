@@ -18,7 +18,7 @@ export default function TropasCargadas() {
     <div className="min-h-screen bg-gray-50 py-6 sm:py-8 px-3 sm:px-4 lg:px-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center text-gray-800 mb-6 sm:mb-8">
-          📋 Tropas registradas
+          📋 Tropas cargadas
         </h1>
 
         {tropas.length === 0 ? (

@@ -20,15 +20,58 @@ const obtenerDepartamentos = async (req, res) => {
 };
 
 // Crear nuevo departamento con id_provincia
+// Crear nuevo departamento con id_provincia
 const crearDepartamento = async (req, res) => {
   const { nombre_departamento, id_provincia } = req.body;
 
+  if (!nombre_departamento || !id_provincia || isNaN(id_provincia)) {
+    return res.status(400).json({ error: 'Datos incompletos o inválidos' });
+  }
+
   try {
+    // Verificar que la provincia exista
+    const existeProvincia = await pool.query(
+      'SELECT 1 FROM provincia WHERE id_provincia = $1',
+      [id_provincia],
+    );
+    if (existeProvincia.rowCount === 0) {
+      return res.status(400).json({ error: 'Provincia inexistente' });
+    }
+
+    // 🔹 Verificar que no exista el mismo departamento en la misma provincia
+    const existeDepto = await pool.query(
+      `SELECT 1 FROM departamento 
+       WHERE LOWER(nombre_departamento) = LOWER($1) 
+       AND id_provincia = $2`,
+      [nombre_departamento.trim(), id_provincia],
+    );
+    if (existeDepto.rowCount > 0) {
+      return res
+        .status(400)
+        .json({ error: 'El departamento ya existe en esta provincia' });
+    }
+
+    // Insertar
     await pool.query(
       'INSERT INTO departamento (nombre_departamento, id_provincia) VALUES ($1, $2)',
       [nombre_departamento.trim(), id_provincia],
     );
-    res.status(201).json({ mensaje: 'Departamento creado correctamente' });
+
+    // Devolver el registro recién creado
+    const nuevo = await pool.query(
+      `SELECT 
+         d.id_departamento, 
+         d.nombre_departamento AS departamento, 
+         p.descripcion AS provincia
+       FROM departamento d
+       JOIN provincia p ON d.id_provincia = p.id_provincia
+       WHERE d.nombre_departamento = $1 AND d.id_provincia = $2
+       ORDER BY d.id_departamento DESC
+       LIMIT 1`,
+      [nombre_departamento.trim(), id_provincia],
+    );
+
+    res.status(201).json(nuevo.rows[0]);
   } catch (error) {
     console.error('Error al crear departamento:', error.message);
     res.status(500).json({ error: 'Error al crear departamento' });
@@ -39,6 +82,10 @@ const crearDepartamento = async (req, res) => {
 const editarDepartamento = async (req, res) => {
   const { id } = req.params;
   const { nombre_departamento } = req.body;
+
+  if (!nombre_departamento || typeof nombre_departamento !== 'string') {
+    return res.status(400).json({ error: 'Nombre de departamento inválido' });
+  }
 
   try {
     await pool.query(

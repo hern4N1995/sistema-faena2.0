@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 
-export default function DetalleEspecieForm({ idTropa }) {
+export default function DetalleEspecieForm({ idTropa, onSave }) {
   const [especies, setEspecies] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [especieSeleccionada, setEspecieSeleccionada] = useState('');
@@ -12,20 +12,12 @@ export default function DetalleEspecieForm({ idTropa }) {
   useEffect(() => {
     api
       .get('/especies')
-      .then((res) => {
-        setEspecies(res.data);
-      })
-      .catch((err) => {
-        console.error('Error al obtener especies:', err);
-      });
+      .then((res) => setEspecies(res.data))
+      .catch((err) => console.error('Error al obtener especies:', err));
   }, []);
 
   useEffect(() => {
     if (!especieSeleccionada) return;
-
-    console.log(
-      `Consultando categorías para especie ID: ${especieSeleccionada}`
-    );
 
     api
       .get(`/especie/${especieSeleccionada}/categorias`)
@@ -44,7 +36,7 @@ export default function DetalleEspecieForm({ idTropa }) {
   }, [especieSeleccionada]);
 
   const agregarDetalle = () => {
-    if (!categoria || !cantidad) return;
+    if (!categoria || !cantidad || parseInt(cantidad) <= 0) return;
 
     const especieObj = especies.find((e) => e.id === especieSeleccionada);
     const categoriaObj = categorias.find((c) => c.id === Number(categoria));
@@ -79,6 +71,7 @@ export default function DetalleEspecieForm({ idTropa }) {
       .then(() => {
         setDetalle([]);
         alert('Detalles guardados correctamente');
+        if (onSave) onSave(); // Refresca el resumen en DetalleTropa
       })
       .catch((err) => {
         console.error('Error al guardar detalles:', err);
@@ -134,7 +127,7 @@ export default function DetalleEspecieForm({ idTropa }) {
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
               className="w-full border rounded px-3 py-2"
-              min={0}
+              min={1}
             />
           </div>
 

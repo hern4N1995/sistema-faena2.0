@@ -33,10 +33,13 @@ const {
 
 const { verificarToken } = require('../middleware/auth');
 const { permitirRoles } = require('../middleware/roles');
+const { registrarFaena } = require('../controllers/registrarFaena.controller');
 
 // Rutas protegidas
 router.get('/', verificarToken, permitirRoles(1, 2), obtenerFaenas);
 router.post('/', verificarToken, permitirRoles(2), crearFaena);
+router.post('/faena', verificarToken, permitirRoles(1, 2, 3), registrarFaena);
+
 router.get('/faena/tropas', obtenerFaenas);
 router.get(
   '/remanente',

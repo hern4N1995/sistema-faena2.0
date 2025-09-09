@@ -47,8 +47,22 @@ const FaenaPage = () => {
     navigate(destino);
   };
 
+  const esTropaVencida = (t) => {
+    const fechaTropa = new Date(t.fecha);
+    const hoy = new Date();
+    const diferenciaDias = (hoy - fechaTropa) / (1000 * 60 * 60 * 24);
+    const tieneRemanente = parseInt(t.total_a_faenar) > 0;
+    return diferenciaDias > 2 && tieneRemanente;
+  };
+
   const TropaCard = ({ t }) => (
-    <div className="bg-white rounded-xl shadow border border-slate-200 p-4 mb-4">
+    <div
+      className={`rounded-xl shadow border p-4 mb-4 ${
+        esTropaVencida(t)
+          ? 'bg-red-100 border-red-300'
+          : 'bg-white border-slate-200'
+      }`}
+    >
       <div className="flex justify-between items-start mb-2">
         <span className="text-xs text-slate-500">{formatDate(t.fecha)}</span>
         <span className="text-sm font-semibold text-green-800">
@@ -137,7 +151,11 @@ const FaenaPage = () => {
               {tropas.map((t) => (
                 <tr
                   key={t.id_tropa}
-                  className="bg-white border-b last:border-b-0 hover:bg-green-50 transition-colors"
+                  className={`border-b last:border-b-0 transition-colors ${
+                    esTropaVencida(t)
+                      ? 'bg-red-400 hover:bg-red-500'
+                      : 'bg-white hover:bg-green-50'
+                  }`}
                 >
                   <td className="px-4 py-3 font-medium">
                     {formatDate(t.fecha)}

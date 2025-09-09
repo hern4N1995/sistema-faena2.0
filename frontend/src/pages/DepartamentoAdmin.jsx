@@ -1,276 +1,194 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function DepartamentoAdmin() {
-  const departamentosPorProvincia = {
-    Corrientes: [
-      'Bella Vista',
-      'Berón de Astrada',
-      'Capital',
-      'Concepción',
-      'Curuzú Cuatiá',
-      'Empedrado',
-      'Esquina',
-      'General Alvear',
-      'General Paz',
-      'Goya',
-      'Itatí',
-      'Ituzaingó',
-      'Lavalle',
-      'Mburucuyá',
-      'Mercedes',
-      'Monte Caseros',
-      'Paso de los Libres',
-      'Saladas',
-      'San Cosme',
-      'San Luis del Palmar',
-      'San Martín',
-      'San Miguel',
-      'San Roque',
-      'Santo Tomé',
-      'Sauce',
-    ],
-    // Podés agregar más provincias acá
-  };
-
-  const provincias = Object.keys(departamentosPorProvincia);
-
   const [registros, setRegistros] = useState([]);
+  const [provinciasDB, setProvinciasDB] = useState([]);
+  const [provinciaSeleccionada, setProvinciaSeleccionada] = useState('');
+  const [provinciaIdSeleccionada, setProvinciaIdSeleccionada] = useState('');
+  const [departamentoInput, setDepartamentoInput] = useState('');
+  const [mensajeFeedback, setMensajeFeedback] = useState('');
+
+  // Cargar provincias y departamentos
   useEffect(() => {
-    const cargarDepartamentosDesdeDB = async () => {
+    const cargarDatos = async () => {
       try {
-        const res = await fetch('http://localhost:3000/api/departamentos');
-        const data = await res.json();
-        setRegistros(data);
+        const [resDeptos, resProvincias] = await Promise.all([
+          fetch('http://localhost:3000/api/departamentos'),
+          fetch('http://localhost:3000/api/provincias'),
+        ]);
+        const departamentos = await resDeptos.json();
+        const provincias = await resProvincias.json();
+        console.log('Provincias recibidas del backend:', provincias);
+        setRegistros(departamentos.filter((d) => d.activo !== false)); // solo activos
+        setProvinciasDB(provincias);
       } catch (error) {
-        console.error('Error al cargar departamentos desde la base:', error);
+        console.error('Error al cargar datos:', error);
         setMensajeFeedback('❌ Error al conectar con el servidor.');
         setTimeout(() => setMensajeFeedback(''), 4000);
       }
     };
-
-    cargarDepartamentosDesdeDB();
+    cargarDatos();
   }, []);
 
-  const [provinciaSeleccionada, setProvinciaSeleccionada] = useState('');
-  const [departamentoSeleccionado, setDepartamentoSeleccionado] = useState('');
-  const [editandoId, setEditandoId] = useState(null);
-  const [departamentoEditado, setDepartamentoEditado] = useState('');
-  const [mensajeFeedback, setMensajeFeedback] = useState('');
-  const [sugerenciasProvincia, setSugerenciasProvincia] = useState([]);
-  const [mostrarSugerenciasProvincia, setMostrarSugerenciasProvincia] =
-    useState(false);
-  const [mostrarSugerenciasDepartamento, setMostrarSugerenciasDepartamento] =
-    useState(false);
-
-  const provinciaRef = useRef(null);
-  const departamentoRef = useRef(null);
-
-  useEffect(() => {
-    const manejarClickFuera = (e) => {
-      if (provinciaRef.current && !provinciaRef.current.contains(e.target)) {
-        setMostrarSugerenciasProvincia(false);
-      }
-      if (
-        departamentoRef.current &&
-        !departamentoRef.current.contains(e.target)
-      ) {
-        setMostrarSugerenciasDepartamento(false);
-      }
-    };
-    document.addEventListener('mousedown', manejarClickFuera);
-    return () => document.removeEventListener('mousedown', manejarClickFuera);
-  }, []);
-
-  const manejarProvincia = (e) => {
-    const texto = e.target.value;
-    setProvinciaSeleccionada(texto);
-    const filtradas = provincias.filter((p) =>
-      p.toLowerCase().includes(texto.toLowerCase())
-    );
-    setSugerenciasProvincia(filtradas);
-    setMostrarSugerenciasProvincia(true);
-    setDepartamentoSeleccionado('');
-    setMensajeFeedback('');
-  };
-
-  const seleccionarProvincia = (nombre) => {
-    setProvinciaSeleccionada(nombre);
-    setSugerenciasProvincia([]);
-    setMostrarSugerenciasProvincia(false);
-    setDepartamentoSeleccionado('');
-    setMensajeFeedback('');
-  };
-
-  const manejarDepartamento = (e) => {
-    setDepartamentoSeleccionado(e.target.value);
-    setMensajeFeedback('');
-  };
-
-  const seleccionarDepartamento = (nombre) => {
-    setDepartamentoSeleccionado(nombre);
-    setMostrarSugerenciasDepartamento(false);
-    setMensajeFeedback('');
-  };
-
-  const agregarDepartamento = () => {
-    if (!provinciaSeleccionada.trim() || !departamentoSeleccionado.trim())
+  // Alta de departamento
+  const agregarDepartamento = async () => {
+    const nombre = departamentoInput.trim();
+    if (
+      !provinciaIdSeleccionada ||
+      isNaN(parseInt(provinciaIdSeleccionada, 10)) ||
+      !nombre
+    ) {
+      setMensajeFeedback('❌ Completá ambos campos correctamente.');
       return;
+    }
 
     const yaExiste = registros.some(
       (r) =>
-        r.provincia.toLowerCase() ===
-          provinciaSeleccionada.trim().toLowerCase() &&
-        r.departamento.toLowerCase() ===
-          departamentoSeleccionado.trim().toLowerCase()
+        r.provincia?.toLowerCase() === provinciaSeleccionada.toLowerCase() &&
+        r.departamento?.toLowerCase() === nombre.toLowerCase()
     );
-
     if (yaExiste) {
-      setMensajeFeedback(
-        '❌ El departamento ya está registrado en esa provincia.'
-      );
+      setMensajeFeedback('❌ El departamento ya existe en esa provincia.');
       setTimeout(() => setMensajeFeedback(''), 4000);
       return;
     }
 
-    const nuevo = {
-      provincia: provinciaSeleccionada.trim(),
-      departamento: departamentoSeleccionado.trim(),
-    };
+    try {
+      console.log('Payload:', {
+        nombre_departamento: nombre,
+        id_provincia: parseInt(provinciaIdSeleccionada, 10),
+      });
 
-    setRegistros([...registros, nuevo]);
-    setDepartamentoSeleccionado('');
-    setMensajeFeedback('✅ Departamento agregado correctamente.');
+      const res = await fetch('http://localhost:3000/api/departamentos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre_departamento: nombre,
+          id_provincia: parseInt(provinciaIdSeleccionada, 10),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRegistros((prev) => [...prev, data]);
+        setProvinciaSeleccionada('');
+        setProvinciaIdSeleccionada('');
+        setDepartamentoInput('');
+        setMensajeFeedback('✅ Departamento agregado correctamente.');
+      } else {
+        setMensajeFeedback(`❌ ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error al agregar departamento:', error);
+      setMensajeFeedback('❌ Error de conexión con el servidor.');
+    }
     setTimeout(() => setMensajeFeedback(''), 4000);
   };
 
-  const modificarDepartamento = async (id) => {
-    if (!departamentoEditado.trim()) return;
-
-    const confirmar = window.confirm(
-      `¿Estás seguro de que querés modificar el departamento a "${departamentoEditado}"?`
-    );
-    if (!confirmar) return;
-
+  // Modificar departamento
+  const modificarDepartamento = async (id, nuevoNombre) => {
+    if (!nuevoNombre.trim()) return;
     try {
-      await fetch(`http://localhost:3000/api/departamentos/${id}`, {
+      const res = await fetch(`http://localhost:3000/api/departamentos/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ descripcion: departamentoEditado.trim() }),
+        body: JSON.stringify({ nombre_departamento: nuevoNombre.trim() }),
       });
-
-      const actualizados = registros.map((r) =>
-        r.id === id ? { ...r, departamento: departamentoEditado.trim() } : r
-      );
-
-      setRegistros(actualizados);
-      setEditandoId(null);
-      setDepartamentoEditado('');
-      setMensajeFeedback('✅ Departamento modificado correctamente.');
-      setTimeout(() => setMensajeFeedback(''), 4000);
+      if (res.ok) {
+        setRegistros((prev) =>
+          prev.map((r) =>
+            r.id_departamento === id ? { ...r, departamento: nuevoNombre } : r
+          )
+        );
+        setMensajeFeedback('✅ Departamento modificado.');
+      }
     } catch (error) {
-      console.error('Error al modificar departamento:', error);
-      setMensajeFeedback('❌ Error al modificar departamento.');
-      setTimeout(() => setMensajeFeedback(''), 4000);
+      console.error('Error al modificar:', error);
     }
   };
 
-  const eliminarDepartamento = (id) => {
-    setRegistros(registros.filter((r) => r.id !== id));
-    setMensajeFeedback('✅ Departamento eliminado correctamente.');
-    setTimeout(() => setMensajeFeedback(''), 4000);
+  // Eliminar departamento
+  const eliminarDepartamento = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:3000/api/departamentos/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setRegistros((prev) => prev.filter((r) => r.id_departamento !== id));
+        setMensajeFeedback('✅ Departamento eliminado.');
+      }
+    } catch (error) {
+      console.error('Error al eliminar:', error);
+    }
   };
 
   return (
     <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md space-y-6 mt-4">
       <h1 className="text-2xl font-bold mb-2">Administrar Departamentos</h1>
 
-      {/* Provincia */}
-      <div className="relative" ref={provinciaRef}>
+      {/* Formulario */}
+      <div className="space-y-4">
+        {/* Selector de provincia */}
+        <div>
+          <label htmlFor="provincia" className="block mb-1 font-medium">
+            Seleccioná una provincia
+          </label>
+          <select
+            id="provincia"
+            value={provinciaIdSeleccionada}
+            onChange={(e) => {
+              const id = e.target.value;
+              setProvinciaIdSeleccionada(id);
+              const provObj = provinciasDB.find(
+                (p) => p?.id?.toString() === id
+              );
+              setProvinciaSeleccionada(provObj ? provObj.descripcion : '');
+            }}
+            className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">-- Seleccioná --</option>
+            {provinciasDB
+              .filter((p) => p && p.id != null)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.descripcion}
+                </option>
+              ))}
+          </select>
+        </div>
+
+        {/* Nombre del departamento */}
         <input
           type="text"
-          value={provinciaSeleccionada}
-          onChange={manejarProvincia}
-          onFocus={() => {
-            const filtradas = provincias.filter((p) =>
-              p.toLowerCase().includes(provinciaSeleccionada.toLowerCase())
-            );
-            setSugerenciasProvincia(filtradas);
-            setMostrarSugerenciasProvincia(true);
-          }}
-          placeholder="Ingresar provincia..."
-          className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={departamentoInput}
+          onChange={(e) => setDepartamentoInput(e.target.value)}
+          placeholder="Nombre del departamento..."
+          className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
         />
-        {mostrarSugerenciasProvincia && sugerenciasProvincia.length > 0 && (
-          <ul className="absolute z-10 bg-white border w-full mt-1 rounded shadow-lg max-h-60 overflow-y-auto">
-            {sugerenciasProvincia.map((prov, idx) => (
-              <li
-                key={idx}
-                onClick={() => seleccionarProvincia(prov)}
-                className="px-4 py-2 hover:bg-blue-100 cursor-pointer"
-              >
-                {prov}
-              </li>
-            ))}
-          </ul>
+
+        {/* Botón agregar */}
+        <button
+          onClick={agregarDepartamento}
+          disabled={!provinciaIdSeleccionada || !departamentoInput.trim()}
+          className={`px-4 py-2 rounded text-white ${
+            !provinciaIdSeleccionada || !departamentoInput.trim()
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-700'
+          }`}
+        >
+          Agregar
+        </button>
+
+        {/* Feedback */}
+        {mensajeFeedback && (
+          <p
+            className={`text-sm ${
+              mensajeFeedback.includes('✅') ? 'text-green-600' : 'text-red-600'
+            }`}
+          >
+            {mensajeFeedback}
+          </p>
         )}
       </div>
-
-      {/* Departamento */}
-      {provinciaSeleccionada && (
-        <div
-          className="relative flex flex-col gap-2 mt-4"
-          ref={departamentoRef}
-        >
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={departamentoSeleccionado}
-              onChange={manejarDepartamento}
-              onFocus={() => setMostrarSugerenciasDepartamento(true)}
-              placeholder="Ingresar departamento..."
-              className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-            <button
-              onClick={agregarDepartamento}
-              className="bg-[#00902f] text-white px-4 py-2 rounded hover:bg-[#008d36]"
-            >
-              Agregar
-            </button>
-          </div>
-
-          {mostrarSugerenciasDepartamento && (
-            <ul className="absolute z-10 bg-white border w-full mt-1 rounded shadow-lg max-h-60 overflow-y-auto">
-              {(departamentosPorProvincia[provinciaSeleccionada] || [])
-                .filter((dep) =>
-                  dep
-                    .toLowerCase()
-                    .includes(departamentoSeleccionado.toLowerCase())
-                )
-                .map((dep, idx) => (
-                  <li
-                    key={idx}
-                    onClick={() => seleccionarDepartamento(dep)}
-                    className="px-4 py-2 hover:bg-green-100 cursor-pointer"
-                  >
-                    {dep}
-                  </li>
-                ))}
-            </ul>
-          )}
-
-          {mensajeFeedback && (
-            <span
-              className={`text-sm mt-2 block ${
-                mensajeFeedback.includes('✅')
-                  ? 'text-green-600'
-                  : 'text-red-600'
-              }`}
-            >
-              {mensajeFeedback}
-            </span>
-          )}
-        </div>
-      )}
 
       {/* Tabla */}
       <table className="w-full border mt-6">
@@ -279,7 +197,7 @@ export default function DepartamentoAdmin() {
             <th className="border px-3 py-2 text-left">ID</th>
             <th className="border px-3 py-2 text-left">Provincia</th>
             <th className="border px-3 py-2 text-left">Departamento</th>
-            <th className="border px-3 py-2 text-left">Acción</th>
+            <th className="border px-3 py-2 text-left">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -291,22 +209,39 @@ export default function DepartamentoAdmin() {
             </tr>
           ) : (
             registros.map((r) => (
-              <tr key={r.id} className="hover:bg-gray-50">
-                <td className="border px-3 py-1">{r.id}</td>
+              <tr key={r.id_departamento} className="hover:bg-gray-50">
+                <td className="border px-3 py-1">{r.id_departamento}</td>
                 <td className="border px-3 py-1">{r.provincia}</td>
-                <td className="border px-3 py-1">
-                  {editandoId === r.id ? (
-                    <input
-                      value={departamentoEditado}
-                      onChange={(e) => setDepartamentoEditado(e.target.value)}
-                      className="w-full px-2 py-1 border rounded bg-gray-100"
-                    />
-                  ) : (
-                    r.departamento
-                  )}
-                </td>
+                <td className="border px-3 py-1">{r.departamento}</td>
                 <td className="border px-3 py-1 space-x-2">
-                  {/* Botones de acción */}
+                  <button
+                    onClick={() => {
+                      const nuevoNombre = prompt(
+                        'Nuevo nombre para el departamento:',
+                        r.departamento
+                      );
+                      if (nuevoNombre && nuevoNombre.trim() !== '') {
+                        modificarDepartamento(r.id_departamento, nuevoNombre);
+                      }
+                    }}
+                    className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `¿Seguro que querés eliminar el departamento "${r.departamento}"?`
+                        )
+                      ) {
+                        eliminarDepartamento(r.id_departamento);
+                      }
+                    }}
+                    className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                  >
+                    Eliminar
+                  </button>
                 </td>
               </tr>
             ))

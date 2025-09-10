@@ -10,7 +10,7 @@ const obtenerTitulares = async (req, res) => {
               tf.direccion,
               tf.documento,
               p.descripcion AS provincia,
-              p.id_provincia AS id_provincia
+              p.id_provincia 
        FROM titular_faena tf
        JOIN provincia p ON tf.id_provincia = p.id_provincia
        ORDER BY tf.id_titular_faena`,
@@ -32,6 +32,7 @@ const crearTitular = async (req, res) => {
   }
 
   try {
+    // Insertar titular
     const insert = await pool.query(
       `INSERT INTO titular_faena (nombre, id_provincia, localidad, direccion, documento)
        VALUES ($1, $2, $3, $4, $5)
@@ -44,7 +45,20 @@ const crearTitular = async (req, res) => {
         documento || null,
       ],
     );
-    res.status(201).json(insert.rows[0]);
+
+    const nuevo = insert.rows[0];
+
+    // Obtener nombre de provincia
+    const provinciaRes = await pool.query(
+      `SELECT descripcion FROM provincia WHERE id_provincia = $1`,
+      [nuevo.id_provincia],
+    );
+
+    const provincia =
+      provinciaRes.rows[0]?.descripcion || 'Provincia desconocida';
+
+    // Devolver titular completo
+    res.status(201).json({ ...nuevo, provincia });
   } catch (error) {
     console.error('Error al crear titular:', error.message);
     res.status(500).json({ error: 'Error al crear titular' });

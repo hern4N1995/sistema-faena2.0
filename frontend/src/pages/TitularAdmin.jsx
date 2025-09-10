@@ -1,37 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function TitularAdmin() {
   const [titulares, setTitulares] = useState([]);
+  const [provinciasDB, setProvinciasDB] = useState([]);
   const [nuevoTitular, setNuevoTitular] = useState({
     nombre: '',
-    localidad: '',
     provincia: '',
+    localidad: '',
     direccion: '',
     documento: '',
   });
   const [editandoId, setEditandoId] = useState(null);
   const [editado, setEditado] = useState({});
+  const [mensajeFeedback, setMensajeFeedback] = useState('');
+
+  // Cargar provincias y titulares
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        const [resProvincias, resTitulares] = await Promise.all([
+          fetch('http://localhost:3000/api/provincias'),
+          fetch('http://localhost:3000/api/titulares-faena'),
+        ]);
+        setProvinciasDB(await resProvincias.json());
+        setTitulares(await resTitulares.json());
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+      }
+    };
+    cargarDatos();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNuevoTitular({ ...nuevoTitular, [name]: value });
   };
 
-  const agregarTitular = () => {
-    if (!nuevoTitular.nombre.trim()) return;
-    const nuevoId = Math.max(...titulares.map((t) => t.id), 0) + 1;
-    setTitulares([...titulares, { id: nuevoId, ...nuevoTitular }]);
-    setNuevoTitular({
-      nombre: '',
-      localidad: '',
-      provincia: '',
-      direccion: '',
-      documento: '',
-    });
-  };
-
-  const eliminarTitular = (id) => {
-    setTitulares(titulares.filter((t) => t.id !== id));
+  const agregarTitular = async () => {
+    if (
+      !nuevoTitular.nombre ||
+      !nuevoTitular.provincia ||
+      !nuevoTitular.localidad
+    )
+      return;
+    try {
+      const res = await fetch('http://localhost:3000/api/titulares-faena', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nuevoTitular.nombre,
+          id_provincia: parseInt(nuevoTitular.provincia, 10),
+          localidad: nuevoTitular.localidad,
+          direccion: nuevoTitular.direccion,
+          documento: nuevoTitular.documento,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTitulares([...titulares, data]);
+        setNuevoTitular({
+          nombre: '',
+          provincia: '',
+          localidad: '',
+          direccion: '',
+          documento: '',
+        });
+      }
+    } catch (error) {
+      console.error('Error al agregar titular:', error);
+    }
   };
 
   const iniciarEdicion = (titular) => {
@@ -39,10 +76,38 @@ export default function TitularAdmin() {
     setEditado({ ...titular });
   };
 
-  const guardarEdicion = () => {
-    setTitulares(titulares.map((t) => (t.id === editandoId ? editado : t)));
-    setEditandoId(null);
-    setEditado({});
+  const guardarEdicion = async () => {
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/titulares-faena/${editandoId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(editado),
+        }
+      );
+      if (res.ok) {
+        setTitulares(titulares.map((t) => (t.id === editandoId ? editado : t)));
+        setEditandoId(null);
+        setEditado({});
+      }
+    } catch (error) {
+      console.error('Error al modificar titular:', error);
+    }
+  };
+
+  const eliminarTitular = async (id) => {
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/titulares-faena/${id}`,
+        { method: 'DELETE' }
+      );
+      if (res.ok) {
+        setTitulares(titulares.filter((t) => t.id !== id));
+      }
+    } catch (error) {
+      console.error('Error al eliminar titular:', error);
+    }
   };
 
   return (
@@ -57,21 +122,27 @@ export default function TitularAdmin() {
           name="nombre"
           value={nuevoTitular.nombre}
           onChange={handleChange}
-          placeholder="Nombre y Apellido o Razón Social"
+          placeholder="Nombre / Razón Social"
           className="px-4 py-2 border rounded"
         />
+        <select
+          name="provincia"
+          value={nuevoTitular.provincia}
+          onChange={handleChange}
+          className="px-4 py-2 border rounded"
+        >
+          <option value="">-- Seleccioná provincia --</option>
+          {provinciasDB.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.descripcion}
+            </option>
+          ))}
+        </select>
         <input
           name="localidad"
           value={nuevoTitular.localidad}
           onChange={handleChange}
           placeholder="Localidad"
-          className="px-4 py-2 border rounded"
-        />
-        <input
-          name="provincia"
-          value={nuevoTitular.provincia}
-          onChange={handleChange}
-          placeholder="Provincia"
           className="px-4 py-2 border rounded"
         />
         <input
@@ -91,7 +162,7 @@ export default function TitularAdmin() {
       </div>
       <button
         onClick={agregarTitular}
-        className="bg-[#00902f] text-white px-4 py-2 rounded hover:bg-[#008d36] mt-2"
+        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-2"
       >
         Agregar Titular
       </button>
@@ -100,9 +171,9 @@ export default function TitularAdmin() {
       <table className="w-full border mt-6">
         <thead>
           <tr className="bg-gray-100">
-            <th className="border px-3 py-2">Nombre / Razón Social</th>
-            <th className="border px-3 py-2">Localidad</th>
+            <th className="border px-3 py-2">Nombre</th>
             <th className="border px-3 py-2">Provincia</th>
+            <th className="border px-3 py-2">Localidad</th>
             <th className="border px-3 py-2">Dirección</th>
             <th className="border px-3 py-2">DNI / CUIT</th>
             <th className="border px-3 py-2">Acciones</th>
@@ -124,77 +195,29 @@ export default function TitularAdmin() {
                   t.nombre
                 )}
               </td>
-              <td className="border px-3 py-1">
-                {editandoId === t.id ? (
-                  <input
-                    value={editado.localidad}
-                    onChange={(e) =>
-                      setEditado({ ...editado, localidad: e.target.value })
-                    }
-                    className="w-full px-2 py-1 border rounded"
-                  />
-                ) : (
-                  t.localidad
-                )}
-              </td>
-              <td className="border px-3 py-1">
-                {editandoId === t.id ? (
-                  <input
-                    value={editado.provincia}
-                    onChange={(e) =>
-                      setEditado({ ...editado, provincia: e.target.value })
-                    }
-                    className="w-full px-2 py-1 border rounded"
-                  />
-                ) : (
-                  t.provincia
-                )}
-              </td>
-              <td className="border px-3 py-1">
-                {editandoId === t.id ? (
-                  <input
-                    value={editado.direccion}
-                    onChange={(e) =>
-                      setEditado({ ...editado, direccion: e.target.value })
-                    }
-                    className="w-full px-2 py-1 border rounded"
-                  />
-                ) : (
-                  t.direccion
-                )}
-              </td>
-              <td className="border px-3 py-1">
-                {editandoId === t.id ? (
-                  <input
-                    value={editado.documento}
-                    onChange={(e) =>
-                      setEditado({ ...editado, documento: e.target.value })
-                    }
-                    className="w-full px-2 py-1 border rounded"
-                  />
-                ) : (
-                  t.documento
-                )}
-              </td>
+              <td className="border px-3 py-1">{t.provincia}</td>
+              <td className="border px-3 py-1">{t.localidad}</td>
+              <td className="border px-3 py-1">{t.direccion}</td>
+              <td className="border px-3 py-1">{t.documento}</td>
               <td className="border px-3 py-1 space-x-2">
                 {editandoId === t.id ? (
                   <button
                     onClick={guardarEdicion}
-                    className="text-green-700 hover:text-green-900 font-bold"
+                    className="text-green-700 font-bold"
                   >
                     💾
                   </button>
                 ) : (
                   <button
                     onClick={() => iniciarEdicion(t)}
-                    className="text-blue-600 hover:text-blue-800 font-bold"
+                    className="text-blue-600 font-bold"
                   >
                     ✏️
                   </button>
                 )}
                 <button
                   onClick={() => eliminarTitular(t.id)}
-                  className="text-red-600 hover:text-red-800 font-bold"
+                  className="text-red-600 font-bold"
                 >
                   🗑️
                 </button>

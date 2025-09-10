@@ -10,7 +10,13 @@ export default function TropasCargadas() {
   useEffect(() => {
     api
       .get('/tropas')
-      .then((res) => setTropas(res.data))
+      .then((res) => {
+        const ordenadas = res.data.sort(
+          (a, b) => new Date(b.fecha) - new Date(a.fecha)
+        );
+        setTropas(ordenadas.slice(0, 6)); // ✅ solo las últimas 6
+      })
+
       .catch((err) => console.error('Error al obtener tropas:', err));
   }, []);
 

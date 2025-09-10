@@ -19,32 +19,41 @@ const FaenaPage = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
 
+  const fetchTropas = async () => {
+    try {
+      const res = await fetch('/api/faena/tropas');
+      const data = await res.json();
+
+      const disponibles = data.filter((t) => parseInt(t.total_a_faenar) > 0);
+      const ordenadas = disponibles.sort(
+        (a, b) => new Date(b.fecha) - new Date(a.fecha)
+      );
+      setTropas(ordenadas);
+    } catch (err) {
+      console.error('Error al cargar tropas', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchTropas = async () => {
-      try {
-        const res = await fetch('/api/faena/tropas');
-        const data = await res.json();
-        const ordenadas = data.sort(
-          (a, b) => new Date(b.fecha) - new Date(a.fecha)
-        );
-        setTropas(ordenadas);
-      } catch (err) {
-        console.error('Error al cargar tropas', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchTropas();
   }, []);
 
   const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
 
-  const handleFaenar = (t) => {
+  const handleFaenar = async (t) => {
     setRedirigiendoId(t.id_tropa);
     const destino = t.id_faena
       ? `/faena/${t.id_faena}`
       : `/faena/nueva/${t.id_tropa}`;
     navigate(destino);
+
+    // Refrescar tropas después de redirección
+    setTimeout(() => {
+      fetchTropas();
+      setRedirigiendoId(null);
+    }, 1000);
   };
 
   const esTropaVencida = (t) => {
@@ -122,7 +131,7 @@ const FaenaPage = () => {
         </div>
       ) : tropas.length === 0 ? (
         <div className="text-center text-slate-500 mt-10">
-          <p className="text-lg">No hay tropas cargadas aún.</p>
+          <p className="text-lg">No hay tropas disponibles para faenar.</p>
         </div>
       ) : isMobile ? (
         <div className="max-w-2xl mx-auto">
@@ -143,7 +152,7 @@ const FaenaPage = () => {
                 <th className="px-4 py-3">Departamento</th>
                 <th className="px-4 py-3">Titular Faena</th>
                 <th className="px-4 py-3">Especie</th>
-                <th className="px-4 py-3">Total tropa</th>
+                <th className="px-4 py-3">Total a faenar</th>
                 <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>

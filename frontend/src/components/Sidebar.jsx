@@ -148,7 +148,7 @@ export default function Sidebar() {
       </AnimatePresence>
 
       {/* Sidebar desktop (sin cambios) */}
-      <aside className="hidden lg:flex flex-col w-72 bg-gradient-to-b from-primary to-secondary min-h-screen p-6 shadow-xl">
+      <aside className="hidden lg:flex flex-col w-72 min-w-72 max-w-72 bg-gradient-to-b from-primary to-secondary min-h-screen p-6 shadow-xl">
         <div className="flex-1">
           <h2 className="text-xl font-bold text-white/90 mb-6">{title}</h2>
           <nav className="space-y-2">

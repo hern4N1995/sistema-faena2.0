@@ -1,31 +1,36 @@
 const pool = require('../db');
 
 const registrarFaena = async (req, res) => {
-  const { fecha_faena, categorias } = req.body;
+  const { id_tropa, fecha_faena, categorias } = req.body;
 
-  if (!fecha_faena || !Array.isArray(categorias) || categorias.length === 0) {
+  if (
+    !id_tropa ||
+    !fecha_faena ||
+    !Array.isArray(categorias) ||
+    categorias.length === 0
+  ) {
     return res.status(400).json({ error: 'Datos incompletos o inválidos' });
   }
 
   try {
-    // Crear faena principal
+    // Insertar faena principal
     const faenaRes = await pool.query(
-      `INSERT INTO faena (fecha_faena) VALUES ($1) RETURNING id_faena`,
-      [fecha_faena],
+      `INSERT INTO faena (id_tropa, fecha_faena) VALUES ($1, $2) RETURNING id_faena`,
+      [id_tropa, fecha_faena],
     );
-    const id_faena = faenaRes.rows[0].id_faena;
 
+    const id_faena = faenaRes.rows[0].id_faena;
     const detallesInsertados = [];
 
     for (const cat of categorias) {
       const { id_tropa_detalle, cantidad } = cat;
 
       if (!id_tropa_detalle || typeof cantidad !== 'number' || cantidad <= 0) {
-        console.warn('Categoría inválida:', cat);
+        console.warn('❌ Categoría inválida:', cat);
         continue;
       }
 
-      // Validar remanente
+      // Validar remanente disponible
       const remanenteRes = await pool.query(
         `SELECT cantidad - COALESCE((
            SELECT SUM(cantidad_faena)
@@ -45,7 +50,7 @@ const registrarFaena = async (req, res) => {
         });
       }
 
-      // Insertar detalle
+      // Insertar detalle de faena
       await pool.query(
         `INSERT INTO faena_detalle (id_faena, id_tropa_detalle, cantidad_faena)
          VALUES ($1, $2, $3)`,
@@ -57,6 +62,8 @@ const registrarFaena = async (req, res) => {
 
     res.status(201).json({
       id_faena,
+      id_tropa,
+      fecha_faena,
       detalles: detallesInsertados,
     });
   } catch (err) {

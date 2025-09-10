@@ -7,15 +7,12 @@ const DetalleFaenaPage = () => {
   const navigate = useNavigate();
   const [faena, setFaena] = useState(null);
   const [modo] = useState('crear');
-  const [resumen, setResumen] = useState(null);
+  const [resumen, setResumen] = useState(null); // ✅ agregado
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-
     fetch(`/api/tropas/${idTropa}/detalle`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then(setFaena)
@@ -31,7 +28,7 @@ const DetalleFaenaPage = () => {
     }
 
     const payload = {
-      id_tropa: faena.id_tropa, // ✅ agregado
+      id_tropa: faena.id_tropa,
       fecha_faena: datos.fecha,
       categorias: datos.categorias
         .filter((c) => c.cantidad > 0)
@@ -46,10 +43,8 @@ const DetalleFaenaPage = () => {
       return;
     }
 
-    console.log('Payload enviado:', payload);
-
     try {
-      const res = await fetch('/api/faena', {
+      const res = await fetch('/api/faena/faena', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,25 +64,24 @@ const DetalleFaenaPage = () => {
         return;
       }
 
+      if (res.status === 400) {
+        const error = await res.json();
+        alert(`❌ Error: ${error?.error || 'Datos inválidos'}`);
+        return;
+      }
+
       if (!res.ok) throw new Error('Error al guardar faena');
 
       const result = await res.json();
-      alert('✅ Faena creada correctamente');
+      alert('✅ Faena registrada correctamente');
 
       setResumen({
+        id_faena: result.id_faena,
         fecha: datos.fecha,
         n_tropa: faena.n_tropa,
         especie: faena.especie,
         categorias: datos.categorias,
       });
-
-      // Redirección opcional
-      const primeraFaena = result.faenas?.[0]?.id_faena;
-      if (primeraFaena) {
-        navigate(`/faena/${primeraFaena}`);
-      } else {
-        navigate('/faenas');
-      }
     } catch (err) {
       console.error('Error al guardar faena:', err);
       alert('❌ No se pudo guardar la faena');
@@ -101,7 +95,9 @@ const DetalleFaenaPage = () => {
           Faena
         </h1>
 
-        {faena ? (
+        {resumen ? (
+          <ResumenFaena resumen={resumen} />
+        ) : faena ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               <Card title="N° de Tropa" value={faena.n_tropa} />
@@ -140,6 +136,41 @@ const Card = ({ title, value }) => (
   <div className="bg-white rounded-xl shadow border border-slate-200 p-4 text-center">
     <p className="text-xs text-slate-500 mb-1">{title}</p>
     <p className="text-lg font-semibold text-slate-800">{value}</p>
+  </div>
+);
+
+const ResumenFaena = ({ resumen }) => (
+  <div className="w-full max-w-3xl mx-auto space-y-6 bg-green-50 border border-green-200 rounded-xl p-6">
+    <h2 className="text-xl font-bold text-green-800">
+      ✅ Faena registrada correctamente
+    </h2>
+    <p>
+      <strong>ID Faena:</strong> {resumen.id_faena}
+    </p>
+    <p>
+      <strong>Tropa:</strong> {resumen.n_tropa}
+    </p>
+    <p>
+      <strong>Fecha:</strong> {resumen.fecha}
+    </p>
+    <p>
+      <strong>Especie:</strong> {resumen.especie}
+    </p>
+    <h3 className="font-semibold mt-4">Categorías faenadas:</h3>
+    <ul className="list-disc pl-5 text-slate-700">
+      {resumen.categorias.map((cat, i) => (
+        <li key={i}>
+          {cat.nombre || `Detalle ${cat.id_tropa_detalle}`}: {cat.cantidad}{' '}
+          animales
+        </li>
+      ))}
+    </ul>
+    <button
+      onClick={() => (window.location.href = '/faena')}
+      className="mt-6 px-6 py-3 rounded-lg bg-green-700 text-white font-semibold hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-600 transition"
+    >
+      🔙 Volver a FaenaPage
+    </button>
   </div>
 );
 

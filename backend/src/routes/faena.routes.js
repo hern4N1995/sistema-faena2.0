@@ -1,27 +1,3 @@
-/* const express = require('express');
-const router = express.Router();
-const {
-  obtenerFaenas,
-  crearFaena,
-} = require('../controllers/faena.controller');
-
-const { verificarToken } = require('../middleware/auth');
-const { permitirRoles } = require('../middleware/roles');
-
-// Solo usuarios con rol 1 (admin) o 2 (superadmin) pueden ver faenas
-router.get('/', verificarToken, permitirRoles(1, 2), obtenerFaenas);
-
-// Solo superadmin puede crear faenas
-router.post('/', verificarToken, permitirRoles(2), crearFaena);
-
-/* Ruta para obtener todas las faenas
-router.get('/', obtenerFaenas);
-
- Ruta para crear una nueva faena
-router.post('/', crearFaena);
-
-module.exports = router;
- */
 const express = require('express');
 const router = express.Router();
 
@@ -29,6 +5,8 @@ const {
   obtenerFaenas,
   crearFaena,
   obtenerRemanentePorTropa,
+  getFaenasRealizadas, // ✅ para vista Decomisos
+  obtenerFaenaPorId, // ✅ agregado correctamente
 } = require('../controllers/faena.controller');
 
 const { verificarToken } = require('../middleware/auth');
@@ -40,12 +18,23 @@ router.get('/', verificarToken, permitirRoles(1, 2), obtenerFaenas);
 router.post('/', verificarToken, permitirRoles(2), crearFaena);
 router.post('/faena', verificarToken, permitirRoles(1, 2, 3), registrarFaena);
 
-router.get('/faena/tropas', obtenerFaenas);
+router.get('/tropas', obtenerFaenas);
 router.get(
   '/remanente',
   verificarToken,
   permitirRoles(1, 2),
   obtenerRemanentePorTropa,
 );
+
+// ✅ Faenas realizadas (para vista Decomisos)
+router.get(
+  '/realizadas',
+  verificarToken,
+  permitirRoles(1, 2, 3),
+  getFaenasRealizadas,
+);
+
+// ✅ Faena individual por ID
+router.get('/:id', verificarToken, permitirRoles(1, 2, 3), obtenerFaenaPorId);
 
 module.exports = router;

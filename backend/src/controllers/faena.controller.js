@@ -1,61 +1,3 @@
-/* const pool = require('../config/db');
-const { login } = require('../routes/auth.routes');
-
-
-//OBTENER FAENAS
-const obtenerFaenas = async (req, res) => {
-  try {
-    const resultado = await pool.query('SELECT * FROM faenas');
-    res.json(resultado.rows);
-  } catch (error) {
-    console.error('Error al listar faenas:', error);
-    res.status(500).json({ error: 'Error al obtener faenas' });
-  }
-};
-
-// Crear una nueva faena (POST)
-const crearFaena = async (req, res) => {
-  try {
-    const {
-      fecha,
-      dte,
-      guiaPolicial,
-      nroUsuario,
-      guiaExtendida,
-      procedencia,
-      titular,
-    } = req.body;
-
-    const resultado = await pool.query(
-      `INSERT INTO faenas (fecha, dte, guia_policial, nro_usuario, guia_extendida, procedencia, titular)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [
-        fecha,
-        dte,
-        guiaPolicial,
-        nroUsuario,
-        guiaExtendida,
-        procedencia,
-        titular,
-      ],
-    );
-
-    res.status(201).json(resultado.rows[0]);
-  } catch (error) {
-    console.error('Error al crear faena:', error);
-    res.status(500).json({ error: 'Error al crear faena' });
-  }
-};
-
-
-//LOGIN TRATAMOS DE QUE FUNCIONES
-
-
-module.exports = { obtenerFaenas, crearFaena };
- */
-
-//ACA EMPIEZO A METER MANO by HERNAN//
-
 const pool = require('../db');
 
 const obtenerFaenas = async (req, res) => {
@@ -213,8 +155,72 @@ const obtenerRemanentePorTropa = async (req, res) => {
   }
 };
 
+const getFaenasRealizadas = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        f.id_faena,
+        f.fecha_faena AS fecha,
+        t.n_tropa,
+        (
+          SELECT e.descripcion
+          FROM tropa_detalle td
+          JOIN especie e ON td.id_especie = e.id_especie
+          WHERE td.id_tropa = t.id_tropa
+          LIMIT 1
+        ) AS especie
+      FROM faena f
+      JOIN tropa t ON f.id_tropa = t.id_tropa
+      ORDER BY f.fecha_faena DESC
+      LIMIT 20
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener faenas realizadas:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+const obtenerFaenaPorId = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT 
+        f.id_faena,
+        f.fecha_faena AS fecha,
+        t.n_tropa,
+        (
+          SELECT e.descripcion
+          FROM tropa_detalle td
+          JOIN especie e ON td.id_especie = e.id_especie
+          WHERE td.id_tropa = t.id_tropa
+          LIMIT 1
+        ) AS especie
+      FROM faena f
+      JOIN tropa t ON f.id_tropa = t.id_tropa
+      WHERE f.id_faena = $1
+      LIMIT 1
+    `,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Faena no encontrada' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al obtener faena por ID:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
 module.exports = {
   obtenerFaenas,
   crearFaena,
   obtenerRemanentePorTropa, // ✅ exportación agregada
+  getFaenasRealizadas,
+  obtenerFaenaPorId,
 };

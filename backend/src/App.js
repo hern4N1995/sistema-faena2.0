@@ -38,7 +38,7 @@ app.use('/api/tropas', tropaRoutes);
 app.use('/api', require('./routes/faena.routes'));
 app.use('/api', provinciaRoutes);
 app.use('/api/departamentos', departamentoRoutes);
-app.use('/api/plantas', plantaRoutes);
+app.use('/api', plantaRoutes);
 app.use('/api', titularFaenaRoutes);
 app.use('/api', especieRoutes);
 app.use('/', categoriaEspecieRoutes); // o '/api' si usás prefijo

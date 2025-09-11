@@ -30,9 +30,11 @@ CREATE TABLE IF NOT EXISTS planta(
     id_planta SERIAL PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
     fecha_habilitacion DATE,
-    norma_legal varchar(20),
-    estado BOOLEAN DEFAULT TRUE
-)
+    norma_legal varchar(255),
+    estado BOOLEAN DEFAULT TRUE,
+    id_provincia INTEGER,
+    direccion VARCHAR(100)
+);
 
 CREATE TABLE IF NOT EXISTS departamento(
 	id_departamento SERIAL PRIMARY KEY,

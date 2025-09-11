@@ -1,8 +1,15 @@
-// routes/planta.routes.js
 const express = require('express');
-const { obtenerPlantas } = require('../controllers/planta.controller');
 const router = express.Router();
+const {
+  obtenerPlantas,
+  crearPlanta,
+  modificarPlanta,
+  eliminarPlanta,
+} = require('../controllers/planta.controller');
 
-router.get('/', obtenerPlantas);
+router.get('/plantas', obtenerPlantas);
+router.post('/plantas', crearPlanta);
+router.put('/plantas/:id', modificarPlanta);
+router.delete('/plantas/:id', eliminarPlanta);
 
 module.exports = router;

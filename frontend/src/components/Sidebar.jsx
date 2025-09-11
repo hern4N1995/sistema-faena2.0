@@ -8,22 +8,17 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const sidebarRef = useRef(null);
 
-  const [user, setUser] = useState(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  /* ---------- usuario ---------- */
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user'));
+  } catch {
+    user = null;
+  }
+  if (!user) return null;
+  const rol = String(user.rol);
 
-  useEffect(() => {
-    try {
-      const storedUser = JSON.parse(localStorage.getItem('user'));
-      setUser(storedUser);
-    } catch {
-      setUser(null);
-    } finally {
-      setLoadingUser(false);
-    }
-  }, []);
-
-  const rol = user ? String(user.rol) : null;
-
+  /* ---------- menú dinámico ---------- */
   const menuConfig = [
     {
       prefix: '/faena',
@@ -70,18 +65,21 @@ export default function Sidebar() {
     },
   ];
 
-  const match =
-    rol &&
-    menuConfig.find(
-      ({ prefix, roles }) => pathname.startsWith(prefix) && roles.includes(rol)
-    );
+  const match = menuConfig.find(
+    ({ prefix, roles }) => pathname.startsWith(prefix) && roles.includes(rol)
+  );
+  if (!match) return null;
 
+  const { title, menu: currentMenu } = match;
+
+  /* ---------- estilos de link ---------- */
   const linkClass = ({ isActive }) =>
     `block px-4 py-3 rounded-xl transition-all duration-200 ` +
     (isActive
       ? 'bg-white/20 text-white font-semibold shadow-lg'
       : 'text-white/80 hover:bg-white/10 hover:text-white');
 
+  /* ---------- cerrar al clickear fuera ---------- */
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (sidebarRef.current && !sidebarRef.current.contains(e.target)) {
@@ -97,77 +95,76 @@ export default function Sidebar() {
 
   return (
     <>
-      {!match ? null : (
-        <>
-          {!open && (
+      {/* Botón para abrir (solo si está cerrado) */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="lg:hidden fixed top-24 left-4 z-50 bg-primary/90 backdrop-blur text-white p-3 rounded-full shadow-xl"
+        >
+          <HiMenu size={22} />
+        </button>
+      )}
+
+      {/* Sidebar móvil con animación */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={sidebarRef}
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'tween', duration: 0.3 }}
+            className="fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-primary to-secondary flex flex-col shadow-2xl"
+          >
+            {/* Botón de cerrar dentro */}
             <button
-              onClick={() => setOpen(true)}
-              className="lg:hidden fixed top-24 left-4 z-50 bg-primary/90 backdrop-blur text-white p-3 rounded-full shadow-xl"
+              onClick={() => setOpen(false)}
+              className="absolute top-6 right-4 text-white/80 hover:text-white transition"
             >
-              <HiMenu size={22} />
+              <HiX size={24} />
             </button>
-          )}
 
-          <AnimatePresence>
-            {open && (
-              <motion.div
-                ref={sidebarRef}
-                initial={{ x: '-100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '-100%' }}
-                transition={{ type: 'tween', duration: 0.3 }}
-                className="fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-primary to-secondary flex flex-col shadow-2xl"
-              >
-                <button
-                  onClick={() => setOpen(false)}
-                  className="absolute top-6 right-4 text-white/80 hover:text-white transition"
-                >
-                  <HiX size={24} />
-                </button>
-
-                <div className="p-6 pt-20 flex-1 flex flex-col">
-                  <h2 className="text-xl font-bold text-white/90 mb-6 tracking-tight">
-                    {match.title}
-                  </h2>
-                  <nav className="space-y-2">
-                    {match.menu.map(({ to, label }) => (
-                      <NavLink
-                        key={to}
-                        to={to}
-                        end={to === match.prefix}
-                        className={linkClass}
-                        onClick={() => setOpen(false)}
-                      >
-                        {label}
-                      </NavLink>
-                    ))}
-                  </nav>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <aside className="hidden lg:flex flex-col w-72 min-w-72 max-w-72 bg-gradient-to-b from-primary to-secondary min-h-screen p-6 shadow-xl">
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-white/90 mb-6">
-                {match.title}
+            {/* Contenido con espacio superior para no solaparse */}
+            <div className="p-6 pt-20 flex-1 flex flex-col">
+              <h2 className="text-xl font-bold text-white/90 mb-6 tracking-tight">
+                {title}
               </h2>
               <nav className="space-y-2">
-                {match.menu.map(({ to, label }) => (
+                {currentMenu.map(({ to, label }) => (
                   <NavLink
                     key={to}
                     to={to}
                     end={to === match.prefix}
                     className={linkClass}
+                    onClick={() => setOpen(false)}
                   >
                     {label}
                   </NavLink>
                 ))}
               </nav>
             </div>
-          </aside>
-        </>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar desktop (sin cambios) */}
+      <aside className="hidden lg:flex flex-col w-72 min-w-72 max-w-72 bg-gradient-to-b from-primary to-secondary min-h-screen p-6 shadow-xl">
+        <div className="flex-1">
+          <h2 className="text-xl font-bold text-white/90 mb-6">{title}</h2>
+          <nav className="space-y-2">
+            {currentMenu.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === match.prefix}
+                className={linkClass}
+              >
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+      </aside>
     </>
   );
 }

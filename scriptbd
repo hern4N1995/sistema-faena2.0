@@ -23,7 +23,9 @@ CREATE TABLE IF NOT EXISTS categoria_especie(
 CREATE TABLE IF NOT EXISTS productor(
 	id_productor SERIAL PRIMARY KEY,
 	cuit VARCHAR(30),
-	nombre VARCHAR(50)
+	nombre VARCHAR(50),
+    estado BOOLEAN DEFAULT True,
+    creado_en TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS planta(

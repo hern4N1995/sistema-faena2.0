@@ -4,18 +4,18 @@ const pool = require('../db');
 const obtenerPlantas = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT p.id_planta AS id,
-       p.nombre,
-       p.id_provincia,
-       pr.descripcion AS provincia,
-       p.direccion,
-       p.fecha_habilitacion,
-       p.norma_legal,
-       p.estado
-FROM planta p
-LEFT JOIN provincia pr ON p.id_provincia = pr.id_provincia
-ORDER BY p.id_planta;
-
+      SELECT 
+        p.id_planta,
+        p.nombre,
+        p.id_provincia,
+        pr.descripcion AS provincia,
+        p.direccion,
+        p.fecha_habilitacion,
+        p.norma_legal,
+        p.estado
+      FROM planta p
+      LEFT JOIN provincia pr ON p.id_provincia = pr.id_provincia
+      ORDER BY p.id_planta;
     `);
     res.json(result.rows);
   } catch (error) {
@@ -47,9 +47,15 @@ const crearPlanta = async (req, res) => {
         nombre, id_provincia, direccion,
         fecha_habilitacion, norma_legal, estado
       )
-      VALUES ($1,$2,$3,$4,$5,$6)
-      RETURNING id_planta AS id, nombre, id_provincia, direccion,
-                fecha_habilitacion, norma_legal, estado`,
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING 
+        id_planta,
+        nombre,
+        id_provincia,
+        direccion,
+        fecha_habilitacion,
+        norma_legal,
+        estado`,
       [
         nombre.trim(),
         id_provincia,
@@ -88,8 +94,14 @@ const modificarPlanta = async (req, res) => {
            norma_legal = $5,
            estado = $6
        WHERE id_planta = $7
-       RETURNING id_planta AS id, nombre, id_provincia, direccion,
-                 fecha_habilitacion, norma_legal, estado`,
+       RETURNING 
+         id_planta,
+         nombre,
+         id_provincia,
+         direccion,
+         fecha_habilitacion,
+         norma_legal,
+         estado`,
       [
         nombre?.trim() || '',
         id_provincia || null,
@@ -120,7 +132,7 @@ const eliminarPlanta = async (req, res) => {
       `UPDATE planta
        SET estado = false
        WHERE id_planta = $1
-       RETURNING id_planta AS id`,
+       RETURNING id_planta`,
       [id],
     );
 
@@ -128,7 +140,12 @@ const eliminarPlanta = async (req, res) => {
       return res.status(404).json({ error: 'Planta no encontrada' });
     }
 
-    res.status(200).json({ message: 'Planta deshabilitada correctamente', id });
+    res
+      .status(200)
+      .json({
+        message: 'Planta deshabilitada correctamente',
+        id_planta: update.rows[0].id_planta,
+      });
   } catch (error) {
     console.error('Error al deshabilitar planta:', error.message);
     res.status(500).json({ error: 'Error al deshabilitar planta' });

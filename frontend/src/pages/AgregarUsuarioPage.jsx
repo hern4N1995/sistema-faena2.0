@@ -58,9 +58,10 @@ const AgregarUsuarioPage = () => {
   };
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
   };
 
@@ -107,7 +108,7 @@ const AgregarUsuarioPage = () => {
       password: '',
       estado: u.estado,
       id_rol: u.id_rol,
-      id_planta: u.id_planta,
+      id_planta: parseInt(u.id_planta, 10),
       n_telefono: u.n_telefono || '',
     });
     setEditandoId(u.id_usuario);
@@ -219,23 +220,22 @@ const AgregarUsuarioPage = () => {
 
           <select
             name="id_planta"
-            value={form.id_planta}
+            value={form.id_planta || ''}
             onChange={handleChange}
             required
             className="border rounded px-3 py-2"
           >
             <option value="">-- Seleccionar Planta --</option>
-            {plantas.length > 0 ? (
-              plantas.map((p) => (
-                <option key={p.id_planta} value={p.id_planta}>
+            {plantas
+              .filter((p) => typeof p.id_planta !== 'undefined' && p.nombre)
+              .map((p) => (
+                <option
+                  key={`planta-${p.id_planta}`}
+                  value={String(p.id_planta)}
+                >
                   {p.nombre}
                 </option>
-              ))
-            ) : (
-              <option disabled value="">
-                No hay plantas disponibles
-              </option>
-            )}
+              ))}
           </select>
 
           <select
@@ -290,9 +290,11 @@ const AgregarUsuarioPage = () => {
                   </strong>{' '}
                   — DNI: {u.dni} — {u.email} — Tel: {u.n_telefono} — Rol:{' '}
                   {u.id_rol === 2 ? 'Supervisor' : 'Usuario'} — Planta:{' '}
-                  {u.planta_nombre || `ID ${u.id_planta}`} — Estado: {u.estado}{' '}
-                  — Creado: {new Date(u.creado_en).toLocaleDateString()}
+                  {u.planta_nombre || `ID ${u.id_planta}`} — Estado:{' '}
+                  {u.estado ? 'Activo' : 'Inactivo'} — Creado:{' '}
+                  {new Date(u.creado_en).toLocaleDateString()}
                 </div>
+
                 <div className="space-x-2">
                   <button
                     onClick={() => handleEditar(u)}

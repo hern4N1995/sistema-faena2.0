@@ -31,7 +31,7 @@ export default function Sidebar() {
       roles: ['1', '2', '3'],
       menu: [
         { to: '/faena', label: 'Tropas a Faenar' },
-        { to: '/faena/remanente', label: 'Remanente' },
+        { to: '/faena/faenas-realizadas', label: 'Faenas Realizadas' },
       ],
     },
     {
@@ -49,12 +49,7 @@ export default function Sidebar() {
       roles: ['1'],
       menu: [{ to: '/decomisos', label: 'Decomisos' }],
     },
-    {
-      prefix: '/remanentes',
-      title: 'Gestión de Remanentes',
-      roles: ['1', '2', '3'],
-      menu: [{ to: '/remanentes', label: 'Remanentes' }],
-    },
+
     {
       prefix: '/admin',
       title: 'Gestión Administrativa',

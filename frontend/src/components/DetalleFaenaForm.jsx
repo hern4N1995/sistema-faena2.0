@@ -219,7 +219,7 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
               type="submit"
               className="w-full md:w-auto px-6 py-3 rounded-lg bg-green-700 text-white font-semibold hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-600 transition"
             >
-              {modo === 'editar' ? 'Actualizar faena' : 'Crear faena'}
+              {modo === 'editar' ? 'Actualizar faena' : 'Registrar faena'}
             </button>
           )}
         </form>

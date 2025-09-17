@@ -12,7 +12,7 @@ import Login from './pages/Login.jsx';
 import TropasCargadas from './pages/TropasCargadas.jsx';
 import FaenaPage from './pages/FaenaPage.jsx';
 import DetalleFaenaPage from './pages/DetalleFaenaPage.jsx';
-import RemanenteFaenaPage from './pages/RemanenteFaenaPage.jsx';
+import FaenasRealizadasPage from './pages/FaenasRealizadasPage.jsx';
 import ProvinciaAdmin from './pages/ProvinciaAdmin.jsx';
 import TitularAdmin from './pages/TitularAdmin.jsx';
 import AgregarUsuarioPage from './pages/AgregarUsuarioPage.jsx';
@@ -54,6 +54,10 @@ function App() {
             {/* modo creación */}
             <Route path=":idFaena" element={<DetalleFaenaPage />} />{' '}
             {/* modo edición */}
+            <Route
+              path="/faena/faenas-realizadas"
+              element={<FaenasRealizadasPage />}
+            />
           </Route>
 
           <Route

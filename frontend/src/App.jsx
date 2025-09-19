@@ -22,6 +22,7 @@ import PlantaAdmin from './pages/PlantaAdmin.jsx';
 import ProductorAdmin from './pages/ProductorAdmin.jsx';
 import DecomisoPage from './pages/DecomisoPage.jsx';
 import DetalleDecomisoPage from './pages/DetalleDecomisoPage.jsx';
+import FaenasADecomisar from './pages/FaenasADecomisar.jsx';
 
 function App() {
   return (
@@ -41,11 +42,12 @@ function App() {
             path="/tropas-cargadas/resumen/:id"
             element={<InformeTropa />}
           />
-          <Route path="decomisos" element={<DecomisoPage />} />
-          <Route
-            path="/decomiso/detalle/:idFaena"
-            element={<DetalleDecomisoPage />}
-          />
+          {/* Decomiso y sus subrutas */}
+          <Route path="decomisos">
+            <Route index element={<FaenasADecomisar />} />
+            <Route path="nuevo/:id_faena" element={<DecomisoPage />} />
+            <Route path="detalle/:idFaena" element={<DetalleDecomisoPage />} />
+          </Route>
 
           {/* Faena y sus subrutas */}
           <Route path="faena">

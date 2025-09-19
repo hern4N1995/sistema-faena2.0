@@ -230,9 +230,37 @@ const obtenerRemanentePorTropa = async (req, res) => {
   }
 };
 
+//ObtenerDatosParaDecomiso
+const obtenerDatosParaDecomiso = async (req, res) => {
+  const { id_faena } = req.params;
+
+  try {
+    const query = `
+      SELECT 
+        esp.descripcion AS especie,
+        cat.descripcion AS categoria,
+        SUM(fd.cantidad_faena) AS faenados,
+        td.id_tropa_detalle
+      FROM faena_detalle fd
+      JOIN tropa_detalle td ON fd.id_tropa_detalle = td.id_tropa_detalle
+      JOIN especie esp ON td.id_especie = esp.id_especie
+      JOIN categoria_especie cat ON td.id_cat_especie = cat.id_cat_especie
+      WHERE fd.id_faena = $1
+      GROUP BY esp.descripcion, cat.descripcion, td.id_tropa_detalle
+    `;
+
+    const resultado = await pool.query(query, [id_faena]);
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('Error al obtener datos para decomiso:', error.message);
+    res.status(500).json({ error: 'Error al obtener datos para decomiso' });
+  }
+};
+
 module.exports = {
   obtenerFaenas,
   crearFaena,
   obtenerFaenasRealizadas,
   obtenerRemanentePorTropa,
+  obtenerDatosParaDecomiso,
 };

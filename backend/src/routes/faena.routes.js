@@ -14,8 +14,10 @@ const {
   obtenerFaenasRealizadas,
   // otros controladores...
 } = require('../controllers/faena.controller');
+const { obtenerDatosParaDecomiso } = require('../controllers/faena.controller');
 
 // Rutas protegidas
+router.get('/faena/:id_faena/decomiso-datos', obtenerDatosParaDecomiso);
 router.get('/faenas-realizadas', obtenerFaenasRealizadas);
 router.get('/', verificarToken, permitirRoles(1, 2), obtenerFaenas);
 router.post('/', verificarToken, permitirRoles(2), crearFaena);

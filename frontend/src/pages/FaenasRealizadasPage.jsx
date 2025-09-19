@@ -41,7 +41,7 @@ const FaenasRealizadasPage = () => {
   const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
 
   const handleDecomisar = (id_faena) => {
-    navigate(`/decomiso/nuevo/${id_faena}`);
+    navigate(`/decomisos/nuevo/${id_faena}`);
   };
 
   return (

@@ -14,6 +14,7 @@ const provinciaRoutes = require('./routes/provincia.routes');
 const departamentoRoutes = require('./routes/departamento.routes');
 const titularFaenaRoutes = require('./routes/titularFaena.routes');
 const productorRoutes = require('./routes/productor.routes');
+const decomisoRoutes = require('./routes/decomisos.routes');
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/', categoriaEspecieRoutes); // o '/api' si usás prefijo
 app.use('/api', productorRoutes);
 /* app.use('/api', require('./routes/tropa.routes'));  COMENTADO 04-09*/
 app.use('/api/faena', require('./routes/faena.routes'));
+app.use('/api', decomisoRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

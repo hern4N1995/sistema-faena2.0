@@ -15,6 +15,7 @@ const departamentoRoutes = require('./routes/departamento.routes');
 const titularFaenaRoutes = require('./routes/titularFaena.routes');
 const productorRoutes = require('./routes/productor.routes');
 const decomisoRoutes = require('./routes/decomisos.routes');
+const afeccionRoutes = require('./routes/afeccion.routes');
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api', productorRoutes);
 /* app.use('/api', require('./routes/tropa.routes'));  COMENTADO 04-09*/
 app.use('/api/faena', require('./routes/faena.routes'));
 app.use('/api', decomisoRoutes);
+app.use('/api', afeccionRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -23,6 +23,7 @@ import ProductorAdmin from './pages/ProductorAdmin.jsx';
 import DecomisoPage from './pages/DecomisoPage.jsx';
 import DetalleDecomisoPage from './pages/DetalleDecomisoPage.jsx';
 import FaenasADecomisar from './pages/FaenasADecomisar.jsx';
+import AfeccionesAdmin from './pages/AfeccionesAdmin.jsx';
 
 function App() {
   return (
@@ -111,6 +112,15 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="admin/afecciones"
+            element={
+              <PrivateRoute allowedRoles={[1, 2]}>
+                <AfeccionesAdmin />
+              </PrivateRoute>
+            }
+          />
+
           {/* Fallback 404 */}
           <Route
             path="*"

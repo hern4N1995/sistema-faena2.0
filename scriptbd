@@ -9,16 +9,17 @@ CREATE TABLE IF NOT EXISTS provincia(
     descripcion VARCHAR(20) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS enfermedad(
-    id_enfermedad SERIAL PRIMARY KEY,
-    descripcion VARCHAR(20) NOT NULL
-);
+
 
 CREATE TABLE IF NOT EXISTS categoria_especie(
     id_cat_especie SERIAL PRIMARY KEY,
     descripcion VARCHAR(25) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS tipo_parte_deco(
+    id_tipo_parte SERIAL PRIMARY KEY,
+    nombre_tipo_parte VARCHAR(100) NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS productor(
 	id_productor SERIAL PRIMARY KEY,
@@ -26,6 +27,18 @@ CREATE TABLE IF NOT EXISTS productor(
 	nombre VARCHAR(50),
     estado BOOLEAN DEFAULT True,
     creado_en TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS veterinario (
+    id_veterinario SERIAL PRIMARY KEY,
+    nombre_vet VARCHAR(50) NOT NULL,
+	apellido_vet VARCHAR(50) NOT NULL,
+    matricula VARCHAR(20) NOT NULL,
+	dni INTEGER NOT NULL,  
+    email VARCHAR(100) NOT NULL,
+	n_telefono BIGINT,
+    estado BOOLEAN DEFAULT TRUE,           -- TRUE = activo / FALSE = inactivo
+    fecha_creacion TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS planta(
@@ -36,6 +49,11 @@ CREATE TABLE IF NOT EXISTS planta(
     estado BOOLEAN DEFAULT TRUE,
     id_provincia INTEGER,
     direccion VARCHAR(100)
+);
+
+CREATE TABLE IF NOT EXISTS tipo_parte_deco(
+    id_tipo_parte SERIAL PRIMARY KEY,
+    nombre_tipo_parte VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS departamento(
@@ -66,6 +84,13 @@ CREATE TABLE IF NOT EXISTS titular_faena (
     CONSTRAINT fk_id_provincia FOREIGN KEY (id_provincia) REFERENCES provincia(id_provincia)
 );
 
+CREATE TABLE IF NOT EXISTS parte_decomisada(
+    id_parte_decomisada SERIAL PRIMARY KEY,
+    nombre_parte VARCHAR(100) NOT NULL,
+	id_tipo_parte INTEGER NOT NULL,
+
+	CONSTRAINT FK_id_tipo_parte FOREIGN KEY (id_tipo_parte) REFERENCES tipo_parte_deco(id_tipo_parte)
+);
 
 
 
@@ -109,17 +134,48 @@ CREATE TABLE IF NOT EXISTS faena (
     CONSTRAINT FK_id_tropa_detalle FOREIGN KEY (id_tropa_detalle) REFERENCES tropa_detalle(id_tropa_detalle)
 );
 
+CREATE TABLE IF NOT EXISTS faena_veterinario (
+    id_faena_veterinario SERIAL PRIMARY KEY,
+    id_faena INTEGER NOT NULL,
+	id_veterinario INTEGER NOT NULL,
 
+	CONSTRAINT FK_id_faena FOREIGN KEY (id_faena) REFERENCES faena(id_faena),
+	CONSTRAINT FK_id_veterinario FOREIGN KEY (id_veterinario) REFERENCES veterinario(id_veterinario)
+);
+
+CREATE TABLE IF NOT EXISTS planta_veterinario (
+    id_planta_veterinario SERIAL PRIMARY KEY,
+    id_veterinario INTEGER NOT NULL,
+	id_planta INTEGER NOT NULL,
+	fecha_desde TIMESTAMPTZ DEFAULT NOW(),
+	estado BOOLEAN DEFAULT TRUE,
+
+	CONSTRAINT FK_id_veterinario FOREIGN KEY (id_veterinario) REFERENCES veterinario(id_veterinario),
+	CONSTRAINT FK_id_planta FOREIGN KEY (id_planta) REFERENCES planta(id_planta)
+);
 
 CREATE TABLE IF NOT EXISTS decomiso(
     id_decomiso SERIAL INTEGER PRIMARY KEY,
     id_faena INTEGER NOT NULL,
-    id_enfermedad INTEGER NOT NULL,
     cantidad_afectados SMALLINT,
 
     CONSTRAINT FK_id_faena FOREIGN KEY (id_faena) REFERENCES faena(id_faena),
-    CONSTRAINT FK_id_enfermedad FOREIGN KEY (id_enfermedad) REFERENCES enfermedad(id_enfermedad)
 );
+
+
+
+
+CREATE TABLE IF NOT EXISTS parte_deco_afeccion (
+    id_parte_decomiso INT NOT NULL,
+    id_afeccion INT NOT NULL,
+    PRIMARY KEY (id_parte_decomiso, id_afeccion),
+    CONSTRAINT fk_parte_decomiso FOREIGN KEY (id_parte_decomiso) 
+        REFERENCES parte_decomiso (id_parte_decomiso) ON DELETE CASCADE,
+    CONSTRAINT fk_afeccion FOREIGN KEY (id_afeccion) 
+        REFERENCES afeccion (id_afeccion) ON DELETE CASCADE
+);
+
+
 
 CREATE TABLE IF NOT EXISTS remanente_tropa (
     id_remanente SERIAL PRIMARY KEY,
@@ -151,7 +207,7 @@ CREATE TABLE IF NOT EXISTS usuario (
     fecha_creacion TIMESTAMPTZ DEFAULT NOW(),
     id_rol INTEGER NOT NULL,
     id_planta INTEGER,
-    n_telefono VARCHAR(20),
+    n_telefono BIGINT,
 
     CONSTRAINT fk_id_rol FOREIGN KEY (id_rol) REFERENCES rol_usuario(id_rol),
     CONSTRAINT fk_id_planta FOREIGN KEY (id_planta) REFERENCES planta(id_planta)
@@ -161,6 +217,25 @@ CREATE TABLE especie_categoria (
   id_especie INTEGER REFERENCES especie(id_especie),
   id_cat_especie INTEGER REFERENCES categoria_especie(id_cat_especie),
   PRIMARY KEY (id_especie, id_cat_especie)
+);
+
+CREATE TABLE IF NOT EXISTS decomiso_detalle (
+    id_decomiso_detalle SERIAL PRIMARY KEY,
+    id_decomiso INTEGER NOT NULL,
+    cantidad INTEGER NOT NULL,
+    animales_afectados INTEGER,
+    observaciones TEXT,
+    peso_kg NUMERIC(10,2) NOT NULL,
+    id_afeccion INTEGER NOT NULL,
+    destino_decomiso VARCHAR(100) NOT NULL,
+    id_parte_decomisada INTEGER NOT NULL,
+
+
+    CONSTRAINT fk_id_decomiso FOREIGN KEY (id_decomiso)
+        REFERENCES decomiso(id_decomiso) ON DELETE CASCADE,
+        
+    CONSTRAINT fk_id_parte_decomisada FOREIGN KEY (id_parte_decomisada)
+        REFERENCES parte_decomiso(id_parte_decomiso) ON DELETE CASCADE
 );
 
 

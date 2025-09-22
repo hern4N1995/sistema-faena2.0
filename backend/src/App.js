@@ -16,6 +16,7 @@ const titularFaenaRoutes = require('./routes/titularFaena.routes');
 const productorRoutes = require('./routes/productor.routes');
 const decomisoRoutes = require('./routes/decomisos.routes');
 const afeccionRoutes = require('./routes/afeccion.routes');
+const veterinarioRoutes = require('./routes/veterinario.routes');
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/api', productorRoutes);
 app.use('/api/faena', require('./routes/faena.routes'));
 app.use('/api', decomisoRoutes);
 app.use('/api', afeccionRoutes);
+app.use('/api/veterinarios', veterinarioRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

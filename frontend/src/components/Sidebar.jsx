@@ -66,6 +66,7 @@ export default function Sidebar() {
         { to: '/admin/plantas', label: 'Plantas' },
         { to: '/admin/productores', label: 'Productores' },
         { to: '/admin/afecciones', label: 'Afecciones' },
+        { to: '/admin/veterinarios', label: 'Veterinarios' },
       ],
     },
   ];

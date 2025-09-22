@@ -24,6 +24,7 @@ import DecomisoPage from './pages/DecomisoPage.jsx';
 import DetalleDecomisoPage from './pages/DetalleDecomisoPage.jsx';
 import FaenasADecomisar from './pages/FaenasADecomisar.jsx';
 import AfeccionesAdmin from './pages/AfeccionesAdmin.jsx';
+import VeterinariosPage from './pages/VeterinariosPage.jsx';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
             path="/tropas-cargadas/resumen/:id"
             element={<InformeTropa />}
           />
+
           {/* Decomiso y sus subrutas */}
           <Route path="decomisos">
             <Route index element={<FaenasADecomisar />} />
@@ -68,6 +70,16 @@ function App() {
             element={
               <PrivateRoute allowedRoles={[1, 2]}>
                 <AgregarUsuarioPage />
+              </PrivateRoute>
+            }
+          />
+
+          {/*Veterinarios*/}
+          <Route
+            path="admin/veterinarios"
+            element={
+              <PrivateRoute allowedRoles={[1, 2]}>
+                <VeterinariosPage />
               </PrivateRoute>
             }
           />

@@ -50,14 +50,12 @@ const DecomisoPage = () => {
       const data = await res.json();
       const id_decomiso = data.id_decomiso;
 
-      // ✅ Cargar info de faena antes de redirigir
       const resInfo = await fetch(`/api/decomiso/${id_decomiso}/info-faena`);
       const info = await resInfo.json();
       setInfoFaena(info);
 
       alert('Decomisos registrados correctamente');
 
-      // ⏳ Esperar 1 segundo para que se vea la info antes de redirigir
       setTimeout(() => {
         navigate(`/decomiso/enfermedades/${id_decomiso}`);
       }, 1000);
@@ -67,78 +65,82 @@ const DecomisoPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-        🩺 Registrar Decomisos
-      </h1>
-
-      {infoFaena && (
-        <div className="max-w-3xl mx-auto mb-6 bg-gray-100 p-4 rounded ring-1 ring-gray-300">
-          <p>
-            <strong>Fecha de Faena:</strong> {infoFaena.fecha_faena}
-          </p>
-          <p>
-            <strong>DTE/DTU:</strong> {infoFaena.dte_dtu}
-          </p>
-          <p>
-            <strong>N° Tropa:</strong> {infoFaena.n_tropa}
-          </p>
-        </div>
-      )}
-
-      {loading ? (
-        <p className="text-center text-gray-500">Cargando datos...</p>
-      ) : datos.length === 0 ? (
-        <p className="text-center text-gray-500">
-          No hay animales faenados en esta faena.
-        </p>
-      ) : (
-        <div className="max-w-3xl mx-auto bg-white rounded-xl shadow p-6 ring-1 ring-gray-200">
-          <table className="w-full text-sm text-left text-gray-700">
-            <thead className="bg-green-700 text-white text-xs uppercase">
-              <tr>
-                <th className="px-4 py-2">Especie</th>
-                <th className="px-4 py-2">Categoría</th>
-                <th className="px-4 py-2">Faenados</th>
-                <th className="px-4 py-2">A Decomisar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datos.map((d) => (
-                <tr
-                  key={d.id_tropa_detalle}
-                  className="border-b last:border-b-0"
-                >
-                  <td className="px-4 py-2">{d.especie}</td>
-                  <td className="px-4 py-2">{d.categoria}</td>
-                  <td className="px-4 py-2 font-bold">{d.faenados}</td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="number"
-                      min="0"
-                      max={d.faenados}
-                      value={decomisos[d.id_tropa_detalle] || ''}
-                      onChange={(e) =>
-                        handleChange(d.id_tropa_detalle, e.target.value)
-                      }
-                      className="w-20 border rounded px-2 py-1"
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="mt-6 text-right">
-            <button
-              onClick={handleGuardar}
-              className="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 font-semibold"
-            >
-              Guardar Decomisos
-            </button>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 px-4 py-6">
+      <div className="max-w-4xl mx-auto">
+        {' '}
+        {/* <-- mismo ancho que header/footer */}
+        <h1 className="text-2xl font-bold text-gray-800 text-center mb-4">
+          🩺 Registrar Decomisos
+        </h1>
+        {infoFaena && (
+          <div className="mb-4 bg-white rounded-lg shadow p-3 grid grid-cols-3 gap-2 text-sm">
+            <div>
+              <p className="text-gray-500">Fecha</p>
+              <p className="font-semibold">{infoFaena.fecha_faena}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">DTE/DTU</p>
+              <p className="font-semibold">{infoFaena.dte_dtu}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Tropa</p>
+              <p className="font-semibold">{infoFaena.n_tropa}</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+        {loading ? (
+          <p className="text-center text-sm text-gray-500">Cargando...</p>
+        ) : datos.length === 0 ? (
+          <p className="text-center text-sm text-gray-500">Sin datos.</p>
+        ) : (
+          <div className="bg-white rounded-lg shadow p-3">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-green-700 text-white">
+                  <tr>
+                    <th className="px-2 py-2 text-left">Especie</th>
+                    <th className="px-2 py-2 text-left">Categoría</th>
+                    <th className="px-2 py-2 text-center">Faenados</th>
+                    <th className="px-2 py-2 text-center">Decomisar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datos.map((d) => (
+                    <tr key={d.id_tropa_detalle} className="border-b">
+                      <td className="px-2 py-2">{d.especie}</td>
+                      <td className="px-2 py-2">{d.categoria}</td>
+                      <td className="px-2 py-2 text-center font-bold">
+                        {d.faenados}
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <input
+                          type="number"
+                          min="0"
+                          max={d.faenados}
+                          value={decomisos[d.id_tropa_detalle] || ''}
+                          onChange={(e) =>
+                            handleChange(d.id_tropa_detalle, e.target.value)
+                          }
+                          className="w-16 border border-gray-300 rounded px-1 py-1 text-center text-sm"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={handleGuardar}
+                className="px-4 py-2 bg-green-700 text-white rounded text-sm font-semibold hover:bg-green-800"
+              >
+                Guardar Decomisos
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

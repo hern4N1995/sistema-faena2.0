@@ -18,7 +18,9 @@ CREATE TABLE IF NOT EXISTS categoria_especie(
 
 CREATE TABLE IF NOT EXISTS tipo_parte_deco(
     id_tipo_parte SERIAL PRIMARY KEY,
-    nombre_tipo_parte VARCHAR(100) NOT NULL
+    nombre_tipo_parte VARCHAR(100) NOT NULL,
+    estado BOOLEAN DEFAULT true,
+    fecha_creacion TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS productor(

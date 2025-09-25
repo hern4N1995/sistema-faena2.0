@@ -67,6 +67,8 @@ export default function Sidebar() {
         { to: '/admin/productores', label: 'Productores' },
         { to: '/admin/afecciones', label: 'Afecciones' },
         { to: '/admin/veterinarios', label: 'Veterinarios' },
+        { to: '/admin/partes-decomisadas', label: 'Partes Decomisadas' },
+        { to: '/admin/tipos-parte-decomisada', label: 'Tipos Decomisada' },
       ],
     },
   ];

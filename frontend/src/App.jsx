@@ -24,7 +24,9 @@ import DecomisoPage from './pages/DecomisoPage.jsx';
 import DetalleDecomisoPage from './pages/DetalleDecomisoPage.jsx';
 import FaenasADecomisar from './pages/FaenasADecomisar.jsx';
 import AfeccionesAdmin from './pages/AfeccionesAdmin.jsx';
-import VeterinariosPage from './pages/VeterinariosPage.jsx';
+import VeterinariosPage from './pages/veterinariosPage.jsx';
+import TipoParteDecomisadaAdmin from './pages/tipoParteDecomisadaAdmin.jsx';
+import ParteDecomisadaAdmin from './pages/ParteDecomisadaAdmin.jsx';
 
 function App() {
   return (
@@ -129,6 +131,24 @@ function App() {
             element={
               <PrivateRoute allowedRoles={[1, 2]}>
                 <AfeccionesAdmin />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="admin/partes-decomisadas"
+            element={
+              <PrivateRoute allowedRoles={[1, 2]}>
+                <ParteDecomisadaAdmin />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="admin/tipos-parte-decomisada"
+            element={
+              <PrivateRoute allowedRoles={[1, 2]}>
+                <TipoParteDecomisadaAdmin />
               </PrivateRoute>
             }
           />

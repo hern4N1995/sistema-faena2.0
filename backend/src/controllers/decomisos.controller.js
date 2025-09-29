@@ -28,23 +28,31 @@ const obtenerCombinaciones = async (req, res) => {
 // 📦 Cargar todos los tipos, partes y afecciones desde la base
 const obtenerDatosBaseDecomiso = async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT 
-        tpd.id_tipo_parte_deco,
-        tpd.nombre_tipo_parte,
-        pd.id_parte_decomisada,
-        pd.nombre_parte,
-        pd.id_tipo_parte_deco,
-        a.id_afeccion,
-        a.descripcion
-      FROM parte_decomisada pd
-      JOIN tipo_parte_deco tpd ON pd.id_tipo_parte_deco = tpd.id_tipo_parte_deco
-      CROSS JOIN afeccion a
-      WHERE pd.estado = true AND tpd.estado = true
-      ORDER BY tpd.nombre_tipo_parte, pd.nombre_parte, a.descripcion;
-    `);
+    const [tiposParte, partes, afecciones] = await Promise.all([
+      pool.query(`
+        SELECT id_tipo_parte_deco, nombre_tipo_parte
+        FROM tipo_parte_deco
+        WHERE estado = true
+        ORDER BY nombre_tipo_parte;
+      `),
+      pool.query(`
+        SELECT id_parte_decomisada, nombre_parte, id_tipo_parte_deco
+        FROM parte_decomisada
+        WHERE estado = true
+        ORDER BY nombre_parte;
+      `),
+      pool.query(`
+        SELECT id_afeccion, descripcion
+        FROM afeccion
+        ORDER BY descripcion;
+      `),
+    ]);
 
-    res.json(result.rows || []);
+    res.json({
+      tiposParte: tiposParte.rows,
+      partes: partes.rows,
+      afecciones: afecciones.rows,
+    });
   } catch (err) {
     console.error('❌ Error al obtener datos base de decomiso:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });

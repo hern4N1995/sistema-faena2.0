@@ -28,12 +28,10 @@ const DecomisoPage = () => {
   useEffect(() => {
     const fetchDatos = async () => {
       try {
-        const token = localStorage.getItem('token'); // o sessionStorage si lo guardás ahí
+        const token = localStorage.getItem('token');
 
         const resFaena = await fetch(`/api/faena/${id_faena}/decomiso-datos`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const faena = await resFaena.json();
 
@@ -51,36 +49,13 @@ const DecomisoPage = () => {
         }
 
         const resBase = await fetch('/api/decomisos/datos-base', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const base = await resBase.json();
 
-        const tipos = new Map();
-        const partesList = [];
-        const afeccionesSet = new Map();
-
-        base.forEach((item) => {
-          tipos.set(item.id_tipo_parte_deco, item.nombre_tipo_parte);
-          partesList.push({
-            id: item.id_parte_decomisada,
-            nombre: item.nombre_parte,
-            id_tipo_parte_deco: item.id_tipo_parte_deco,
-          });
-          afeccionesSet.set(item.id_afeccion, item.descripcion);
-        });
-
-        setTiposParte(
-          Array.from(tipos.entries()).map(([id, nombre]) => ({ id, nombre }))
-        );
-        setPartes(partesList);
-        setAfecciones(
-          Array.from(afeccionesSet.entries()).map(([id, descripcion]) => ({
-            id,
-            descripcion,
-          }))
-        );
+        setTiposParte(base.tiposParte || []);
+        setPartes(base.partes || []);
+        setAfecciones(base.afecciones || []);
       } catch (err) {
         console.error('❌ Error al cargar datos:', err);
       } finally {
@@ -90,6 +65,26 @@ const DecomisoPage = () => {
 
     fetchDatos();
   }, [id_faena]);
+
+  useEffect(() => {
+    setDetalles((prev) =>
+      prev.map((detalle) => {
+        const partesValidas = partes.filter(
+          (p) =>
+            String(p.id_tipo_parte_deco) === String(detalle.id_tipo_parte_deco)
+        );
+        const parteValida = partesValidas.some(
+          (p) =>
+            String(p.id_parte_decomisada) ===
+            String(detalle.id_parte_decomisada)
+        );
+        return {
+          ...detalle,
+          id_parte_decomisada: parteValida ? detalle.id_parte_decomisada : '',
+        };
+      })
+    );
+  }, [partes, detalles.map((d) => d.id_tipo_parte_deco).join(',')]);
 
   const agregarDetalle = () => {
     setDetalles((prev) => [
@@ -107,12 +102,16 @@ const DecomisoPage = () => {
   };
 
   const actualizarDetalle = (index, campo, valor) => {
-    const nuevos = [...detalles];
-    nuevos[index][campo] = valor;
-    if (campo === 'id_tipo_parte_deco') {
-      nuevos[index].id_parte_decomisada = '';
-    }
-    setDetalles(nuevos);
+    setDetalles((prev) => {
+      const nuevos = [...prev];
+      nuevos[index][campo] = valor;
+
+      if (campo === 'id_tipo_parte_deco') {
+        nuevos[index].id_parte_decomisada = '';
+      }
+
+      return nuevos;
+    });
   };
 
   const handleGuardar = async () => {
@@ -121,34 +120,63 @@ const DecomisoPage = () => {
       return;
     }
 
-    const payload = detalles.map((d) => ({
-      id_faena_detalle: infoFaena.id_faena_detalle,
-      id_tipo_parte_deco: d.id_tipo_parte_deco,
-      id_parte_decomisada: d.id_parte_decomisada,
-      id_afeccion: d.id_afeccion,
-      cantidad: d.cantidad,
-      animales_afectados: d.animales_afectados,
-      peso_kg: d.peso_kg || null,
-      destino_decomiso: null,
-      observaciones: d.observaciones || null,
-    }));
+    const token = localStorage.getItem('token');
 
     try {
+      const detallesConIds = await Promise.all(
+        detalles.map(async (d) => {
+          // Validación básica
+          if (!d.id_parte_decomisada || !d.id_afeccion) {
+            throw new Error('Falta parte o afección en algún detalle');
+          }
+
+          // ✅ Resolver combinación parte + afección
+          const res = await fetch(
+            `/api/parte-deco-afeccion?id_parte_decomisada=${d.id_parte_decomisada}&id_afeccion=${d.id_afeccion}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          const data = await res.json();
+
+          if (!res.ok || !data.id_parte_deco_afeccion) {
+            throw new Error(
+              data.error || 'Combinación parte + afección no encontrada'
+            );
+          }
+
+          return {
+            id_faena_detalle: infoFaena.id_faena_detalle,
+            id_parte_deco_afeccion: data.id_parte_deco_afeccion,
+            cantidad: d.cantidad,
+            animales_afectados: d.animales_afectados,
+            peso_kg: d.peso_kg || null,
+            destino_decomiso: null,
+            observaciones: d.observaciones || null,
+          };
+        })
+      );
+
+      // ✅ Enviar al backend
       const res = await fetch('/api/decomisos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(detallesConIds),
       });
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || 'Error desconocido');
+      if (!res.ok)
+        throw new Error(data.error || 'Error al registrar decomisos');
 
       alert('✅ Decomiso registrado correctamente');
       navigate(`/decomisos/detalle/${data.id_decomiso}`);
     } catch (err) {
       console.error('❌ Error al guardar decomisos:', err);
-      alert('Error al guardar decomisos. Verifique los datos.');
+      alert(`Error al guardar decomisos: ${err.message}`);
     }
   };
 
@@ -196,111 +224,129 @@ const DecomisoPage = () => {
           </div>
         )}
 
-        {detalles.map((detalle, index) => (
-          <div
-            key={index}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 bg-white p-3 rounded shadow"
-          >
-            {/* Tipo de parte */}
-            <select
-              value={detalle.id_tipo_parte_deco}
-              onChange={(e) =>
-                actualizarDetalle(index, 'id_tipo_parte_deco', e.target.value)
-              }
-              className="border rounded px-2 py-1"
-            >
-              <option value="">Tipo de parte</option>
-              {tiposParte.map((tp) => (
-                <option key={tp.id} value={tp.id}>
-                  {tp.nombre}
-                </option>
-              ))}
-            </select>
+        {detalles.map((detalle, index) => {
+          const tipoSeleccionado = String(detalle.id_tipo_parte_deco);
+          const partesFiltradas = partes.filter(
+            (p) => String(p.id_tipo_parte_deco) === tipoSeleccionado
+          );
 
-            {/* Parte decomisada filtrada por tipo */}
-            <select
-              value={detalle.id_parte_decomisada}
-              onChange={(e) =>
-                actualizarDetalle(index, 'id_parte_decomisada', e.target.value)
-              }
-              className="border rounded px-2 py-1"
-              disabled={!detalle.id_tipo_parte_deco}
+          const parteValida = partesFiltradas.some(
+            (p) =>
+              String(p.id_parte_decomisada) ===
+              String(detalle.id_parte_decomisada)
+          );
+
+          const valorParte = parteValida ? detalle.id_parte_decomisada : '';
+
+          return (
+            <div
+              key={index}
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 bg-white p-3 rounded shadow"
             >
-              <option value="">Parte decomisada</option>
-              {partes
-                .filter(
-                  (p) =>
-                    p.id_tipo_parte_deco ===
-                    parseInt(detalle.id_tipo_parte_deco)
-                )
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
+              {/* Tipo de parte */}
+              <select
+                value={detalle.id_tipo_parte_deco}
+                onChange={(e) =>
+                  actualizarDetalle(index, 'id_tipo_parte_deco', e.target.value)
+                }
+                className="border rounded px-2 py-1"
+              >
+                <option value="">Tipo de parte</option>
+                {tiposParte.map((tp) => (
+                  <option
+                    key={tp.id_tipo_parte_deco}
+                    value={tp.id_tipo_parte_deco}
+                  >
+                    {tp.nombre_tipo_parte}
                   </option>
                 ))}
-            </select>
+              </select>
+              {/* Parte decomisada */}
+              <select
+                value={valorParte}
+                onChange={(e) =>
+                  actualizarDetalle(
+                    index,
+                    'id_parte_decomisada',
+                    e.target.value
+                  )
+                }
+                className="border rounded px-2 py-1"
+                disabled={!detalle.id_tipo_parte_deco}
+              >
+                <option value="">Parte decomisada</option>
+                {partesFiltradas.map((p) => (
+                  <option
+                    key={p.id_parte_decomisada}
+                    value={p.id_parte_decomisada}
+                  >
+                    {p.nombre_parte}
+                  </option>
+                ))}
+              </select>
 
-            {/* Afección */}
-            <select
-              value={detalle.id_afeccion}
-              onChange={(e) =>
-                actualizarDetalle(index, 'id_afeccion', e.target.value)
-              }
-              className="border rounded px-2 py-1"
-            >
-              <option value="">Afección</option>
-              {afecciones.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.descripcion}
-                </option>
-              ))}
-            </select>
+              {/* Afección */}
+              <select
+                value={detalle.id_afeccion}
+                onChange={(e) =>
+                  actualizarDetalle(index, 'id_afeccion', e.target.value)
+                }
+                className="border rounded px-2 py-1"
+              >
+                <option value="">Afección</option>
+                {afecciones.map((a) => (
+                  <option key={a.id_afeccion} value={a.id_afeccion}>
+                    {a.descripcion}
+                  </option>
+                ))}
+              </select>
 
-            {/* Cantidad */}
-            <input
-              type="number"
-              placeholder="Cantidad de órganos"
-              value={detalle.cantidad}
-              onChange={(e) =>
-                actualizarDetalle(index, 'cantidad', e.target.value)
-              }
-              className="border rounded px-2 py-1"
-            />
+              {/* Cantidad */}
+              <input
+                type="number"
+                placeholder="Cantidad"
+                value={detalle.cantidad}
+                onChange={(e) =>
+                  actualizarDetalle(index, 'cantidad', e.target.value)
+                }
+                className="border rounded px-2 py-1"
+              />
 
-            {/* Peso */}
-            <input
-              type="number"
-              step="0.1"
-              placeholder="Peso (kg)"
-              value={detalle.peso_kg}
-              onChange={(e) =>
-                actualizarDetalle(index, 'peso_kg', e.target.value)
-              }
-              className="border rounded px-2 py-1"
-            />
+              {/* Peso */}
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Peso (kg)"
+                value={detalle.peso_kg}
+                onChange={(e) =>
+                  actualizarDetalle(index, 'peso_kg', e.target.value)
+                }
+                className="border rounded px-2 py-1"
+              />
 
-            {/* Animales afectados */}
-            <input
-              type="number"
-              placeholder="Animales afectados"
-              value={detalle.animales_afectados}
-              onChange={(e) =>
-                actualizarDetalle(index, 'animales_afectados', e.target.value)
-              }
-              className="border rounded px-2 py-1"
-            />
+              {/* Animales afectados */}
+              <input
+                type="number"
+                placeholder="Animales afectados"
+                value={detalle.animales_afectados}
+                onChange={(e) =>
+                  actualizarDetalle(index, 'animales_afectados', e.target.value)
+                }
+                className="border rounded px-2 py-1"
+              />
 
-            {/* Observaciones */}
-            <textarea
-              placeholder="Observaciones"
-              value={detalle.observaciones}
-              onChange={(e) =>
-                actualizarDetalle(index, 'observaciones', e.target.value)
-              }
-              className="border rounded px-2 py-1 col-span-3"
-            />
-          </div>
-        ))}
+              {/* Observaciones */}
+              <textarea
+                placeholder="Observaciones"
+                value={detalle.observaciones}
+                onChange={(e) =>
+                  actualizarDetalle(index, 'observaciones', e.target.value)
+                }
+                className="border rounded px-2 py-1 col-span-3"
+              />
+            </div>
+          );
+        })}
 
         <div className="flex justify-between mt-4">
           <button

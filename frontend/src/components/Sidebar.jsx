@@ -43,6 +43,7 @@ export default function Sidebar() {
         { to: '/tropas-cargadas', label: 'Tropas Cargadas' },
       ],
     },
+
     {
       prefix: '/decomiso',
       title: 'Gestión de Decomisos',
@@ -69,6 +70,8 @@ export default function Sidebar() {
         { to: '/admin/veterinarios', label: 'Veterinarios' },
         { to: '/admin/partes-decomisadas', label: 'Partes Decomisadas' },
         { to: '/admin/tipos-parte-decomisada', label: 'Tipos Decomisada' },
+        { to: '/admin/especies', label: 'Especies' },
+        { to: '/admin/categorias-especie', label: 'Categorías por Especie' },
       ],
     },
   ];

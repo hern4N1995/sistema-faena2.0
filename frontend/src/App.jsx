@@ -27,6 +27,8 @@ import AfeccionesAdmin from './pages/AfeccionesAdmin.jsx';
 import VeterinariosPage from './pages/veterinariosPage.jsx';
 import TipoParteDecomisadaAdmin from './pages/tipoParteDecomisadaAdmin.jsx';
 import ParteDecomisadaAdmin from './pages/ParteDecomisadaAdmin.jsx';
+import EspecieAdmin from './pages/EspecieAdmin';
+import CategoriaEspecieAdmin from './pages/CategoriaEspecieAdmin';
 
 function App() {
   return (
@@ -149,6 +151,24 @@ function App() {
             element={
               <PrivateRoute allowedRoles={[1, 2]}>
                 <TipoParteDecomisadaAdmin />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/admin/especies"
+            element={
+              <PrivateRoute allowedRoles={[1, 2]}>
+                <EspecieAdmin />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/admin/categorias-especie"
+            element={
+              <PrivateRoute allowedRoles={[1, 2]}>
+                <CategoriaEspecieAdmin />
               </PrivateRoute>
             }
           />

@@ -2,10 +2,30 @@ const express = require('express');
 const router = express.Router();
 const {
   getEspecies,
-  getCategoriasPorEspecie,
+  registrarEspecie,
+  actualizarEspecie,
+  eliminarEspecie,
 } = require('../controllers/especie.controller');
 
-router.get('/especies', getEspecies);
-router.get('/especie/:id/categorias', getCategoriasPorEspecie);
+const { verificarToken } = require('../middleware/auth');
+const { permitirRoles } = require('../middleware/roles');
+
+// Listado general (solo especies activas)
+router.get('/especies', verificarToken, getEspecies);
+
+// Administración (solo roles 1 y 2)
+router.post('/especies', verificarToken, permitirRoles(1, 2), registrarEspecie);
+router.put(
+  '/especies/:id',
+  verificarToken,
+  permitirRoles(1, 2),
+  actualizarEspecie,
+);
+router.delete(
+  '/especies/:id',
+  verificarToken,
+  permitirRoles(1, 2),
+  eliminarEspecie,
+);
 
 module.exports = router;

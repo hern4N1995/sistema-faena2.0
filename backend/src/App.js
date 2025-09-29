@@ -45,7 +45,7 @@ app.use('/api/departamentos', departamentoRoutes);
 app.use('/api', plantaRoutes);
 app.use('/api', titularFaenaRoutes);
 app.use('/api', especieRoutes);
-app.use('/', categoriaEspecieRoutes); // o '/api' si usás prefijo
+app.use('/api', categoriaEspecieRoutes);
 app.use('/api', productorRoutes);
 /* app.use('/api', require('./routes/tropa.routes'));  COMENTADO 04-09*/
 app.use('/api/faena', require('./routes/faena.routes'));

@@ -145,15 +145,16 @@ CREATE TABLE IF NOT EXISTS faena_veterinario (
 	CONSTRAINT FK_id_veterinario FOREIGN KEY (id_veterinario) REFERENCES veterinario(id_veterinario)
 );
 
+-- Crear tabla intermedia
 CREATE TABLE IF NOT EXISTS planta_veterinario (
-    id_planta_veterinario SERIAL PRIMARY KEY,
-    id_veterinario INTEGER NOT NULL,
-	id_planta INTEGER NOT NULL,
-	fecha_desde TIMESTAMPTZ DEFAULT NOW(),
-	estado BOOLEAN DEFAULT TRUE,
-
-	CONSTRAINT FK_id_veterinario FOREIGN KEY (id_veterinario) REFERENCES veterinario(id_veterinario),
-	CONSTRAINT FK_id_planta FOREIGN KEY (id_planta) REFERENCES planta(id_planta)
+    id_planta_veterinario SERIAL PRIMARY KEY,  -- ID artificial para flexibilidad
+    id_planta INT NOT NULL,
+    id_veterinario INT NOT NULL UNIQUE,  -- Un veterinario no puede repetirse en más de una planta
+    fecha_asignacion DATE DEFAULT CURRENT_DATE, -- opcional, para control histórico
+    
+    -- Relaciones
+    CONSTRAINT fk_planta FOREIGN KEY (id_planta) REFERENCES planta (id_planta) ON DELETE CASCADE,    
+    CONSTRAINT fk_veterinario FOREIGN KEY (id_veterinario) REFERENCES veterinario (id_veterinario) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS decomiso(

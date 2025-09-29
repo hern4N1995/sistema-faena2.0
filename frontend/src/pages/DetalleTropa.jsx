@@ -5,25 +5,35 @@ import DetalleEspecieForm from '../components/DetalleEspecieForm';
 
 export default function DetalleTropa() {
   const { id } = useParams();
+
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [tropaInfo, setTropaInfo] = useState({
+    numero_tropa: '',
     fecha: '',
     dte: '',
     titular: '',
     productor: '',
     planta: '',
   });
-  const [detalle, setDetalle] = useState({ especie: '', categorias: [] });
 
-  const fetchDetalleAgrupado = () => {
-    api
-      .get(`/tropas/${id}/detalle-agrupado`)
-      .then((res) => setDetalle(res.data));
+  // detalle siempre con categorias como array para evitar errores al map/reduce
+  const [detalle, setDetalle] = useState({ especie: '', categorias: [] });
+  const [especies, setEspecies] = useState([]);
+
+  const getTokenHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  useEffect(() => {
-    api.get(`/tropas/${id}`).then((res) => {
-      const { n_tropa, dte_dtu, fecha, titular, planta, productor } = res.data;
+  const fetchTropa = async () => {
+    try {
+      const res = await api.get(`/tropas/${id}`, {
+        headers: getTokenHeaders(),
+      });
+      const { n_tropa, dte_dtu, fecha, titular, planta, productor } =
+        res.data || {};
+
       setTropaInfo({
         numero_tropa: n_tropa || '',
         dte: dte_dtu || '',
@@ -32,14 +42,72 @@ export default function DetalleTropa() {
         planta: planta || '',
         productor: productor || '',
       });
-    });
+    } catch (err) {
+      console.error('Error al obtener tropa:', err);
+      setError('No se pudo obtener la tropa');
+      setTropaInfo((prev) => ({ ...prev }));
+    }
+  };
 
-    fetchDetalleAgrupado();
-    setLoading(false);
+  const fetchDetalleAgrupado = async () => {
+    try {
+      const res = await api.get(`/tropas/${id}/detalle-agrupado`, {
+        headers: getTokenHeaders(),
+      });
+      const data = res.data || {};
+      setDetalle({
+        especie: data.especie ?? '',
+        categorias: Array.isArray(data.categorias) ? data.categorias : [],
+      });
+    } catch (err) {
+      console.error('Error al obtener detalle agrupado:', err);
+      setDetalle({ especie: '', categorias: [] });
+      setError((prev) => prev || 'No se pudo cargar el detalle de la tropa');
+    }
+  };
+
+  const fetchEspecies = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await api.get('/especies', { headers });
+      const data = res.data;
+      // filtrado adicional por seguridad si la API devolviera algo inesperado
+      const activos = Array.isArray(data)
+        ? data.filter((e) =>
+            e.estado === undefined ? true : Boolean(e.estado)
+          )
+        : [];
+      setEspecies(activos);
+    } catch (err) {
+      console.error('Error al obtener especies:', err);
+      setEspecies([]);
+      setError((prev) => prev || 'No se pudieron cargar las especies');
+    }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      await Promise.all([
+        fetchTropa(),
+        fetchDetalleAgrupado(),
+        fetchEspecies(),
+      ]);
+      if (mounted) setLoading(false);
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
   }, [id]);
 
   const { especie, categorias } = detalle;
-  const totalEspecie = categorias.reduce((acc, i) => acc + i.remanente, 0);
+  const totalEspecie = Array.isArray(categorias)
+    ? categorias.reduce((acc, i) => acc + (Number(i.remanente) || 0), 0)
+    : 0;
 
   if (loading) {
     return (
@@ -60,7 +128,7 @@ export default function DetalleTropa() {
         <div className="flex justify-center mb-6">
           <input
             type="text"
-            value={tropaInfo.planta?.nombre || tropaInfo.planta || ''}
+            value={tropaInfo.planta?.nombre ?? tropaInfo.planta ?? ''}
             disabled
             className="text-lg sm:text-xl font-semibold text-center bg-gray-50 border-none rounded-lg px-4 py-2 w-full max-w-xs"
           />
@@ -73,7 +141,7 @@ export default function DetalleTropa() {
           </label>
           <input
             type="text"
-            value={tropaInfo.productor}
+            value={tropaInfo.productor || ''}
             disabled
             className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-800"
           />
@@ -93,7 +161,7 @@ export default function DetalleTropa() {
               </label>
               <input
                 type="text"
-                value={value}
+                value={value || ''}
                 disabled
                 className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-800"
               />
@@ -106,7 +174,7 @@ export default function DetalleTropa() {
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">
             Animales cargados
           </h2>
-          {categorias.length === 0 ? (
+          {!Array.isArray(categorias) || categorias.length === 0 ? (
             <p className="text-gray-500 text-center">
               No se han registrado animales en esta tropa.
             </p>
@@ -120,14 +188,14 @@ export default function DetalleTropa() {
               <div className="sm:hidden space-y-2">
                 {categorias.map((item) => (
                   <div
-                    key={item.nombre}
+                    key={item.id ?? item.nombre ?? JSON.stringify(item)}
                     className="bg-gray-50 rounded-lg shadow p-3 flex justify-between items-center"
                   >
                     <span className="text-sm font-medium text-gray-700">
-                      {item.nombre}
+                      {item.nombre ?? item.descripcion ?? ''}
                     </span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {item.remanente}
+                      {item.remanente ?? 0}
                     </span>
                   </div>
                 ))}
@@ -153,14 +221,14 @@ export default function DetalleTropa() {
                   <tbody>
                     {categorias.map((item) => (
                       <tr
-                        key={item.nombre}
+                        key={item.id ?? item.nombre ?? JSON.stringify(item)}
                         className="border-t border-gray-200"
                       >
                         <td className="px-4 py-2 text-sm text-gray-800">
-                          {item.nombre}
+                          {item.nombre ?? item.descripcion ?? ''}
                         </td>
                         <td className="px-4 py-2 text-right text-sm font-medium text-gray-900">
-                          {item.remanente}
+                          {item.remanente ?? 0}
                         </td>
                       </tr>
                     ))}
@@ -175,12 +243,17 @@ export default function DetalleTropa() {
           )}
         </div>
 
-        {/* Formulario de especies */}
+        {/* Formulario de especies: le pasamos especies para poblar el desplegable */}
         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">
             Cargar Detalle por Especie
           </h2>
-          <DetalleEspecieForm idTropa={id} onSave={fetchDetalleAgrupado} />
+          <DetalleEspecieForm
+            idTropa={id}
+            onSave={fetchDetalleAgrupado}
+            especies={especies} // <-- importante: pasamos la lista de especies
+          />
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
         </div>
       </div>
     </div>

@@ -19,6 +19,7 @@ const afeccionRoutes = require('./routes/afeccion.routes');
 const veterinarioRoutes = require('./routes/veterinario.routes');
 const tipoParteDecoRoutes = require('./routes/tipoParteDeco.routes');
 const partesDecomisadasRoutes = require('./routes/partesDecomisadas.routes');
+const decomisoDetalleRoutes = require('./routes/decomisoDetalle.routes');
 const app = express();
 
 app.use(
@@ -54,6 +55,8 @@ app.use('/api', afeccionRoutes);
 app.use('/api/veterinarios', veterinarioRoutes);
 app.use('/api/tipos-parte-deco', tipoParteDecoRoutes);
 app.use('/api/partes-decomisadas', partesDecomisadasRoutes);
+app.use('/api/decomiso-detalle', decomisoDetalleRoutes);
+app.use('/api/decomisos', decomisoRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

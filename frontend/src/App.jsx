@@ -53,7 +53,11 @@ function App() {
           <Route path="decomisos">
             <Route index element={<FaenasADecomisar />} />
             <Route path="nuevo/:id_faena" element={<DecomisoPage />} />
-            <Route path="detalle/:idFaena" element={<DetalleDecomisoPage />} />
+            {/* <Route path="detalle/:idFaena" element={<DetalleDecomisoPage />} /> */}
+            <Route
+              path="detalle/:id_decomiso"
+              element={<DetalleDecomisoPage />}
+            />
           </Route>
 
           {/* Faena y sus subrutas */}

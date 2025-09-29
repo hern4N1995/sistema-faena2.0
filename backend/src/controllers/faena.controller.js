@@ -237,22 +237,34 @@ const obtenerDatosParaDecomiso = async (req, res) => {
   try {
     const query = `
       SELECT 
-        esp.descripcion AS especie,
-        cat.descripcion AS categoria,
-        SUM(fd.cantidad_faena) AS faenados,
-        td.id_tropa_detalle
-      FROM faena_detalle fd
+        fd.id_faena_detalle, -- ✅ necesario para registrar decomiso
+        td.id_tropa_detalle,
+        ce.descripcion AS categoria,
+        e.descripcion AS especie,
+        fd.cantidad_faena AS faenados,
+        t.dte_dtu,
+        t.n_tropa,
+        f.fecha_faena
+      FROM faena f
+      JOIN faena_detalle fd ON f.id_faena = fd.id_faena
       JOIN tropa_detalle td ON fd.id_tropa_detalle = td.id_tropa_detalle
-      JOIN especie esp ON td.id_especie = esp.id_especie
-      JOIN categoria_especie cat ON td.id_cat_especie = cat.id_cat_especie
-      WHERE fd.id_faena = $1
-      GROUP BY esp.descripcion, cat.descripcion, td.id_tropa_detalle
+      JOIN tropa t ON td.id_tropa = t.id_tropa
+      JOIN especie e ON td.id_especie = e.id_especie
+      JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
+      WHERE f.id_faena = $1
     `;
 
     const resultado = await pool.query(query, [id_faena]);
+
+    if (resultado.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: 'No se encontraron datos para esta faena' });
+    }
+
     res.json(resultado.rows);
   } catch (error) {
-    console.error('Error al obtener datos para decomiso:', error.message);
+    console.error('❌ Error al obtener datos para decomiso:', error.message);
     res.status(500).json({ error: 'Error al obtener datos para decomiso' });
   }
 };

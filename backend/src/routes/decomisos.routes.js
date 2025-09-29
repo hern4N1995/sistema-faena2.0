@@ -2,22 +2,38 @@ const express = require('express');
 const router = express.Router();
 const { verificarToken } = require('../middleware/auth');
 const { permitirRoles } = require('../middleware/roles');
-const { obtenerCombinaciones } = require('../controllers/decomisos.controller');
 const {
+  obtenerCombinaciones,
   obtenerInfoFaenaPorDecomiso,
+  registrarDecomiso,
+  obtenerDatosBaseDecomiso, // ✅ nuevo controlador
 } = require('../controllers/decomisos.controller');
 
+// 🔍 Combinaciones ya registradas en parte_deco_afeccion
 router.get(
   '/combinaciones',
   verificarToken,
   permitirRoles(1),
   obtenerCombinaciones,
 );
+
+// 📄 Info de faena por decomiso
 router.get(
   '/decomiso/:id_decomiso/info-faena',
   verificarToken,
   permitirRoles(1),
   obtenerInfoFaenaPorDecomiso,
 );
+
+// 📦 Datos base para desplegables (tipo, parte, afección)
+router.get(
+  '/datos-base',
+  verificarToken,
+  permitirRoles(1),
+  obtenerDatosBaseDecomiso,
+);
+
+// 📝 Registrar decomiso
+router.post('/', verificarToken, permitirRoles(1), registrarDecomiso);
 
 module.exports = router;

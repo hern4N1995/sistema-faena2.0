@@ -51,7 +51,7 @@ export default function Sidebar() {
       menu: [
         /*  { to: '/decomisos', label: 'Decomisos' }, */
         { to: '/decomisos', label: 'Faenas a Decomisar' },
-        { to: '/decomisos-cargados', label: 'Decomisos Cargados' },
+        { to: '/decomisos/cargados', label: 'Decomisos Cargados' },
       ],
     },
 
@@ -140,7 +140,7 @@ export default function Sidebar() {
                       <NavLink
                         key={to}
                         to={to}
-                        end={to === match.prefix}
+                        end={to === '/decomisos'}
                         className={linkClass}
                         onClick={() => setOpen(false)}
                       >
@@ -163,7 +163,7 @@ export default function Sidebar() {
                   <NavLink
                     key={to}
                     to={to}
-                    end={to === match.prefix}
+                    end={to === '/decomisos'}
                     className={linkClass}
                   >
                     {label}

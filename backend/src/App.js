@@ -50,7 +50,6 @@ app.use('/api', categoriaEspecieRoutes);
 app.use('/api', productorRoutes);
 /* app.use('/api', require('./routes/tropa.routes'));  COMENTADO 04-09*/
 app.use('/api/faena', require('./routes/faena.routes'));
-app.use('/api', decomisoRoutes);
 app.use('/api', afeccionRoutes);
 app.use('/api/veterinarios', veterinarioRoutes);
 app.use('/api/tipos-parte-deco', tipoParteDecoRoutes);

@@ -21,7 +21,7 @@ import DepartamentoAdmin from './pages/DepartamentoAdmin.jsx';
 import PlantaAdmin from './pages/PlantaAdmin.jsx';
 import ProductorAdmin from './pages/ProductorAdmin.jsx';
 import DecomisoPage from './pages/DecomisoPage.jsx';
-import DetalleDecomisoPage from './pages/DetalleDecomisoPage.jsx';
+
 import FaenasADecomisar from './pages/FaenasADecomisar.jsx';
 import AfeccionesAdmin from './pages/AfeccionesAdmin.jsx';
 import VeterinariosPage from './pages/veterinariosPage.jsx';
@@ -29,6 +29,8 @@ import TipoParteDecomisadaAdmin from './pages/tipoParteDecomisadaAdmin.jsx';
 import ParteDecomisadaAdmin from './pages/ParteDecomisadaAdmin.jsx';
 import EspecieAdmin from './pages/EspecieAdmin';
 import CategoriaEspecieAdmin from './pages/CategoriaEspecieAdmin';
+import DecomisoResumenPage from './pages/DecomisoResumenPage';
+import DecomisosCargadosPage from './pages/DecomisosCargadosPage.jsx';
 
 function App() {
   return (
@@ -54,10 +56,9 @@ function App() {
             <Route index element={<FaenasADecomisar />} />
             <Route path="nuevo/:id_faena" element={<DecomisoPage />} />
             {/* <Route path="detalle/:idFaena" element={<DetalleDecomisoPage />} /> */}
-            <Route
-              path="detalle/:id_decomiso"
-              element={<DetalleDecomisoPage />}
-            />
+
+            <Route path="detalle/:id" element={<DecomisoResumenPage />} />
+            <Route path="cargados" element={<DecomisosCargadosPage />} />
           </Route>
 
           {/* Faena y sus subrutas */}

@@ -123,48 +123,37 @@ const DecomisoPage = () => {
     const token = localStorage.getItem('token');
 
     try {
-      const detallesConIds = await Promise.all(
-        detalles.map(async (d) => {
-          // Validación básica
-          if (!d.id_parte_decomisada || !d.id_afeccion) {
-            throw new Error('Falta parte o afección en algún detalle');
-          }
+      // ✅ Validar antes de mapear
+      for (const d of detalles) {
+        if (
+          !d.id_parte_decomisada ||
+          !d.id_afeccion ||
+          !d.cantidad ||
+          !d.destino_decomiso
+        ) {
+          throw new Error('Faltan datos obligatorios en algún detalle');
+        }
+      }
 
-          // ✅ Resolver combinación parte + afección
-          const res = await fetch(
-            `/api/parte-deco-afeccion?id_parte_decomisada=${d.id_parte_decomisada}&id_afeccion=${d.id_afeccion}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-          const data = await res.json();
+      const payload = detalles.map((d) => ({
+        id_faena_detalle: infoFaena.id_faena_detalle,
+        id_tipo_parte_deco: d.id_tipo_parte_deco,
+        id_parte_decomisada: d.id_parte_decomisada,
+        id_afeccion: d.id_afeccion,
+        cantidad: d.cantidad,
+        animales_afectados: d.animales_afectados,
+        peso_kg: d.peso_kg || null,
+        destino_decomiso: d.destino_decomiso,
+        observaciones: d.observaciones || null,
+      }));
 
-          if (!res.ok || !data.id_parte_deco_afeccion) {
-            throw new Error(
-              data.error || 'Combinación parte + afección no encontrada'
-            );
-          }
-
-          return {
-            id_faena_detalle: infoFaena.id_faena_detalle,
-            id_parte_deco_afeccion: data.id_parte_deco_afeccion,
-            cantidad: d.cantidad,
-            animales_afectados: d.animales_afectados,
-            peso_kg: d.peso_kg || null,
-            destino_decomiso: null,
-            observaciones: d.observaciones || null,
-          };
-        })
-      );
-
-      // ✅ Enviar al backend
       const res = await fetch('/api/decomisos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(detallesConIds),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -334,6 +323,24 @@ const DecomisoPage = () => {
                 }
                 className="border rounded px-2 py-1"
               />
+
+              {/* Destino del decomiso */}
+              <select
+                value={detalle.destino_decomiso || ''}
+                onChange={(e) =>
+                  actualizarDetalle(index, 'destino_decomiso', e.target.value)
+                }
+                className={`border rounded px-2 py-1 ${
+                  !detalle.destino_decomiso ? 'border-red-500' : ''
+                }`}
+              >
+                <option value="">Destino del decomiso</option>
+                <option value="incineración">Incineración</option>
+                <option value="rendering">Rendering</option>
+                <option value="entierro">Entierro</option>
+                <option value="desnaturalización">Desnaturalización</option>
+                <option value="otro">Otro</option>
+              </select>
 
               {/* Observaciones */}
               <textarea

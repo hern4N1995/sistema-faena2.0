@@ -7,6 +7,8 @@ const {
   obtenerInfoFaenaPorDecomiso,
   registrarDecomiso,
   obtenerDatosBaseDecomiso, // ✅ nuevo controlador
+  obtenerResumenDecomiso,
+  listarDecomisos,
 } = require('../controllers/decomisos.controller');
 
 // 🔍 Combinaciones ya registradas en parte_deco_afeccion
@@ -32,6 +34,9 @@ router.get(
   permitirRoles(1),
   obtenerDatosBaseDecomiso,
 );
+router.get('/', verificarToken, listarDecomisos);
+
+router.get('/:id/resumen', verificarToken, obtenerResumenDecomiso);
 
 // 📝 Registrar decomiso
 router.post('/', verificarToken, permitirRoles(1), registrarDecomiso);

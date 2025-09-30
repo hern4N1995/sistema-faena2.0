@@ -5,7 +5,7 @@ const obtenerCombinaciones = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        tp.id_tipo_parte,
+        tp.id_tipo_parte_deco,
         tp.nombre_tipo_parte AS tipo_parte,
         pd.id_parte_decomisada,
         pd.nombre_parte AS parte,
@@ -13,7 +13,7 @@ const obtenerCombinaciones = async (req, res) => {
         a.descripcion AS afeccion
       FROM parte_deco_afeccion pda
       JOIN parte_decomisada pd ON pda.id_parte_decomisada = pd.id_parte_decomisada
-      JOIN tipo_parte_deco tp ON pd.id_tipo_parte = tp.id_tipo_parte
+      JOIN tipo_parte_deco tp ON pd.id_tipo_parte_deco = tp.id_tipo_parte_deco
       JOIN afeccion a ON pda.id_afeccion = a.id_afeccion
       ORDER BY tp.nombre_tipo_parte, pd.nombre_parte, a.descripcion;
     `);
@@ -56,6 +56,78 @@ const obtenerDatosBaseDecomiso = async (req, res) => {
   } catch (err) {
     console.error('❌ Error al obtener datos base de decomiso:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// Obtener resumen decomiso
+const obtenerResumenDecomiso = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT
+        d.id_decomiso,
+        fd.id_faena_detalle,
+        t.n_tropa,
+        t.dte_dtu,
+        f.fecha_faena,
+        fd.cantidad_faena,
+        dd.id_decomiso_detalle,
+        dd.cantidad,
+        dd.peso_kg,
+        dd.animales_afectados,
+        dd.destino_decomiso,
+        dd.observaciones,
+        tp.nombre_tipo_parte,
+        pd.nombre_parte,
+        a.descripcion AS afeccion
+      FROM decomiso d
+      JOIN faena_detalle fd ON d.id_faena_detalle = fd.id_faena_detalle
+      JOIN tropa_detalle td ON fd.id_tropa_detalle = td.id_tropa_detalle
+      JOIN tropa t ON t.id_tropa = td.id_tropa
+      JOIN decomiso_detalle dd ON d.id_decomiso = dd.id_decomiso
+      JOIN parte_decomisada pd ON dd.id_parte_decomisada = pd.id_parte_decomisada
+      JOIN tipo_parte_deco tp ON pd.id_tipo_parte_deco = tp.id_tipo_parte_deco
+      JOIN afeccion a ON dd.id_afeccion = a.id_afeccion
+      JOIN faena f ON f.id_faena = fd.id_faena
+      WHERE d.id_decomiso = $1`,
+      [id],
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('❌ Error al obtener resumen:', err.message);
+    res.status(500).json({ error: 'Error al obtener resumen del decomiso' });
+  }
+};
+
+const listarDecomisos = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        d.id_decomiso,
+        f.fecha_faena,
+        t.n_tropa,
+        t.dte_dtu,
+        td.cantidad AS cantidad_tropa,
+        fd.cantidad_faena,
+        (
+          SELECT COALESCE(SUM(dd.animales_afectados), 0)
+          FROM decomiso_detalle dd
+          WHERE dd.id_decomiso = d.id_decomiso
+        ) AS cantidad_decomisada
+      FROM decomiso d
+      JOIN faena_detalle fd ON d.id_faena_detalle = fd.id_faena_detalle
+      JOIN faena f ON fd.id_faena = f.id_faena
+      JOIN tropa_detalle td ON fd.id_tropa_detalle = td.id_tropa_detalle
+      JOIN tropa t ON td.id_tropa = t.id_tropa
+      ORDER BY d.id_decomiso DESC;
+    `);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('❌ Error al listar decomisos:', err.message);
+    res.status(500).json({ error: 'Error al listar decomisos' });
   }
 };
 
@@ -165,4 +237,6 @@ module.exports = {
   obtenerDatosBaseDecomiso,
   obtenerInfoFaenaPorDecomiso,
   registrarDecomiso,
+  obtenerResumenDecomiso,
+  listarDecomisos,
 };

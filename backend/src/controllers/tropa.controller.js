@@ -194,7 +194,16 @@ exports.getDetalleAgrupado = async (req, res) => {
 
   try {
     const tropaRes = await pool.query(
-      `SELECT n_tropa, dte_dtu, fecha FROM tropa WHERE id_tropa = $1`,
+      `
+      SELECT 
+        t.n_tropa, 
+        t.dte_dtu, 
+        t.fecha, 
+        tf.nombre AS titular
+      FROM tropa t
+      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      WHERE t.id_tropa = $1
+      `,
       [parseInt(id)],
     );
 
@@ -202,7 +211,7 @@ exports.getDetalleAgrupado = async (req, res) => {
       return res.status(404).json({ error: 'Tropa no encontrada' });
     }
 
-    const { n_tropa, dte_dtu, fecha } = tropaRes.rows[0];
+    const { n_tropa, dte_dtu, fecha, titular } = tropaRes.rows[0];
 
     const detalleRes = await pool.query(
       `
@@ -216,7 +225,7 @@ exports.getDetalleAgrupado = async (req, res) => {
       JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
       WHERE td.id_tropa = $1
       ORDER BY ce.descripcion
-    `,
+      `,
       [parseInt(id)],
     );
 
@@ -231,6 +240,7 @@ exports.getDetalleAgrupado = async (req, res) => {
       n_tropa,
       dte_dtu,
       fecha,
+      titular, // ✅ ahora sí se incluye correctamente
       especie: categorias[0]?.especie || '',
       categorias,
     });

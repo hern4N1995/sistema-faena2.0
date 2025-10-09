@@ -30,7 +30,7 @@ export default function Sidebar() {
       title: 'Gestión de Faena',
       roles: ['1', '2', '3'],
       menu: [
-        { to: '/faena', label: 'Tropas a Faenar' },
+        { to: '/faena', label: 'Tropas a Faenar', end: true },
         { to: '/faena/faenas-realizadas', label: 'Faenas Realizadas' },
       ],
     },
@@ -39,22 +39,19 @@ export default function Sidebar() {
       title: 'Gestión de Tropa',
       roles: ['1', '2', '3'],
       menu: [
-        { to: '/tropa', label: 'Ingreso Tropa' },
+        { to: '/tropa', label: 'Ingreso Tropa', end: true },
         { to: '/tropas-cargadas', label: 'Tropas Cargadas' },
       ],
     },
-
     {
       prefix: '/decomiso',
       title: 'Gestión de Decomisos',
       roles: ['1'],
       menu: [
-        /*  { to: '/decomisos', label: 'Decomisos' }, */
-        { to: '/decomisos', label: 'Faenas a Decomisar' },
+        { to: '/decomisos', label: 'Faenas a Decomisar', end: true },
         { to: '/decomisos/cargados', label: 'Decomisos Cargados' },
       ],
     },
-
     {
       prefix: '/admin',
       title: 'Gestión Administrativa',
@@ -136,11 +133,11 @@ export default function Sidebar() {
                     {match.title}
                   </h2>
                   <nav className="space-y-2">
-                    {match.menu.map(({ to, label }) => (
+                    {match.menu.map(({ to, label, end }) => (
                       <NavLink
                         key={to}
                         to={to}
-                        end={to === '/decomisos'}
+                        end={end}
                         className={linkClass}
                         onClick={() => setOpen(false)}
                       >
@@ -159,13 +156,8 @@ export default function Sidebar() {
                 {match.title}
               </h2>
               <nav className="space-y-2">
-                {match.menu.map(({ to, label }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={to === '/decomisos'}
-                    className={linkClass}
-                  >
+                {match.menu.map(({ to, label, end }) => (
+                  <NavLink key={to} to={to} end={end} className={linkClass}>
                     {label}
                   </NavLink>
                 ))}

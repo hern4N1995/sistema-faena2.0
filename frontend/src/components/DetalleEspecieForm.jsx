@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import Select from 'react-select';
 
 export default function DetalleEspecieForm({ idTropa, onSave }) {
   const [especies, setEspecies] = useState([]);
   const [categorias, setCategorias] = useState([]);
-  const [especieSeleccionada, setEspecieSeleccionada] = useState('');
+  const [especieSeleccionada, setEspecieSeleccionada] = useState(null);
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
+
   const [detalle, setDetalle] = useState([]);
-  const [categoria, setCategoria] = useState('');
+
   const [cantidad, setCantidad] = useState('');
   const [loadingCategorias, setLoadingCategorias] = useState(false);
   const [error, setError] = useState('');
@@ -23,7 +26,6 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
       try {
         const res = await api.get('/especies', { headers: getTokenHeaders() });
         const data = Array.isArray(res.data) ? res.data : [];
-        // Filtramos por estado true por seguridad si viniera el campo
         const activos = data.filter((e) =>
           e.hasOwnProperty('estado') ? Boolean(e.estado) : true
         );
@@ -34,16 +36,14 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
       }
     };
     load();
-    return () => {
-      mounted = false;
-    };
+    return () => (mounted = false);
   }, []);
 
-  // Cuando cambia especie, traer categorías de esa especie
+  // Traer categorías cuando cambia especie
   useEffect(() => {
-    if (!especieSeleccionada) {
+    if (!especieSeleccionada?.value) {
       setCategorias([]);
-      setCategoria('');
+      setCategoriaSeleccionada(null);
       return;
     }
 
@@ -52,33 +52,31 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
       setLoadingCategorias(true);
       setError('');
       try {
-        // Usamos la ruta /especies/:id/categorias
         const res = await api.get(
-          `/especies/${especieSeleccionada}/categorias`,
+          `/especies/${especieSeleccionada.value}/categorias`,
           {
             headers: getTokenHeaders(),
           }
         );
         const data = Array.isArray(res.data) ? res.data : [];
         if (mounted) {
-          // Normalizamos las categorías a { id, nombre }
           const normalized = data.map((c) => ({
             id: c.id_cat_especie ?? c.id ?? c.id_categoria,
             nombre: c.nombre ?? c.descripcion ?? c.descripcion_categoria ?? '',
           }));
           setCategorias(normalized);
-          setCategoria('');
+          setCategoriaSeleccionada(null);
         }
       } catch (err) {
         console.error('Error al obtener categorías:', err);
         if (mounted) {
           setCategorias([]);
-          setCategoria('');
-          if (err.response?.status === 404) {
-            setError('Sin categorías para esta especie');
-          } else {
-            setError('No se pudieron cargar las categorías');
-          }
+          setCategoriaSeleccionada(null);
+          setError(
+            err.response?.status === 404
+              ? 'Sin categorías para esta especie'
+              : 'No se pudieron cargar las categorías'
+          );
         }
       } finally {
         if (mounted) setLoadingCategorias(false);
@@ -86,9 +84,7 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
     };
 
     loadCats();
-    return () => {
-      mounted = false;
-    };
+    return () => (mounted = false);
   }, [especieSeleccionada]);
 
   const agregarDetalle = () => {
@@ -97,7 +93,7 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
       setError('Seleccioná una especie');
       return;
     }
-    if (!categoria) {
+    if (!categoriaSeleccionada) {
       setError('Seleccioná una categoría');
       return;
     }
@@ -112,18 +108,21 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
         (e) => String(e.id_especie ?? e.id) === String(especieSeleccionada)
       ) ?? {};
     const categoriaObj =
-      categorias.find((c) => String(c.id) === String(categoria)) ?? {};
+      categorias.find(
+        (c) => String(c.id) === String(categoriaSeleccionada?.value)
+      ) ?? {};
 
     const nuevo = {
-      especie_id: String(especieSeleccionada),
-      especie_nombre: especieObj.descripcion ?? especieObj.nombre ?? '',
-      categoria_id: Number(categoria),
-      categoria_nombre: categoriaObj.nombre ?? '',
+      especie_id: especieSeleccionada?.value,
+      especie_nombre: especieSeleccionada?.label,
+      categoria_id: Number(categoriaSeleccionada?.value),
+      categoria_nombre: categoriaSeleccionada?.label,
       cantidad: cantidadNum,
     };
 
     setDetalle((prev) => [...prev, nuevo]);
-    setCategoria('');
+
+    setCategoriaSeleccionada(null);
     setCantidad('');
   };
 
@@ -144,6 +143,7 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
         headers: getTokenHeaders(),
       });
       setDetalle([]);
+      setEspecieSeleccionada(null);
       alert('Detalles guardados correctamente');
       if (typeof onSave === 'function') onSave();
     } catch (err) {
@@ -152,49 +152,109 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
     }
   };
 
+  // ---------- Estilos visuales iguales a TropaForm ----------
+  const customSelectStyles = {
+    control: (base, state) => ({
+      ...base,
+      height: '48px',
+      minHeight: '48px',
+      paddingLeft: '16px',
+      paddingRight: '16px',
+      backgroundColor: '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '0.5rem',
+      boxShadow: state.isFocused ? '0 0 0 4px rgba(16, 185, 129, 0.1)' : 'none',
+      transition: 'all 200ms ease',
+      '&:hover': {
+        borderColor: '#6ee7b7',
+      },
+      '&:focus-within': {
+        borderColor: '#10b981',
+      },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 0 0 2px',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#111827',
+      margin: 0,
+      top: 'initial',
+      transform: 'none',
+    }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#6b7280',
+      margin: 0,
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '48px',
+    }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused }) => ({
+      ...base,
+      fontSize: '14px',
+      padding: '10px 16px',
+      backgroundColor: isFocused ? '#d1fae5' : '#fff',
+      color: isFocused ? '#065f46' : '#111827',
+    }),
+  };
+
   return (
     <div className="space-y-6">
+      {/* Especie */}
       <div>
-        <label className="block font-semibold mb-1">Especie</label>
-        <select
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
+          Especie
+        </label>
+        <Select
           value={especieSeleccionada}
-          onChange={(e) => setEspecieSeleccionada(String(e.target.value))}
-          className="w-full border rounded px-3 py-2"
-        >
-          <option value="">Seleccionar especie</option>
-          {Array.isArray(especies) &&
-            especies.map((e) => {
-              const id = e.id_especie ?? e.id;
-              const label = e.descripcion ?? e.nombre ?? '';
-              return (
-                <option key={String(id)} value={String(id)}>
-                  {label}
-                </option>
-              );
-            })}
-        </select>
+          onChange={(selected) => setEspecieSeleccionada(selected)}
+          options={especies.map((e) => ({
+            value: String(e.id_especie ?? e.id),
+            label: e.descripcion ?? e.nombre ?? '',
+          }))}
+          placeholder="Seleccionar especie"
+          styles={customSelectStyles}
+          noOptionsMessage={() => 'Sin opciones'}
+          components={{ IndicatorSeparator: () => null }}
+        />
       </div>
 
+      {/* Categoría y Cantidad */}
       {especieSeleccionada && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           <div>
-            <label className="block font-semibold mb-1">Categoría</label>
-            <select
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              disabled={loadingCategorias}
-            >
-              <option value="">
-                {loadingCategorias ? 'Cargando...' : 'Seleccionar categoría'}
-              </option>
-              {Array.isArray(categorias) &&
-                categorias.map((c) => (
-                  <option key={String(c.id)} value={String(c.id)}>
-                    {c.nombre}
-                  </option>
-                ))}
-            </select>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Categoría
+            </label>
+            <Select
+              value={categoriaSeleccionada}
+              onChange={(selected) => setCategoriaSeleccionada(selected)}
+              options={categorias.map((c) => ({
+                value: String(c.id),
+                label: c.nombre,
+              }))}
+              placeholder={
+                loadingCategorias ? 'Cargando...' : 'Seleccionar categoría'
+              }
+              isDisabled={loadingCategorias}
+              styles={customSelectStyles}
+              noOptionsMessage={() => 'Sin opciones'}
+              components={{ IndicatorSeparator: () => null }}
+            />
+
             {!loadingCategorias && categorias.length === 0 && (
               <p className="text-sm text-gray-500 mt-1">
                 No hay categorías disponibles para esta especie.
@@ -203,12 +263,14 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
           </div>
 
           <div>
-            <label className="block font-semibold mb-1">Cantidad</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Cantidad
+            </label>
             <input
               type="number"
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 text-gray-800 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-green-500 transition"
               min={1}
               disabled={!especieSeleccionada}
             />
@@ -216,7 +278,7 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
 
           <button
             onClick={agregarDetalle}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-200 transition"
           >
             Agregar
           </button>
@@ -225,33 +287,51 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
 
       {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
 
+      {/* Detalle agregado */}
       {detalle.length > 0 && (
         <div className="mt-6">
-          <h4 className="font-bold mb-2">Detalle agregado</h4>
-          <table className="w-full table-auto border">
-            <thead className="bg-gray-200">
-              <tr>
-                <th>Especie</th>
-                <th>Categoría</th>
-                <th>Cantidad</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detalle.map((d, i) => (
-                <tr
-                  key={`${d.especie_id}-${d.categoria_id}-${i}`}
-                  className="text-center border-t"
-                >
-                  <td>{d.especie_nombre}</td>
-                  <td>{d.categoria_nombre}</td>
-                  <td>{d.cantidad}</td>
+          <h4 className="text-lg font-bold text-gray-800 mb-3">
+            Detalle agregado
+          </h4>
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white rounded-xl shadow-md border border-gray-200">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                    Especie
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                    Categoría
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                    Cantidad
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {detalle.map((d, i) => (
+                  <tr
+                    key={`${d.especie_id}-${d.categoria_id}-${i}`}
+                    className="border-t border-gray-200"
+                  >
+                    <td className="px-4 py-3 text-sm text-gray-800">
+                      {d.especie_nombre || '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-800">
+                      {d.categoria_nombre || '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 font-medium text-right">
+                      {d.cantidad}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           <button
             onClick={guardarDetalles}
-            className="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            className="mt-4 bg-green-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-green-200 transition"
           >
             Guardar todo
           </button>

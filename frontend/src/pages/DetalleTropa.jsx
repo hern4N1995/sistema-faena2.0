@@ -17,7 +17,6 @@ export default function DetalleTropa() {
     planta: '',
   });
 
-  // detalle siempre con categorias como array para evitar errores al map/reduce
   const [detalle, setDetalle] = useState({ especie: '', categorias: [] });
   const [especies, setEspecies] = useState([]);
 
@@ -33,7 +32,6 @@ export default function DetalleTropa() {
       });
       const { n_tropa, dte_dtu, fecha, titular, planta, productor } =
         res.data || {};
-
       setTropaInfo({
         numero_tropa: n_tropa || '',
         dte: dte_dtu || '',
@@ -45,7 +43,6 @@ export default function DetalleTropa() {
     } catch (err) {
       console.error('Error al obtener tropa:', err);
       setError('No se pudo obtener la tropa');
-      setTropaInfo((prev) => ({ ...prev }));
     }
   };
 
@@ -72,7 +69,6 @@ export default function DetalleTropa() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await api.get('/especies', { headers });
       const data = res.data;
-      // filtrado adicional por seguridad si la API devolviera algo inesperado
       const activos = Array.isArray(data)
         ? data.filter((e) =>
             e.estado === undefined ? true : Boolean(e.estado)
@@ -99,9 +95,7 @@ export default function DetalleTropa() {
       if (mounted) setLoading(false);
     };
     load();
-    return () => {
-      mounted = false;
-    };
+    return () => (mounted = false);
   }, [id]);
 
   const { especie, categorias } = detalle;
@@ -111,7 +105,7 @@ export default function DetalleTropa() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-gray-500 text-lg">Cargando detalle de tropa...</p>
       </div>
     );
@@ -119,36 +113,40 @@ export default function DetalleTropa() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center mb-6">
+      <div className="max-w-5xl mx-auto space-y-10">
+        <h1 className="text-3xl font-bold text-gray-800 text-center">
           Detalle de Tropa
         </h1>
 
-        {/* Planta */}
-        <div className="flex justify-center mb-6">
-          <input
-            type="text"
-            value={tropaInfo.planta?.nombre ?? tropaInfo.planta ?? ''}
-            disabled
-            className="text-lg sm:text-xl font-semibold text-center bg-gray-50 border-none rounded-lg px-4 py-2 w-full max-w-xs"
-          />
-        </div>
+        {/* Planta y Productor en fila */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <label className="block text-sm font-semibold text-gray-600 mb-1">
+              Planta
+            </label>
+            <input
+              type="text"
+              value={tropaInfo.planta?.nombre ?? tropaInfo.planta ?? ''}
+              disabled
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 text-gray-800 focus:outline-none"
+            />
+          </div>
 
-        {/* Productor */}
-        <div className="bg-white rounded-xl shadow-md p-4 sm:p-5 mb-6">
-          <label className="block text-sm font-semibold text-gray-600 mb-1">
-            Productor
-          </label>
-          <input
-            type="text"
-            value={tropaInfo.productor || ''}
-            disabled
-            className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-800"
-          />
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <label className="block text-sm font-semibold text-gray-600 mb-1">
+              Productor
+            </label>
+            <input
+              type="text"
+              value={tropaInfo.productor || ''}
+              disabled
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 text-gray-800 focus:outline-none"
+            />
+          </div>
         </div>
 
         {/* Datos de la tropa */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Nº Tropa', value: tropaInfo.numero_tropa },
             { label: 'Fecha', value: tropaInfo.fecha?.split('T')[0] || '' },
@@ -163,15 +161,15 @@ export default function DetalleTropa() {
                 type="text"
                 value={value || ''}
                 disabled
-                className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-800"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 text-gray-800 focus:outline-none"
               />
             </div>
           ))}
         </div>
 
         {/* Resumen visual */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
             Animales cargados
           </h2>
           {!Array.isArray(categorias) || categorias.length === 0 ? (
@@ -243,15 +241,15 @@ export default function DetalleTropa() {
           )}
         </div>
 
-        {/* Formulario de especies: le pasamos especies para poblar el desplegable */}
-        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">
+        {/* Formulario de especies */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
             Cargar Detalle por Especie
           </h2>
           <DetalleEspecieForm
             idTropa={id}
             onSave={fetchDetalleAgrupado}
-            especies={especies} // <-- importante: pasamos la lista de especies
+            especies={especies}
           />
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
         </div>

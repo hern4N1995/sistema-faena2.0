@@ -1,6 +1,147 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import Select from 'react-select';
 
+/* ------------------------------------------------------------------ */
+/*  SelectField (igual que TropaForm)                                 */
+/* ------------------------------------------------------------------ */
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  maxMenuHeight,
+  required = false,
+}) {
+  const [isFocusing, setIsFocusing] = useState(false);
+
+  const customStyles = {
+    control: (base, state) => ({
+      ...base,
+      height: '48px',
+      minHeight: '48px',
+      paddingLeft: '16px',
+      paddingRight: '16px',
+      backgroundColor: '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '0.5rem',
+      boxShadow: isFocusing
+        ? '0 0 0 1px #000'
+        : state.isFocused
+        ? '0 0 0 4px #d1fae5'
+        : 'none',
+      transition: 'all 100ms ease',
+      '&:hover': {
+        borderColor: '#6ee7b7',
+      },
+      '&:focus-within': {
+        borderColor: '#10b981',
+      },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 0 0 2px',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+      fontSize: '14px',
+      fontFamily: 'inherit',
+      color: '#111827',
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#111827',
+      margin: 0,
+      top: 'initial',
+      transform: 'none',
+    }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#6b7280',
+      margin: 0,
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '48px',
+    }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused }) => ({
+      ...base,
+      fontSize: '14px',
+      padding: '10px 16px',
+      backgroundColor: isFocused ? '#d1fae5' : '#fff',
+      color: isFocused ? '#065f46' : '#111827',
+    }),
+  };
+
+  return (
+    <div className="flex flex-col">
+      <label className="mb-2 font-semibold text-gray-700 text-sm">
+        {label}
+      </label>
+      <Select
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={placeholder}
+        maxMenuHeight={maxMenuHeight}
+        required={required}
+        styles={customStyles}
+        noOptionsMessage={() => 'Sin opciones'}
+        components={{ IndicatorSeparator: () => null }}
+        onFocus={() => {
+          setIsFocusing(true);
+          setTimeout(() => setIsFocusing(false), 50);
+        }}
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  InputField idéntico al de TropaForm                               */
+/* ------------------------------------------------------------------ */
+function InputField({
+  label,
+  name,
+  value,
+  onChange,
+  required = false,
+  type = 'text',
+  className = '',
+}) {
+  return (
+    <div className={`flex flex-col ${className}`}>
+      <label className="mb-2 font-semibold text-gray-700 text-sm">
+        {label}
+      </label>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  DecomisoPage                                                      */
+/* ------------------------------------------------------------------ */
 const DecomisoPage = () => {
   const { id_faena } = useParams();
   const navigate = useNavigate();
@@ -17,6 +158,7 @@ const DecomisoPage = () => {
       cantidad: '',
       animales_afectados: '',
       peso_kg: '',
+      destino_decomiso: '',
       observaciones: '',
     },
   ]);
@@ -25,6 +167,9 @@ const DecomisoPage = () => {
   const [partes, setPartes] = useState([]);
   const [afecciones, setAfecciones] = useState([]);
 
+  /* ---------------------------------------------------------- */
+  /*  Carga inicial de datos                                    */
+  /* ---------------------------------------------------------- */
   useEffect(() => {
     const fetchDatos = async () => {
       try {
@@ -66,6 +211,9 @@ const DecomisoPage = () => {
     fetchDatos();
   }, [id_faena]);
 
+  /* ---------------------------------------------------------- */
+  /*  Reset de parte cuando cambia tipo                         */
+  /* ---------------------------------------------------------- */
   useEffect(() => {
     setDetalles((prev) =>
       prev.map((detalle) => {
@@ -84,8 +232,11 @@ const DecomisoPage = () => {
         };
       })
     );
-  }, [partes, detalles.map((d) => d.id_tipo_parte_deco).join(',')]);
+  }, [partes]);
 
+  /* ---------------------------------------------------------- */
+  /*  Helpers                                                   */
+  /* ---------------------------------------------------------- */
   const agregarDetalle = () => {
     setDetalles((prev) => [
       ...prev,
@@ -96,6 +247,7 @@ const DecomisoPage = () => {
         cantidad: '',
         animales_afectados: '',
         peso_kg: '',
+        destino_decomiso: '',
         observaciones: '',
       },
     ]);
@@ -105,11 +257,8 @@ const DecomisoPage = () => {
     setDetalles((prev) => {
       const nuevos = [...prev];
       nuevos[index][campo] = valor;
-
-      if (campo === 'id_tipo_parte_deco') {
+      if (campo === 'id_tipo_parte_deco')
         nuevos[index].id_parte_decomisada = '';
-      }
-
       return nuevos;
     });
   };
@@ -123,7 +272,6 @@ const DecomisoPage = () => {
     const token = localStorage.getItem('token');
 
     try {
-      // ✅ Validar antes de mapear
       for (const d of detalles) {
         if (
           !d.id_parte_decomisada ||
@@ -157,7 +305,6 @@ const DecomisoPage = () => {
       });
 
       const data = await res.json();
-
       if (!res.ok)
         throw new Error(data.error || 'Error al registrar decomisos');
 
@@ -169,15 +316,18 @@ const DecomisoPage = () => {
     }
   };
 
+  /* ---------------------------------------------------------- */
+  /*  Render                                                    */
+  /* ---------------------------------------------------------- */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 px-4 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 sm:py-8 py-6">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-800 text-center mb-4">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 text-center mb-10 drop-shadow">
           🩺 Registrar Decomisos
         </h1>
 
         {infoFaena && (
-          <div className="mb-4 grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <Card title="N° de Tropa" value={infoFaena.n_tropa} />
             <Card title="DTE / DTU" value={infoFaena.dte_dtu} />
             <Card title="Fecha de Faena" value={infoFaena.fecha_faena} />
@@ -186,186 +336,224 @@ const DecomisoPage = () => {
         )}
 
         {datosFaena.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-3 mb-6">
-            <h2 className="text-lg font-semibold text-gray-700 mb-2">
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-4 mb-6">
+            <h2 className="text-lg font-semibold text-slate-700 mb-3">
               🐄 Animales faenados
             </h2>
-            <table className="w-full text-sm">
-              <thead className="bg-green-700 text-white">
-                <tr>
-                  <th className="px-2 py-2 text-left">Especie</th>
-                  <th className="px-2 py-2 text-left">Categoría</th>
-                  <th className="px-2 py-2 text-center">Faenados</th>
-                </tr>
-              </thead>
-              <tbody>
-                {datosFaena.map((d) => (
-                  <tr key={d.id_tropa_detalle} className="border-b">
-                    <td className="px-2 py-2">{d.especie}</td>
-                    <td className="px-2 py-2">{d.categoria}</td>
-                    <td className="px-2 py-2 text-center font-bold">
-                      {d.faenados}
-                    </td>
+            <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200">
+              <table className="min-w-full text-sm text-slate-700">
+                <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Especie</th>
+                    <th className="px-3 py-2 text-left">Categoría</th>
+                    <th className="px-3 py-2 text-center">Faenados</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {datosFaena.map((d) => (
+                    <tr
+                      key={d.id_tropa_detalle}
+                      className="border-b last:border-b-0 hover:bg-green-50 transition"
+                    >
+                      <td className="px-3 py-2">{d.especie}</td>
+                      <td className="px-3 py-2">{d.categoria}</td>
+                      <td className="px-3 py-2 text-center font-bold">
+                        {d.faenados}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        {detalles.map((detalle, index) => {
-          const tipoSeleccionado = String(detalle.id_tipo_parte_deco);
-          const partesFiltradas = partes.filter(
-            (p) => String(p.id_tipo_parte_deco) === tipoSeleccionado
-          );
+        {/* Formulario de detalles */}
+        <div className="space-y-4">
+          {detalles.map((detalle, index) => {
+            const partesFiltradas = partes.filter(
+              (p) =>
+                String(p.id_tipo_parte_deco) ===
+                String(detalle.id_tipo_parte_deco)
+            );
+            const parteValida = partesFiltradas.some(
+              (p) =>
+                String(p.id_parte_decomisada) ===
+                String(detalle.id_parte_decomisada)
+            );
+            const valorParte = parteValida ? detalle.id_parte_decomisada : '';
 
-          const parteValida = partesFiltradas.some(
-            (p) =>
-              String(p.id_parte_decomisada) ===
-              String(detalle.id_parte_decomisada)
-          );
+            const toOption = (item, key, label) => ({
+              value: item[key],
+              label: item[label],
+            });
 
-          const valorParte = parteValida ? detalle.id_parte_decomisada : '';
+            const tipoOptions = tiposParte.map((t) =>
+              toOption(t, 'id_tipo_parte_deco', 'nombre_tipo_parte')
+            );
+            const parteOptions = partesFiltradas.map((p) =>
+              toOption(p, 'id_parte_decomisada', 'nombre_parte')
+            );
+            const afeccOptions = afecciones.map((a) =>
+              toOption(a, 'id_afeccion', 'descripcion')
+            );
+            const destinoOptions = [
+              { value: 'incineración', label: 'Incineración' },
+              { value: 'rendering', label: 'Rendering' },
+              { value: 'entierro', label: 'Entierro' },
+              { value: 'desnaturalización', label: 'Desnaturalización' },
+              { value: 'otro', label: 'Otro' },
+            ];
 
-          return (
-            <div
-              key={index}
-              className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 bg-white p-3 rounded shadow"
-            >
-              {/* Tipo de parte */}
-              <select
-                value={detalle.id_tipo_parte_deco}
-                onChange={(e) =>
-                  actualizarDetalle(index, 'id_tipo_parte_deco', e.target.value)
-                }
-                className="border rounded px-2 py-1"
+            return (
+              <div
+                key={index}
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-white p-4 rounded-2xl shadow-lg border border-slate-200 ring-1 ring-slate-100 transition hover:shadow-xl"
               >
-                <option value="">Tipo de parte</option>
-                {tiposParte.map((tp) => (
-                  <option
-                    key={tp.id_tipo_parte_deco}
-                    value={tp.id_tipo_parte_deco}
-                  >
-                    {tp.nombre_tipo_parte}
-                  </option>
-                ))}
-              </select>
-              {/* Parte decomisada */}
-              <select
-                value={valorParte}
-                onChange={(e) =>
-                  actualizarDetalle(
-                    index,
-                    'id_parte_decomisada',
-                    e.target.value
-                  )
-                }
-                className="border rounded px-2 py-1"
-                disabled={!detalle.id_tipo_parte_deco}
-              >
-                <option value="">Parte decomisada</option>
-                {partesFiltradas.map((p) => (
-                  <option
-                    key={p.id_parte_decomisada}
-                    value={p.id_parte_decomisada}
-                  >
-                    {p.nombre_parte}
-                  </option>
-                ))}
-              </select>
+                {/* Tipo de parte */}
+                <SelectField
+                  label="Tipo de parte"
+                  value={
+                    tipoOptions.find(
+                      (o) => o.value === detalle.id_tipo_parte_deco
+                    ) || null
+                  }
+                  onChange={(selected) =>
+                    actualizarDetalle(
+                      index,
+                      'id_tipo_parte_deco',
+                      selected?.value || ''
+                    )
+                  }
+                  options={tipoOptions}
+                  placeholder="Seleccione tipo"
+                  required
+                />
 
-              {/* Afección */}
-              <select
-                value={detalle.id_afeccion}
-                onChange={(e) =>
-                  actualizarDetalle(index, 'id_afeccion', e.target.value)
-                }
-                className="border rounded px-2 py-1"
-              >
-                <option value="">Afección</option>
-                {afecciones.map((a) => (
-                  <option key={a.id_afeccion} value={a.id_afeccion}>
-                    {a.descripcion}
-                  </option>
-                ))}
-              </select>
+                {/* Parte decomisada */}
+                <SelectField
+                  label="Parte decomisada"
+                  value={
+                    parteOptions.find((o) => o.value === valorParte) || null
+                  }
+                  onChange={(selected) =>
+                    actualizarDetalle(
+                      index,
+                      'id_parte_decomisada',
+                      selected?.value || ''
+                    )
+                  }
+                  options={parteOptions}
+                  placeholder="Seleccione parte"
+                  required
+                  disabled={!detalle.id_tipo_parte_deco}
+                />
 
-              {/* Cantidad */}
-              <input
-                type="number"
-                placeholder="Cantidad"
-                value={detalle.cantidad}
-                onChange={(e) =>
-                  actualizarDetalle(index, 'cantidad', e.target.value)
-                }
-                className="border rounded px-2 py-1"
-              />
+                {/* Afección */}
+                <SelectField
+                  label="Afección"
+                  value={
+                    afeccOptions.find((o) => o.value === detalle.id_afeccion) ||
+                    null
+                  }
+                  onChange={(selected) =>
+                    actualizarDetalle(
+                      index,
+                      'id_afeccion',
+                      selected?.value || ''
+                    )
+                  }
+                  options={afeccOptions}
+                  placeholder="Seleccione afección"
+                  required
+                />
 
-              {/* Peso */}
-              <input
-                type="number"
-                step="0.1"
-                placeholder="Peso (kg)"
-                value={detalle.peso_kg}
-                onChange={(e) =>
-                  actualizarDetalle(index, 'peso_kg', e.target.value)
-                }
-                className="border rounded px-2 py-1"
-              />
+                {/* Cantidad */}
+                <InputField
+                  label="Cantidad"
+                  type="number"
+                  value={detalle.cantidad}
+                  onChange={(e) =>
+                    actualizarDetalle(index, 'cantidad', e.target.value)
+                  }
+                  placeholder="Cantidad"
+                />
 
-              {/* Animales afectados */}
-              <input
-                type="number"
-                placeholder="Animales afectados"
-                value={detalle.animales_afectados}
-                onChange={(e) =>
-                  actualizarDetalle(index, 'animales_afectados', e.target.value)
-                }
-                className="border rounded px-2 py-1"
-              />
+                {/* Peso */}
+                <InputField
+                  label="Peso (kg)"
+                  type="number"
+                  step="0.1"
+                  value={detalle.peso_kg}
+                  onChange={(e) =>
+                    actualizarDetalle(index, 'peso_kg', e.target.value)
+                  }
+                  placeholder="Peso (kg)"
+                />
 
-              {/* Destino del decomiso */}
-              <select
-                value={detalle.destino_decomiso || ''}
-                onChange={(e) =>
-                  actualizarDetalle(index, 'destino_decomiso', e.target.value)
-                }
-                className={`border rounded px-2 py-1 ${
-                  !detalle.destino_decomiso ? 'border-red-500' : ''
-                }`}
-              >
-                <option value="">Destino del decomiso</option>
-                <option value="incineración">Incineración</option>
-                <option value="rendering">Rendering</option>
-                <option value="entierro">Entierro</option>
-                <option value="desnaturalización">Desnaturalización</option>
-                <option value="otro">Otro</option>
-              </select>
+                {/* Animales afectados */}
+                <InputField
+                  label="Animales afectados"
+                  type="number"
+                  value={detalle.animales_afectados}
+                  onChange={(e) =>
+                    actualizarDetalle(
+                      index,
+                      'animales_afectados',
+                      e.target.value
+                    )
+                  }
+                  placeholder="Animales afectados"
+                />
 
-              {/* Observaciones */}
-              <textarea
-                placeholder="Observaciones"
-                value={detalle.observaciones}
-                onChange={(e) =>
-                  actualizarDetalle(index, 'observaciones', e.target.value)
-                }
-                className="border rounded px-2 py-1 col-span-3"
-              />
-            </div>
-          );
-        })}
+                {/* Destino del decomiso */}
+                <SelectField
+                  label="Destino del decomiso"
+                  value={
+                    destinoOptions.find(
+                      (o) => o.value === detalle.destino_decomiso
+                    ) || null
+                  }
+                  onChange={(selected) =>
+                    actualizarDetalle(
+                      index,
+                      'destino_decomiso',
+                      selected?.value || ''
+                    )
+                  }
+                  options={destinoOptions}
+                  placeholder="Seleccione destino"
+                  required
+                />
 
-        <div className="flex justify-between mt-4">
+                {/* Observaciones */}
+                <InputField
+                  label="Observaciones"
+                  as="textarea"
+                  value={detalle.observaciones}
+                  onChange={(e) =>
+                    actualizarDetalle(index, 'observaciones', e.target.value)
+                  }
+                  placeholder="Observaciones"
+                  className="md:col-span-3"
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Botones inferiores */}
+        <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <button
             onClick={agregarDetalle}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded text-sm font-semibold hover:bg-gray-300"
+            className="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg font-semibold hover:bg-slate-300 transition"
           >
             ➕ Agregar detalle
           </button>
 
           <button
             onClick={handleGuardar}
-            className="px-4 py-2 bg-green-700 text-white rounded text-sm font-semibold hover:bg-green-800"
+            className="px-5 py-2 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-800 transition shadow"
           >
             Guardar Decomisos
           </button>
@@ -376,7 +564,7 @@ const DecomisoPage = () => {
 };
 
 const Card = ({ title, value }) => (
-  <div className="bg-white rounded-xl shadow border border-slate-200 p-4 text-center">
+  <div className="bg-white rounded-xl shadow border border-slate-200 p-4 text-center transition hover:shadow-md">
     <p className="text-xs text-slate-500 mb-1">{title}</p>
     <p className="text-lg font-semibold text-slate-800">{value}</p>
   </div>

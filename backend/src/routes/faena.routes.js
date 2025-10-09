@@ -5,6 +5,7 @@ const {
   obtenerFaenas,
   crearFaena,
   obtenerRemanentePorTropa,
+  obtenerFaenasSinDecomiso,
 } = require('../controllers/faena.controller');
 
 const { verificarToken } = require('../middleware/auth');
@@ -22,6 +23,12 @@ router.get('/faenas-realizadas', obtenerFaenasRealizadas);
 router.get('/', verificarToken, permitirRoles(1, 2), obtenerFaenas);
 router.post('/', verificarToken, permitirRoles(2), crearFaena);
 router.post('/faena', verificarToken, permitirRoles(1, 2, 3), registrarFaena);
+router.get(
+  '/faenas-sin-decomiso',
+  verificarToken,
+  permitirRoles(1, 2, 3),
+  obtenerFaenasSinDecomiso,
+);
 
 router.get('/faena/tropas', obtenerFaenas);
 router.get(

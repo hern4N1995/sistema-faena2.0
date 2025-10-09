@@ -19,74 +19,17 @@ export default function Tropa() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 sm:py-8 px-3 sm:px-4 lg:px-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 sm:py-8 px-3 sm:px-4 lg:px-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center text-gray-800 mb-6 sm:mb-8">
-          🐄 Registro de Tropas
-        </h1>
-
-        <div className="bg-white rounded-xl shadow-xl p-4 sm:p-6 lg:p-8 mb-8 sm:mb-10">
-          <TropaForm onCreated={handleCreated} />
+        <div className="text-center mb-8 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-10">
+            🐄 Registro de Tropas
+          </h1>
         </div>
 
-        {/* <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-700 mb-4 sm:mb-6">
-          📋 Tropas registradas
-        </h2>
-
-        {tropas.length === 0 ? (
-          <p className="text-gray-500 text-center">
-            No hay tropas registradas aún.
-          </p>
-        ) : (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {tropas.map((tropa) => (
-              <li
-                key={tropa.id_tropa}
-                className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-4 flex flex-col justify-between gap-3"
-              >
-                {/* Info principal }
-                <div>
-                  <p className="font-semibold text-gray-800 text-base sm:text-lg">
-                    Titular: {tropa.titular || '—'}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Tropa Nº {tropa.n_tropa} · DTE: {tropa.dte_dtu}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Productor: {tropa.productor_nombre || '—'}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    {tropa.fecha
-                      ? new Date(tropa.fecha).toLocaleDateString('es-AR')
-                      : '—'}
-                  </p>
-                </div>
-
-                {/* Acciones }
-                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
-                  <button
-                    onClick={() => {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                      navigate(`/tropa/detalle/${tropa.id_tropa}`);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-1 text-green-600 hover:text-green-800 font-medium hover:underline text-sm"
-                  >
-                    ✏️ Modificar
-                  </button>
-                  <button
-                    onClick={() => {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                      navigate(`/tropa/informe/${tropa.id_tropa}`);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-1 text-blue-600 hover:text-blue-800 font-medium hover:underline text-sm"
-                  >
-                    📄 Resumen
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )} */}
+        {/* <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8 mb-8 sm:mb-10 border border-gray-100 hover:shadow-2xl transition-shadow duration-300"> */}
+        <TropaForm onCreated={handleCreated} />
+        {/* </div> */}
       </div>
     </div>
   );

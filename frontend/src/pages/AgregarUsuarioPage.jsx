@@ -368,10 +368,10 @@ const AgregarUsuarioPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-10">
         {/* Encabezado */}
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
-          {editandoId ? 'Modificar Usuario' : 'Agregar Usuario'}
+          {editandoId ? '👤 Modificar Usuario' : '👤 Agregar Usuario'}
         </h1>
 
         {/* Formulario */}

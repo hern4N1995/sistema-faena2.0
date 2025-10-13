@@ -35,7 +35,13 @@ export default function Header() {
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    setPerfilOpen(false); // ✅ cerrar menú de perfil
     navigate('/inicio');
+  };
+
+  const handleVerPerfil = () => {
+    setPerfilOpen(false); // ✅ cerrar menú de perfil
+    navigate('/perfil');
   };
 
   const rol = user?.rol;
@@ -126,7 +132,7 @@ export default function Header() {
                         style={{ backgroundColor: '#5ba943' }}
                       >
                         <button
-                          onClick={() => navigate('/perfil')}
+                          onClick={handleVerPerfil}
                           className="w-full text-left px-4 py-2 text-sm hover:bg-white/10"
                         >
                           Ver perfil

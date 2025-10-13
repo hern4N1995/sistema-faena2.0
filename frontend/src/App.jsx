@@ -31,6 +31,7 @@ import EspecieAdmin from './pages/EspecieAdmin';
 import CategoriaEspecieAdmin from './pages/CategoriaEspecieAdmin';
 import DecomisoResumenPage from './pages/DecomisoResumenPage';
 import DecomisosCargadosPage from './pages/DecomisosCargadosPage.jsx';
+import PerfilPage from './pages/PerfilPage.jsx';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
       <Routes>
         {/* Layout general con Header y Sidebar */}
         <Route element={<Layout sidebar={<Sidebar />} />}>
+          <Route path="perfil" element={<PerfilPage />} />
           <Route path="/" element={<Navigate to="/inicio" replace />} />
           <Route path="inicio" element={<Inicio />} />
           <Route path="tropa" element={<Tropa />} />

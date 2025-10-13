@@ -7,6 +7,8 @@ import LoginModal from './LoginModal';
 export default function Header() {
   const [loginAbierto, setLoginAbierto] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [perfilOpen, setPerfilOpen] = useState(false);
+  const perfilRef = useRef(null);
 
   const [user, setUser] = useState(null);
   const location = useLocation();
@@ -19,6 +21,16 @@ export default function Header() {
       setUser(null);
     }
   }, [location]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (perfilRef.current && !perfilRef.current.contains(e.target)) {
+        setPerfilOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -73,17 +85,62 @@ export default function Header() {
               {!user ? (
                 <button
                   onClick={() => setLoginAbierto(true)}
-                  className="ml-4 px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition"
+                  className="ml-4 px-4 py-2 rounded-lg bg-white/0 text-white text-sm font-medium hover:bg-white/20 transition"
                 >
                   Iniciar Sesión
                 </button>
               ) : (
-                <button
-                  onClick={handleLogout}
-                  className="ml-4 px-4 py-2 rounded-lg bg-red-500/80 text-white text-sm font-medium hover:bg-red-600 transition"
-                >
-                  Cerrar Sesión
-                </button>
+                <div className="flex items-center gap-3 ml-4">
+                  <span className="text-sm font-medium text-white">
+                    Bienvenido, {user.nombre}
+                  </span>
+
+                  <div ref={perfilRef} className="relative">
+                    <button
+                      onClick={() => setPerfilOpen((prev) => !prev)}
+                      className="flex items-center gap-1 px-2 py-2 bg-white/0 text-white rounded-full hover:bg-white/10 transition"
+                    >
+                      <img
+                        src="/png/profile.png"
+                        alt="Perfil"
+                        className="w-6 h-6 rounded-full"
+                      />
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </button>
+
+                    {perfilOpen && (
+                      <div
+                        className="absolute right-0 mt-2 w-44 text-white rounded-lg shadow-lg z-50 overflow-hidden"
+                        style={{ backgroundColor: '#5ba943' }}
+                      >
+                        <button
+                          onClick={() => navigate('/perfil')}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-white/10"
+                        >
+                          Ver perfil
+                        </button>
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-red-600"
+                        >
+                          Cerrar sesión
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </nav>
 

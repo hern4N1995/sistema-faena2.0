@@ -169,6 +169,50 @@ const eliminarUsuario = async (req, res) => {
   }
 };
 
+// Obtener perfil del usuario logueado
+const getPerfil = async (req, res) => {
+  try {
+    const id_usuario = req.user.id_usuario;
+
+    const result = await pool.query(
+      `SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.dni, u.n_telefono, u.creado_en,
+              p.nombre AS planta, r.descripcion AS rol
+       FROM usuario u
+       LEFT JOIN planta p ON u.id_planta = p.id_planta
+       LEFT JOIN rol_usuario r ON u.id_rol = r.id_rol
+       WHERE u.id_usuario = $1`,
+      [id_usuario],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al obtener perfil:', error);
+    res.status(500).json({ error: 'Error al obtener perfil' });
+  }
+};
+
+// Actualizar perfil del usuario logueado
+const updatePerfil = async (req, res) => {
+  try {
+    const id_usuario = req.user.id_usuario;
+    const { email, n_telefono } = req.body;
+
+    await pool.query(
+      `UPDATE usuario SET email = $1, n_telefono = $2 WHERE id_usuario = $3`,
+      [email, n_telefono, id_usuario],
+    );
+
+    res.json({ message: 'Perfil actualizado correctamente' });
+  } catch (error) {
+    console.error('Error al actualizar perfil:', error);
+    res.status(500).json({ error: 'Error al actualizar perfil' });
+  }
+};
+
 // Mapear rol desde string a número
 const mapRol = (rol) => {
   if (typeof rol !== 'string') return 3;
@@ -201,4 +245,6 @@ module.exports = {
   crearUsuario,
   actualizarUsuario,
   eliminarUsuario,
+  getPerfil,
+  updatePerfil,
 };

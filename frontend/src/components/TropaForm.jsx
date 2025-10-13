@@ -19,6 +19,7 @@ export default function TropaForm({ onCreated }) {
   const [productores, setProductores] = useState([]);
   const [titulares, setTitulares] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [guiaFocus, setGuiaFocus] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -142,13 +143,27 @@ export default function TropaForm({ onCreated }) {
           onChange={handleChange}
           required
         />
-        <InputField
-          label="Guía Policial"
-          name="guia_policial"
-          value={form.guia_policial}
-          onChange={handleChange}
-          required
-        />
+        <div className="flex flex-col">
+          <label className="mb-2 font-semibold text-gray-700 text-sm">
+            Guía Policial
+          </label>
+          <input
+            type="text"
+            name="guia_policial"
+            value={form.guia_policial}
+            onChange={handleChange}
+            onFocus={() => setGuiaFocus(true)}
+            onBlur={() => setGuiaFocus(false)}
+            required
+            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+          />
+          {guiaFocus && (
+            <span className="text-red-600 text-xs mt-1">
+              Si no posee guía policial, colocar 000
+            </span>
+          )}
+        </div>
+
         <InputField
           label="N° Tropa"
           name="n_tropa"

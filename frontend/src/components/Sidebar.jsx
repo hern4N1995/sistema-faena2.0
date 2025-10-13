@@ -26,6 +26,13 @@ export default function Sidebar() {
 
   const menuConfig = [
     {
+      prefix: '/perfil',
+      title: 'Mi Perfil',
+      roles: ['1', '2', '3'],
+      menu: [{ to: '/perfil', label: 'Ver Perfil', end: true }],
+    },
+
+    {
       prefix: '/faena',
       title: 'Gestión de Faena',
       roles: ['1', '2', '3'],

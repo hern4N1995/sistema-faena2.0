@@ -195,16 +195,36 @@ const getPerfil = async (req, res) => {
   }
 };
 
-// Actualizar perfil del usuario logueado
+// ✅ Actualizar perfil del usuario logueado (solo campos enviados)
 const updatePerfil = async (req, res) => {
   try {
     const id_usuario = req.user.id_usuario;
     const { email, n_telefono } = req.body;
 
-    await pool.query(
-      `UPDATE usuario SET email = $1, n_telefono = $2 WHERE id_usuario = $3`,
-      [email, n_telefono, id_usuario],
-    );
+    const campos = [];
+    const valores = [];
+    let index = 1;
+
+    if (email !== undefined) {
+      campos.push(`email = $${index++}`);
+      valores.push(email);
+    }
+
+    if (n_telefono !== undefined) {
+      campos.push(`n_telefono = $${index++}`);
+      valores.push(n_telefono);
+    }
+
+    if (campos.length === 0) {
+      return res
+        .status(400)
+        .json({ error: 'No se enviaron campos para actualizar' });
+    }
+
+    valores.push(id_usuario); // último parámetro para WHERE
+
+    const query = `UPDATE usuario SET ${campos.join(', ')} WHERE id_usuario = $${index}`;
+    await pool.query(query, valores);
 
     res.json({ message: 'Perfil actualizado correctamente' });
   } catch (error) {

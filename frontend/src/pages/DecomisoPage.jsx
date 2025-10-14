@@ -9,10 +9,11 @@ function SelectField({
   label,
   value,
   onChange,
-  options,
+  options = [],
   placeholder,
   maxMenuHeight,
   required = false,
+  disabled = false,
 }) {
   const [isFocusing, setIsFocusing] = useState(false);
 
@@ -23,7 +24,7 @@ function SelectField({
       minHeight: '48px',
       paddingLeft: '16px',
       paddingRight: '16px',
-      backgroundColor: '#f9fafb',
+      backgroundColor: disabled ? '#f3f4f6' : '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
       boxShadow: isFocusing
@@ -32,12 +33,7 @@ function SelectField({
         ? '0 0 0 4px #d1fae5'
         : 'none',
       transition: 'all 100ms ease',
-      '&:hover': {
-        borderColor: '#6ee7b7',
-      },
-      '&:focus-within': {
-        borderColor: '#10b981',
-      },
+      pointerEvents: disabled ? 'none' : 'auto',
     }),
     valueContainer: (base) => ({
       ...base,
@@ -92,12 +88,12 @@ function SelectField({
         {label}
       </label>
       <Select
-        value={value}
-        onChange={onChange}
+        value={value || null}
+        onChange={(selected) => onChange(selected || null)}
         options={options}
         placeholder={placeholder}
         maxMenuHeight={maxMenuHeight}
-        required={required}
+        isDisabled={disabled}
         styles={customStyles}
         noOptionsMessage={() => 'Sin opciones'}
         components={{ IndicatorSeparator: () => null }}
@@ -111,7 +107,7 @@ function SelectField({
 }
 
 /* ------------------------------------------------------------------ */
-/*  InputField idéntico al de TropaForm                               */
+/*  InputField con soporte textarea                                   */
 /* ------------------------------------------------------------------ */
 function InputField({
   label,
@@ -121,7 +117,31 @@ function InputField({
   required = false,
   type = 'text',
   className = '',
+  placeholder = '',
+  as = 'input',
+  step,
 }) {
+  const baseClass =
+    'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
+
+  if (as === 'textarea') {
+    return (
+      <div className={`flex flex-col ${className}`}>
+        <label className="mb-2 font-semibold text-gray-700 text-sm">
+          {label}
+        </label>
+        <textarea
+          name={name}
+          value={value}
+          onChange={onChange}
+          required={required}
+          placeholder={placeholder}
+          className={`${baseClass} resize-vertical min-h-[72px]`}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={`flex flex-col ${className}`}>
       <label className="mb-2 font-semibold text-gray-700 text-sm">
@@ -133,7 +153,9 @@ function InputField({
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+        placeholder={placeholder}
+        step={step}
+        className={baseClass}
       />
     </div>
   );
@@ -173,10 +195,11 @@ const DecomisoPage = () => {
   useEffect(() => {
     const fetchDatos = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || '';
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const resFaena = await fetch(`/api/faena/${id_faena}/decomiso-datos`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers,
         });
         const faena = await resFaena.json();
 
@@ -188,19 +211,20 @@ const DecomisoPage = () => {
             fecha_faena: new Date(faena[0].fecha_faena).toLocaleDateString(
               'es-AR'
             ),
-            faenados: faena.reduce((acc, f) => acc + f.faenados, 0),
+            faenados: faena.reduce(
+              (acc, f) => acc + (Number(f.faenados) || 0),
+              0
+            ),
           });
           setDatosFaena(faena);
         }
 
-        const resBase = await fetch('/api/decomisos/datos-base', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const resBase = await fetch('/api/decomisos/datos-base', { headers });
         const base = await resBase.json();
 
-        setTiposParte(base.tiposParte || []);
-        setPartes(base.partes || []);
-        setAfecciones(base.afecciones || []);
+        setTiposParte(Array.isArray(base.tiposParte) ? base.tiposParte : []);
+        setPartes(Array.isArray(base.partes) ? base.partes : []);
+        setAfecciones(Array.isArray(base.afecciones) ? base.afecciones : []);
       } catch (err) {
         console.error('❌ Error al cargar datos:', err);
       } finally {
@@ -253,10 +277,32 @@ const DecomisoPage = () => {
     ]);
   };
 
+  const eliminarDetalle = (index) => {
+    setDetalles((prev) => {
+      const nuevos = prev.slice();
+      nuevos.splice(index, 1);
+      if (nuevos.length === 0) {
+        return [
+          {
+            id_tipo_parte_deco: '',
+            id_parte_decomisada: '',
+            id_afeccion: '',
+            cantidad: '',
+            animales_afectados: '',
+            peso_kg: '',
+            destino_decomiso: '',
+            observaciones: '',
+          },
+        ];
+      }
+      return nuevos;
+    });
+  };
+
   const actualizarDetalle = (index, campo, valor) => {
     setDetalles((prev) => {
       const nuevos = [...prev];
-      nuevos[index][campo] = valor;
+      nuevos[index] = { ...nuevos[index], [campo]: valor };
       if (campo === 'id_tipo_parte_deco')
         nuevos[index].id_parte_decomisada = '';
       return nuevos;
@@ -269,7 +315,11 @@ const DecomisoPage = () => {
       return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || '';
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
 
     try {
       for (const d of detalles) {
@@ -285,22 +335,19 @@ const DecomisoPage = () => {
 
       const payload = detalles.map((d) => ({
         id_faena_detalle: infoFaena.id_faena_detalle,
-        id_tipo_parte_deco: d.id_tipo_parte_deco,
+        id_tipo_parte_deco: d.id_tipo_parte_deco || null,
         id_parte_decomisada: d.id_parte_decomisada,
         id_afeccion: d.id_afeccion,
         cantidad: d.cantidad,
-        animales_afectados: d.animales_afectados,
-        peso_kg: d.peso_kg || null,
+        animales_afectados: d.animales_afectados || null,
+        peso_kg: d.peso_kg ? Number(d.peso_kg) : null,
         destino_decomiso: d.destino_decomiso,
         observaciones: d.observaciones || null,
       }));
 
       const res = await fetch('/api/decomisos', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify(payload),
       });
 
@@ -408,14 +455,30 @@ const DecomisoPage = () => {
             return (
               <div
                 key={index}
-                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-white p-4 rounded-2xl shadow-lg border border-slate-200 ring-1 ring-slate-100 transition hover:shadow-xl"
+                className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-white p-4 rounded-2xl shadow-lg border border-slate-200 ring-1 ring-slate-100 transition hover:shadow-xl"
               >
+                {/* boton eliminar en esquina superior derecha */}
+                <div className="absolute top-3 right-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm('¿Eliminar este detalle?'))
+                        eliminarDetalle(index);
+                    }}
+                    className="text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md text-sm font-medium shadow-sm"
+                    aria-label={`Eliminar detalle ${index + 1}`}
+                  >
+                    ✖
+                  </button>
+                </div>
+
                 {/* Tipo de parte */}
                 <SelectField
                   label="Tipo de parte"
                   value={
                     tipoOptions.find(
-                      (o) => o.value === detalle.id_tipo_parte_deco
+                      (o) =>
+                        String(o.value) === String(detalle.id_tipo_parte_deco)
                     ) || null
                   }
                   onChange={(selected) =>
@@ -434,7 +497,9 @@ const DecomisoPage = () => {
                 <SelectField
                   label="Parte decomisada"
                   value={
-                    parteOptions.find((o) => o.value === valorParte) || null
+                    parteOptions.find(
+                      (o) => String(o.value) === String(valorParte)
+                    ) || null
                   }
                   onChange={(selected) =>
                     actualizarDetalle(
@@ -453,8 +518,9 @@ const DecomisoPage = () => {
                 <SelectField
                   label="Afección"
                   value={
-                    afeccOptions.find((o) => o.value === detalle.id_afeccion) ||
-                    null
+                    afeccOptions.find(
+                      (o) => String(o.value) === String(detalle.id_afeccion)
+                    ) || null
                   }
                   onChange={(selected) =>
                     actualizarDetalle(
@@ -511,7 +577,8 @@ const DecomisoPage = () => {
                   label="Destino del decomiso"
                   value={
                     destinoOptions.find(
-                      (o) => o.value === detalle.destino_decomiso
+                      (o) =>
+                        String(o.value) === String(detalle.destino_decomiso)
                     ) || null
                   }
                   onChange={(selected) =>
@@ -545,18 +612,22 @@ const DecomisoPage = () => {
         {/* Botones inferiores */}
         <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <button
+            type="button"
             onClick={agregarDetalle}
             className="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg font-semibold hover:bg-slate-300 transition"
           >
             ➕ Agregar detalle
           </button>
 
-          <button
-            onClick={handleGuardar}
-            className="px-5 py-2 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-800 transition shadow"
-          >
-            Guardar Decomisos
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleGuardar}
+              className="px-5 py-2 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-800 transition shadow"
+            >
+              Guardar Decomisos
+            </button>
+          </div>
         </div>
       </div>
     </div>

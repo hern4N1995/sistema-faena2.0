@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 
 /* ------------------------------------------------------------------ */
-/*  InputField reutilizable (igual que AgregarUsuarioPage)            */
+/*  InputField reutilizable                                           */
 /* ------------------------------------------------------------------ */
 const InputField = ({
   label,
@@ -61,14 +61,38 @@ export default function PerfilPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const buildPayload = () => {
+    const payload = {};
+    if (form.email !== usuario.email) {
+      payload.email = form.email;
+    }
+    if (form.n_telefono !== usuario.n_telefono) {
+      payload.n_telefono = form.n_telefono;
+    }
+    return payload;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    const token = localStorage.getItem('token');
+    const payload = buildPayload();
+
+    if (Object.keys(payload).length === 0) {
+      setMensaje('⚠️ No hay cambios para guardar.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      await api.put('/usuarios/perfil', form);
+      await api.put('/usuarios/perfil', payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setMensaje('✅ Datos actualizados correctamente.');
       setEditMode({ email: false, n_telefono: false });
-    } catch {
+    } catch (err) {
+      console.error('❌ Error al actualizar perfil:', err);
       setMensaje('❌ Error al actualizar datos.');
     } finally {
       setLoading(false);

@@ -264,12 +264,12 @@ function SelectField({
         : state.isFocused
         ? '0 0 0 4px #d1fae5' // ✅ mismo tono que ring-green-100
         : 'none',
-      transition: 'all 100ms ease',
+      transition: 'all 50ms ease',
       '&:hover': {
-        borderColor: '#6ee7b7',
+        borderColor: '#96f1b7',
       },
       '&:focus-within': {
-        borderColor: '#10b981',
+        borderColor: '#22c55e',
       },
     }),
     valueContainer: (base) => ({

@@ -24,16 +24,21 @@ function SelectField({
       minHeight: '48px',
       paddingLeft: '16px',
       paddingRight: '16px',
-      backgroundColor: disabled ? '#f3f4f6' : '#f9fafb',
+      backgroundColor: '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
       boxShadow: isFocusing
-        ? '0 0 0 1px #000'
+        ? '0 0 0 1px #000' // ✅ borde negro fino (1px)
         : state.isFocused
-        ? '0 0 0 4px #d1fae5'
+        ? '0 0 0 4px #d1fae5' // ✅ mismo tono que ring-green-100
         : 'none',
-      transition: 'all 100ms ease',
-      pointerEvents: disabled ? 'none' : 'auto',
+      transition: 'all 50ms ease',
+      '&:hover': {
+        borderColor: '#96f1b7',
+      },
+      '&:focus-within': {
+        borderColor: '#22c55e',
+      },
     }),
     valueContainer: (base) => ({
       ...base,

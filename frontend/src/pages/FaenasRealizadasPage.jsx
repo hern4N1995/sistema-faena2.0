@@ -82,7 +82,7 @@ const FaenasRealizadasPage = () => {
               onChange={(e) =>
                 setFiltro((f) => ({ ...f, fecha: e.target.value }))
               }
-              className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 shadow-sm"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
             />
             <input
               type="text"
@@ -91,7 +91,7 @@ const FaenasRealizadasPage = () => {
               onChange={(e) =>
                 setFiltro((f) => ({ ...f, dte_dtu: e.target.value }))
               }
-              className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 shadow-sm"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
             />
             <input
               type="text"
@@ -100,7 +100,7 @@ const FaenasRealizadasPage = () => {
               onChange={(e) =>
                 setFiltro((f) => ({ ...f, n_tropa: e.target.value }))
               }
-              className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 shadow-sm"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
             />
           </div>
         </div>

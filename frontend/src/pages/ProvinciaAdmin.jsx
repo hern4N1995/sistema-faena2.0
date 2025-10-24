@@ -319,16 +319,16 @@ export default function ProvinciaAdmin() {
                           onClick={() =>
                             iniciarEdicion(prov.id, prov.descripcion)
                           }
-                          className="px-3 py-1 rounded-lg bg-yellow-500 text-white text-sm hover:bg-yellow-600 transition"
+                          className="px-3 py-1 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-600 transition"
                         >
-                          Editar
+                          ✏️ Editar
                         </button>
                       )}
                       <button
                         onClick={() => eliminarProvincia(prov.id)}
                         className="px-3 py-1 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
                       >
-                        Eliminar
+                        🗑️ Eliminar
                       </button>
                     </td>
                   </tr>

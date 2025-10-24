@@ -1,5 +1,32 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
+/* ------------------------------------------------------------------ */
+/*  InputField institucional (igual que TropaForm / UsuarioPage)      */
+/* ------------------------------------------------------------------ */
+const InputField = ({
+  label,
+  name,
+  value,
+  onChange,
+  required = false,
+  type = 'text',
+  className = '',
+  placeholder = '',
+}) => (
+  <div className={`flex flex-col ${className}`}>
+    <label className="mb-2 font-semibold text-gray-700 text-sm">{label}</label>
+    <input
+      type={type}
+      name={name}
+      value={value}
+      onChange={onChange}
+      required={required}
+      placeholder={placeholder}
+      className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+    />
+  </div>
+);
+
 export default function ProductorAdmin() {
   const [nuevoProductor, setNuevoProductor] = useState({
     cuit: '',
@@ -12,7 +39,6 @@ export default function ProductorAdmin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Paginación
   const [paginaActual, setPaginaActual] = useState(1);
   const itemsPorPagina = window.innerWidth < 768 ? 2 : 4;
 
@@ -81,7 +107,6 @@ export default function ProductorAdmin() {
     }
   };
 
-  // Filtro + paginación
   const productoresFiltrados = useMemo(() => {
     const texto = filtro.toLowerCase();
     return productores.filter(
@@ -106,7 +131,7 @@ export default function ProductorAdmin() {
     if (totalPaginas <= 1) return null;
 
     return (
-      <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
+      <div className="mt-[-4px] flex justify-center items-center gap-2 flex-wrap">
         <button
           onClick={paginaAnterior}
           disabled={paginaActual === 1}
@@ -173,46 +198,35 @@ export default function ProductorAdmin() {
         Cargando productores...
       </div>
     );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
       <div className="max-w-6xl mx-auto space-y-10">
-        {/* Encabezado */}
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
           {editandoId ? '👤 Modificar Productor' : '👤 Agregar Productor'}
         </h1>
-
         {/* Formulario */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
           <form
             onSubmit={handleSubmit}
             className="grid grid-cols-1 sm:grid-cols-3 gap-4"
           >
-            <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
-                CUIT
-              </label>
-              <input
-                type="text"
-                name="cuit"
-                value={nuevoProductor.cuit}
-                onChange={handleChange}
-                required
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-              />
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
-                Nombre
-              </label>
-              <input
-                type="text"
-                name="nombre"
-                value={nuevoProductor.nombre}
-                onChange={handleChange}
-                required
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-              />
-            </div>
+            <InputField
+              label="CUIT"
+              name="cuit"
+              value={nuevoProductor.cuit}
+              onChange={handleChange}
+              required
+              placeholder="Ej. 20-12345678-9"
+            />
+            <InputField
+              label="Nombre"
+              name="nombre"
+              value={nuevoProductor.nombre}
+              onChange={handleChange}
+              required
+              placeholder="Ej. Juan Pérez"
+            />
             <div className="flex items-end justify-end">
               <button
                 type="submit"
@@ -237,7 +251,7 @@ export default function ProductorAdmin() {
           )}
         </div>
 
-        {/* Listado + Paginación */}
+        {/* Listado */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
             Productores Registrados
@@ -269,13 +283,13 @@ export default function ProductorAdmin() {
                         onClick={() => handleEditar(p)}
                         className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
                       >
-                        Editar
+                        ✏️ Editar
                       </button>
                       <button
                         onClick={() => handleEliminar(p.id_productor)}
                         className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
                       >
-                        Eliminar
+                        🗑️ Eliminar
                       </button>
                     </div>
                   </li>
@@ -287,10 +301,10 @@ export default function ProductorAdmin() {
               </p>
             )}
           </div>
-
-          {/* Paginación visual */}
-          {renderPaginacion()}
         </div>
+
+        {/* Paginación externa */}
+        {totalPaginas > 1 && renderPaginacion()}
       </div>
     </div>
   );

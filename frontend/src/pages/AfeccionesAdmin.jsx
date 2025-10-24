@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Select from 'react-select';
 
+/* ------------------------------------------------------------------ */
+/*  SelectField estilizado                                            */
+/* ------------------------------------------------------------------ */
 function SelectField({ label, value, onChange, options, placeholder }) {
   const [isFocusing, setIsFocusing] = useState(false);
 
@@ -225,16 +228,15 @@ const AfeccionesAdmin = () => {
   const totalPaginas = Math.ceil(afecciones.length / itemsPorPagina);
   const irPagina = (n) =>
     setPaginaActual(Math.min(Math.max(n, 1), totalPaginas));
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
       <div className="max-w-6xl mx-auto space-y-10">
-        {/* Título fuera del contenedor */}
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
           🧬 Administración de Afecciones
         </h1>
-
-        {/* Formulario */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4">
+        {/* Formulario institucional con sombra visible */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4 mt-6 relative z-10">
           <h2 className="text-lg font-semibold text-gray-800">
             {editandoId ? 'Modificar afección' : 'Registrar nueva afección'}
           </h2>
@@ -285,7 +287,7 @@ const AfeccionesAdmin = () => {
             <button
               onClick={handleGuardar}
               disabled={!idEspecie || !descripcion.trim()}
-              className={`px-6 py-3 rounded-lg font-semibold transition ${
+              className={`px-6 py-3 rounded-lg font-semibold transition shadow ${
                 idEspecie && descripcion.trim()
                   ? 'bg-green-600 text-white hover:bg-green-700'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -297,7 +299,7 @@ const AfeccionesAdmin = () => {
             {editandoId && (
               <button
                 onClick={cancelarEdicion}
-                className="px-6 py-3 bg-slate-500 text-white rounded-lg font-semibold hover:bg-slate-600 transition"
+                className="px-6 py-3 bg-slate-500 text-white rounded-lg font-semibold hover:bg-slate-600 transition shadow"
               >
                 Cancelar
               </button>
@@ -306,73 +308,100 @@ const AfeccionesAdmin = () => {
 
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
-        {/* Listado paginado */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Afecciones registradas
-          </h2>
 
-          {loading ? (
-            <p className="text-center text-gray-500">Cargando...</p>
-          ) : visibles.length === 0 ? (
-            <p className="text-center text-gray-500">
-              No hay afecciones registradas.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200">
-              <table className="min-w-full text-sm text-gray-700">
-                <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-semibold">ID</th>
-                    <th className="px-4 py-3 text-left font-semibold">
-                      Descripción
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold">
-                      Especie
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {visibles.map((a) => {
-                    const id = a.id_afeccion ?? a.id;
-                    return (
-                      <tr key={id} className="hover:bg-gray-50 transition">
-                        <td className="px-4 py-3">{id}</td>
-                        <td className="px-4 py-3">{a.descripcion}</td>
-                        <td className="px-4 py-3">
-                          {a.especie ?? a.nombre_especie ?? ''}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => iniciarEdicion(a)}
-                              className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                            >
-                              Modificar
-                            </button>
-                            <button
-                              onClick={() => handleEliminar(id)}
-                              className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                            >
-                              Eliminar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+        {/* Tarjetas responsivas en móvil */}
+        <div className="sm:hidden space-y-4">
+          {visibles.map((a) => {
+            const id = a.id_afeccion ?? a.id;
+            return (
+              <div
+                key={id}
+                className="bg-white p-4 rounded-xl shadow border border-gray-200"
+              >
+                <div className="space-y-1 text-sm text-gray-700">
+                  <p>
+                    <span className="font-semibold text-green-700">
+                      {a.descripcion}
+                    </span>
+                  </p>
+                  <p>
+                    Especie:{' '}
+                    <span className="font-medium text-gray-800">
+                      {a.especie ?? a.nombre_especie ?? ''}
+                    </span>
+                  </p>
+                  <p className="text-gray-500">ID: {id}</p>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => iniciarEdicion(a)}
+                    className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                  >
+                    ✏️ Modificar
+                  </button>
+                  <button
+                    onClick={() => handleEliminar(id)}
+                    className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                  >
+                    🗑️ Eliminar
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Paginación fuera del contenedor */}
+        {/* Tabla en desktop */}
+        <div className="hidden sm:block overflow-x-auto rounded-xl shadow-xl ring-1 ring-gray-200">
+          <table className="min-w-full text-sm text-gray-700">
+            <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold">ID</th>
+                <th className="px-4 py-3 text-left font-semibold">
+                  Descripción
+                </th>
+                <th className="px-4 py-3 text-left font-semibold">Especie</th>
+                <th className="px-4 py-3 text-center font-semibold">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {visibles.map((a) => {
+                const id = a.id_afeccion ?? a.id;
+                return (
+                  <tr key={id} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-3">{id}</td>
+                    <td className="px-4 py-3">{a.descripcion}</td>
+                    <td className="px-4 py-3">
+                      {a.especie ?? a.nombre_especie ?? ''}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex justify-center gap-2">
+                        <button
+                          onClick={() => iniciarEdicion(a)}
+                          className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                        >
+                          ✏️ Modificar
+                        </button>
+                        <button
+                          onClick={() => handleEliminar(id)}
+                          className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginación externa */}
         {totalPaginas > 1 && (
-          <div className="flex justify-center items-center gap-2 pt-4 flex-wrap">
+          <div className="mt-[-4px] flex justify-center items-center gap-2 flex-wrap">
             <button
               onClick={() => irPagina(paginaActual - 1)}
               disabled={paginaActual === 1}

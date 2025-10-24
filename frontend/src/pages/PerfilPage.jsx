@@ -165,7 +165,7 @@ export default function PerfilPage() {
                     onClick={() => toggleEdit('email')}
                     className="px-4 py-2 bg-yellow-600 text-white rounded-lg text-sm hover:bg-yellow-700 transition shadow"
                   >
-                    Modificar
+                    ✏️ Modificar
                   </button>
                 ) : (
                   <button
@@ -196,7 +196,7 @@ export default function PerfilPage() {
                     onClick={() => toggleEdit('n_telefono')}
                     className="px-4 py-2 bg-yellow-600 text-white rounded-lg text-sm hover:bg-yellow-700 transition shadow"
                   >
-                    Modificar
+                    ✏️ Modificar
                   </button>
                 ) : (
                   <button

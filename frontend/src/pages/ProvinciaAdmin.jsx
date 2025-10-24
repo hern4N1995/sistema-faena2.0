@@ -1,8 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
-/* ------------------------------------------------------------------ */
-/*  InputField (mismo estilo que TropaForm)                           */
-/* ------------------------------------------------------------------ */
 const InputField = ({
   label,
   name,
@@ -11,6 +8,8 @@ const InputField = ({
   required = false,
   type = 'text',
   className = '',
+  placeholder = '',
+  onFocus,
 }) => (
   <div className={`flex flex-col ${className}`}>
     <label className="mb-2 font-semibold text-gray-700 text-sm">{label}</label>
@@ -19,15 +18,14 @@ const InputField = ({
       name={name}
       value={value}
       onChange={onChange}
+      onFocus={onFocus}
       required={required}
+      placeholder={placeholder}
       className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
     />
   </div>
 );
 
-/* ------------------------------------------------------------------ */
-/*  Provincias hard-codeadas (autocompletado)                         */
-/* ------------------------------------------------------------------ */
 const todasLasProvincias = [
   'Buenos Aires',
   'Catamarca',
@@ -54,9 +52,6 @@ const todasLasProvincias = [
   'Tucumán',
 ];
 
-/* ------------------------------------------------------------------ */
-/*  Page                                                              */
-/* ------------------------------------------------------------------ */
 export default function ProvinciaAdmin() {
   const [provincias, setProvincias] = useState([]);
   const [nuevaDescripcion, setNuevaDescripcion] = useState('');
@@ -65,11 +60,10 @@ export default function ProvinciaAdmin() {
   const [sugerencias, setSugerencias] = useState([]);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
   const [mensajeFeedback, setMensajeFeedback] = useState('');
-  const inputRef = React.useRef(null);
-
-  /* ---------- Paginación + búsqueda ---------- */
-  const [paginaActual, setPaginaActual] = useState(1);
   const [filtro, setFiltro] = useState('');
+  const inputRef = useRef(null);
+
+  const [paginaActual, setPaginaActual] = useState(1);
   const itemsPorPagina =
     window.innerWidth < 768 ? 4 : window.innerWidth < 1024 ? 6 : 8;
 
@@ -197,7 +191,6 @@ export default function ProvinciaAdmin() {
     }
   };
 
-  /* ---------- Paginación + búsqueda ---------- */
   const provinciasFiltradas = useMemo(() => {
     const texto = filtro.toLowerCase();
     return provincias.filter((p) =>
@@ -215,78 +208,12 @@ export default function ProvinciaAdmin() {
     setPaginaActual(Math.min(Math.max(n, 1), totalPaginas));
   const paginaAnterior = () => irPagina(paginaActual - 1);
   const paginaSiguiente = () => irPagina(paginaActual + 1);
-
-  /* ---------- Paginación visual (igual a TropaForm) ---------- */
-  const renderPaginacion = () => {
-    if (totalPaginas <= 1) return null;
-    return (
-      <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
-        <button
-          onClick={() => setPaginaActual((p) => Math.max(p - 1, 1))}
-          disabled={paginaActual === 1}
-          className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-            paginaActual === 1
-              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-              : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-          }`}
-        >
-          ← Anterior
-        </button>
-
-        {[...Array(Math.min(3, totalPaginas))].map((_, i) => {
-          const page = i + 1;
-          return (
-            <button
-              key={page}
-              onClick={() => setPaginaActual(page)}
-              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                paginaActual === page
-                  ? 'bg-green-700 text-white shadow'
-                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-              }`}
-            >
-              {page}
-            </button>
-          );
-        })}
-
-        {totalPaginas > 3 && (
-          <>
-            <span className="text-slate-500 text-sm">…</span>
-            <button
-              onClick={() => setPaginaActual(totalPaginas)}
-              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                paginaActual === totalPaginas
-                  ? 'bg-green-700 text-white shadow'
-                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-              }`}
-            >
-              {totalPaginas}
-            </button>
-          </>
-        )}
-
-        <button
-          onClick={() => setPaginaActual((p) => Math.min(p + 1, totalPaginas))}
-          disabled={paginaActual === totalPaginas}
-          className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-            paginaActual === totalPaginas
-              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-              : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-          }`}
-        >
-          Siguiente →
-        </button>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* Encabezado */}
+      <div className="max-w-6xl mx-auto space-y-10">
+        {/* Título fuera del contenedor */}
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
-          Administrar Provincias
+          🗺️ Administración de Provincias
         </h1>
 
         {/* Formulario */}
@@ -297,13 +224,6 @@ export default function ProvinciaAdmin() {
                 label="Nueva provincia"
                 value={nuevaDescripcion}
                 onChange={manejarBusqueda}
-                onFocus={() => {
-                  const filtradas = todasLasProvincias.filter((prov) =>
-                    prov.toLowerCase().includes(nuevaDescripcion.toLowerCase())
-                  );
-                  setSugerencias(filtradas);
-                  setMostrarSugerencias(true);
-                }}
                 placeholder="Ingresar provincia..."
               />
               {mostrarSugerencias && sugerencias.length > 0 && (
@@ -343,21 +263,20 @@ export default function ProvinciaAdmin() {
           )}
         </div>
 
-        {/* Filtro de búsqueda */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
-          <InputField
-            label="Buscar provincia"
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-            placeholder="Escriba para filtrar..."
-          />
-        </div>
-
         {/* Tabla de provincias */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Listado de Provincias
+            📋 Listado de Provincias
           </h2>
+          {/* Filtro de búsqueda */}
+          <div className="mb-4">
+            <InputField
+              label="Buscar provincia"
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              placeholder="Escriba para filtrar..."
+            />
+          </div>
           <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200">
             <table className="min-w-full text-sm text-gray-700">
               <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
@@ -417,10 +336,69 @@ export default function ProvinciaAdmin() {
               </tbody>
             </table>
           </div>
-
-          {/* Paginación */}
-          {renderPaginacion()}
         </div>
+
+        {/* Paginación fuera del contenedor */}
+        {totalPaginas > 1 && (
+          <div className="flex justify-center items-center gap-2 pt-4 flex-wrap">
+            <button
+              onClick={paginaAnterior}
+              disabled={paginaActual === 1}
+              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                paginaActual === 1
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+              }`}
+            >
+              ← Anterior
+            </button>
+
+            {[...Array(Math.min(3, totalPaginas))].map((_, i) => {
+              const page = i + 1;
+              return (
+                <button
+                  key={page}
+                  onClick={() => irPagina(page)}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                    paginaActual === page
+                      ? 'bg-green-700 text-white shadow'
+                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
+
+            {totalPaginas > 3 && (
+              <>
+                <span className="text-slate-500 text-sm">…</span>
+                <button
+                  onClick={() => irPagina(totalPaginas)}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                    paginaActual === totalPaginas
+                      ? 'bg-green-700 text-white shadow'
+                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  }`}
+                >
+                  {totalPaginas}
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={paginaSiguiente}
+              disabled={paginaActual === totalPaginas}
+              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                paginaActual === totalPaginas
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+              }`}
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

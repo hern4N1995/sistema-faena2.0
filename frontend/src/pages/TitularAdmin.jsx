@@ -1,34 +1,127 @@
 import React, { useState, useEffect } from 'react';
+import Select from 'react-select';
+
+function SelectField({ label, value, onChange, options, placeholder }) {
+  const [isFocusing, setIsFocusing] = useState(false);
+
+  const customStyles = {
+    control: (base, state) => ({
+      ...base,
+      height: '48px',
+      minHeight: '48px',
+      paddingLeft: '16px',
+      paddingRight: '16px',
+      backgroundColor: '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '0.5rem',
+      boxShadow: isFocusing
+        ? '0 0 0 1px #000'
+        : state.isFocused
+        ? '0 0 0 4px #d1fae5'
+        : 'none',
+      transition: 'all 50ms ease',
+      '&:hover': {
+        borderColor: '#96f1b7',
+      },
+      '&:focus-within': {
+        borderColor: '#22c55e',
+      },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 0 0 2px',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+      fontSize: '14px',
+      fontFamily: 'inherit',
+      color: '#111827',
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#111827',
+      margin: 0,
+    }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#6b7280',
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '48px',
+    }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused }) => ({
+      ...base,
+      fontSize: '14px',
+      padding: '10px 16px',
+      backgroundColor: isFocused ? '#d1fae5' : '#fff',
+      color: isFocused ? '#065f46' : '#111827',
+    }),
+  };
+
+  return (
+    <div className="flex flex-col">
+      <label className="mb-2 font-semibold text-gray-700 text-sm">
+        {label}
+      </label>
+      <Select
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={placeholder}
+        styles={customStyles}
+        noOptionsMessage={() => 'Sin opciones'}
+        components={{ IndicatorSeparator: () => null }}
+        onFocus={() => {
+          setIsFocusing(true);
+          setTimeout(() => setIsFocusing(false), 50);
+        }}
+      />
+    </div>
+  );
+}
 
 export default function TitularAdmin() {
   const [titulares, setTitulares] = useState([]);
   const [provinciasDB, setProvinciasDB] = useState([]);
   const [nuevoTitular, setNuevoTitular] = useState({
     nombre: '',
-    provincia: '',
+    provincia: null,
     localidad: '',
     direccion: '',
     documento: '',
   });
   const [editandoId, setEditandoId] = useState(null);
   const [editado, setEditado] = useState({});
-  const [mensajeFeedback, setMensajeFeedback] = useState('');
   const [esMovil, setEsMovil] = useState(window.innerWidth < 768);
 
-  // Detectar cambios en el tamaño de la ventana
+  const [paginaActual, setPaginaActual] = useState(1);
+  const itemsPorPagina = esMovil ? 4 : 6;
+
   useEffect(() => {
     const handleResize = () => setEsMovil(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Cargar datos iniciales
   useEffect(() => {
     const cargarDatos = async () => {
       try {
         const [resProvincias, resTitulares] = await Promise.all([
-          fetch('http://localhost:3000/api/provincias'),
-          fetch('http://localhost:3000/api/titulares-faena'),
+          fetch('/api/provincias'),
+          fetch('/api/titulares-faena'),
         ]);
         setProvinciasDB(await resProvincias.json());
         setTitulares(await resTitulares.json());
@@ -44,6 +137,10 @@ export default function TitularAdmin() {
     setNuevoTitular({ ...nuevoTitular, [name]: value });
   };
 
+  const handleProvinciaChange = (selected) => {
+    setNuevoTitular({ ...nuevoTitular, provincia: selected });
+  };
+
   const agregarTitular = async () => {
     if (
       !nuevoTitular.nombre ||
@@ -54,12 +151,12 @@ export default function TitularAdmin() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:3000/api/titulares-faena', {
+      const res = await fetch('/api/titulares-faena', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nombre: nuevoTitular.nombre,
-          id_provincia: parseInt(nuevoTitular.provincia, 10),
+          id_provincia: parseInt(nuevoTitular.provincia.value, 10),
           localidad: nuevoTitular.localidad,
           direccion: nuevoTitular.direccion,
           documento: nuevoTitular.documento,
@@ -70,268 +167,334 @@ export default function TitularAdmin() {
         setTitulares([...titulares, data]);
         setNuevoTitular({
           nombre: '',
-          provincia: '',
+          provincia: null,
           localidad: '',
           direccion: '',
           documento: '',
         });
+        setPaginaActual(1);
       }
     } catch (error) {
       console.error('Error al agregar titular:', error);
     }
   };
 
-  const iniciarEdicion = (titular) => {
-    setEditandoId(titular.id);
-    setEditado({ ...titular });
+  const iniciarEdicion = (t) => {
+    setEditandoId(t.id);
+    setEditado({ ...t });
   };
 
   const guardarEdicion = async () => {
     try {
-      const res = await fetch(
-        `http://localhost:3000/api/titulares-faena/${editandoId}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(editado),
-        }
-      );
+      const res = await fetch(`/api/titulares-faena/${editandoId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editado),
+      });
       if (res.ok) {
-        setTitulares(titulares.map((t) => (t.id === editandoId ? editado : t)));
+        const actualizados = titulares.map((t) =>
+          t.id === editandoId ? editado : t
+        );
+        setTitulares(actualizados);
         setEditandoId(null);
         setEditado({});
       }
     } catch (error) {
-      console.error('Error al modificar titular:', error);
+      console.error('Error al guardar edición:', error);
     }
   };
 
   const eliminarTitular = async (id) => {
-    if (!window.confirm('¿Está seguro de eliminar este titular?')) return;
+    if (!window.confirm('¿Eliminar este titular?')) return;
     try {
-      const res = await fetch(
-        `http://localhost:3000/api/titulares-faena/${id}`,
-        {
-          method: 'DELETE',
-        }
-      );
+      const res = await fetch(`/api/titulares-faena/${id}`, {
+        method: 'DELETE',
+      });
       if (res.ok) {
         setTitulares(titulares.filter((t) => t.id !== id));
+        setPaginaActual(1);
       }
     } catch (error) {
       console.error('Error al eliminar titular:', error);
     }
   };
 
+  const totalPaginas = Math.ceil(titulares.length / itemsPorPagina);
+  const visibles = titulares.slice(
+    (paginaActual - 1) * itemsPorPagina,
+    paginaActual * itemsPorPagina
+  );
+
+  const irPagina = (n) =>
+    setPaginaActual(Math.min(Math.max(n, 1), totalPaginas));
+  const paginaAnterior = () => irPagina(paginaActual - 1);
+  const paginaSiguiente = () => irPagina(paginaActual + 1);
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="w-full bg-white rounded-xl shadow-lg p-4 sm:p-6 space-y-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-center text-gray-800 leading-tight tracking-tight">
-            🧾 Administración de Titulares de Faena
-          </h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8 space-y-10">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow">
+          🧾 Administración de Titulares de Faena
+        </h1>
 
-          {/* Formulario adaptativo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-            <div className="w-full">
-              <label className="block text-m font-medium text-gray-700 mb-1">
-                Nombre *
+        {/* Formulario */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Bloque superior */}
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                Nombre / Razón Social
               </label>
               <input
                 name="nombre"
                 value={nuevoTitular.nombre}
                 onChange={handleChange}
-                placeholder="Nombre / Razón Social"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                placeholder="Nombre o Razón Social"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
-            <div className="w-full">
-              <label className="block text-m font-medium text-gray-700 mb-1">
-                Provincia *
-              </label>
-              <select
-                name="provincia"
-                value={nuevoTitular.provincia}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
-              >
-                <option value="">-- Seleccioná --</option>
-                {provinciasDB.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.descripcion}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="w-full">
-              <label className="block text-m font-medium text-gray-700 mb-1">
-                Localidad *
+
+            <SelectField
+              label="Provincia"
+              value={nuevoTitular.provincia}
+              onChange={handleProvinciaChange}
+              options={provinciasDB.map((p) => ({
+                value: p.id,
+                label: p.descripcion,
+              }))}
+              placeholder="Seleccione una provincia"
+            />
+
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                Localidad
               </label>
               <input
                 name="localidad"
                 value={nuevoTitular.localidad}
                 onChange={handleChange}
-                placeholder="Localidad"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                placeholder="Ej. Corrientes, Goya, etc."
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
-            <div className="w-full">
-              <label className="block text-m font-medium text-gray-700 mb-1">
+
+            {/* Bloque inferior */}
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
                 Dirección
               </label>
               <input
                 name="direccion"
                 value={nuevoTitular.direccion}
                 onChange={handleChange}
-                placeholder="Dirección"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                placeholder="Ej. Calle Falsa 123"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
-            <div className="w-full">
-              <label className="block text-m font-medium text-gray-700 mb-1">
-                DNI/CUIT
+
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                DNI / CUIT
               </label>
               <input
                 name="documento"
                 value={nuevoTitular.documento}
                 onChange={handleChange}
-                placeholder="DNI o CUIT"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                placeholder="Ej. 12345678 o 20-12345678-3"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
-            <div className="w-full flex items-end">
+
+            <div className="flex items-end">
               <button
                 onClick={agregarTitular}
-                className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-semibold"
+                className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition text-sm font-semibold shadow"
               >
                 ➕ Agregar
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Lista de titulares - Vista adaptable */}
-          {esMovil ? (
-            // Vista móvil: Tarjetas
-            <div className="space-y-4">
-              {titulares.map((t) => (
-                <div key={t.id} className="bg-gray-50 p-4 rounded-lg shadow">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 space-y-2">
-                      <p className="font-semibold text-gray-800">{t.nombre}</p>
-                      <p className="text-sm text-gray-600">
-                        {t.provincia} - {t.localidad}
-                      </p>
-                      <p className="text-sm">{t.direccion}</p>
-                      <p className="text-sm">DNI/CUIT: {t.documento}</p>
-                    </div>
-                    <div className="flex gap-2 ml-2">
-                      {editandoId === t.id ? (
-                        <button
-                          onClick={guardarEdicion}
-                          className="bg-green-500 text-white px-2 py-1 rounded text-xs"
-                        >
-                          💾
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => iniciarEdicion(t)}
-                          className="bg-yellow-500 text-white px-2 py-1 rounded text-xs"
-                        >
-                          ✏️
-                        </button>
-                      )}
+        {/* Listado */}
+        {esMovil ? (
+          <div className="space-y-4">
+            {visibles.map((t) => (
+              <div
+                key={t.id}
+                className="bg-white p-4 rounded-xl shadow border border-gray-200"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 space-y-1 text-sm text-gray-700">
+                    <p className="font-semibold text-gray-800">{t.nombre}</p>
+                    <p>
+                      {t.provincia} — {t.localidad}
+                    </p>
+                    <p>{t.direccion}</p>
+                    <p>DNI/CUIT: {t.documento}</p>
+                  </div>
+                  <div className="flex gap-2 ml-2">
+                    {editandoId === t.id ? (
                       <button
-                        onClick={() => eliminarTitular(t.id)}
-                        className="bg-red-500 text-white px-2 py-1 rounded text-xs"
+                        onClick={guardarEdicion}
+                        className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
                       >
-                        🗑️
+                        💾
                       </button>
-                    </div>
+                    ) : (
+                      <button
+                        onClick={() => iniciarEdicion(t)}
+                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                    <button
+                      onClick={() => eliminarTitular(t.id)}
+                      className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            // Vista desktop/tablet: Tabla
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-green-700 text-white">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">
-                      Nombre
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">
-                      Provincia
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">
-                      Localidad
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">
-                      Dirección
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">
-                      DNI/CUIT
-                    </th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {titulares.map((t) => (
-                    <tr
-                      key={t.id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-4 py-3 text-sm">
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200 shadow-xl">
+            <table className="min-w-full text-sm text-gray-700">
+              <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold">Nombre</th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Provincia
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Localidad
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Dirección
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    DNI/CUIT
+                  </th>
+                  <th className="px-4 py-3 text-center font-semibold">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {visibles.map((t) => (
+                  <tr key={t.id} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-3">
+                      {editandoId === t.id ? (
+                        <input
+                          value={editado.nombre}
+                          onChange={(e) =>
+                            setEditado({ ...editado, nombre: e.target.value })
+                          }
+                          className="w-full border-2 border-gray-200 rounded-lg px-2 py-2 text-sm bg-gray-50 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                        />
+                      ) : (
+                        t.nombre
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{t.provincia}</td>
+                    <td className="px-4 py-3">{t.localidad}</td>
+                    <td className="px-4 py-3">{t.direccion}</td>
+                    <td className="px-4 py-3">{t.documento}</td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex justify-center gap-2">
                         {editandoId === t.id ? (
-                          <input
-                            value={editado.nombre}
-                            onChange={(e) =>
-                              setEditado({ ...editado, nombre: e.target.value })
-                            }
-                            className="w-full px-2 py-1 border rounded text-sm"
-                          />
-                        ) : (
-                          t.nombre
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm">{t.provincia}</td>
-                      <td className="px-4 py-3 text-sm">{t.localidad}</td>
-                      <td className="px-4 py-3 text-sm">{t.direccion}</td>
-                      <td className="px-4 py-3 text-sm">{t.documento}</td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex justify-center gap-2">
-                          {editandoId === t.id ? (
-                            <button
-                              onClick={guardarEdicion}
-                              className="bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600 transition"
-                            >
-                              💾 Guardar
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => iniciarEdicion(t)}
-                              className="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600 transition"
-                            >
-                              ✏️ Editar
-                            </button>
-                          )}
                           <button
-                            onClick={() => eliminarTitular(t.id)}
-                            className="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600 transition"
+                            onClick={guardarEdicion}
+                            className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
                           >
-                            🗑️ Eliminar
+                            💾 Guardar
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                        ) : (
+                          <button
+                            onClick={() => iniciarEdicion(t)}
+                            className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                          >
+                            ✏️ Editar
+                          </button>
+                        )}
+                        <button
+                          onClick={() => eliminarTitular(t.id)}
+                          className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Paginación externa */}
+        {totalPaginas > 1 && (
+          <div className="flex justify-center items-center gap-2 flex-wrap">
+            <button
+              onClick={paginaAnterior}
+              disabled={paginaActual === 1}
+              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                paginaActual === 1
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+              }`}
+            >
+              ← Anterior
+            </button>
+
+            {[...Array(Math.min(3, totalPaginas))].map((_, i) => {
+              const page = i + 1;
+              return (
+                <button
+                  key={page}
+                  onClick={() => irPagina(page)}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                    paginaActual === page
+                      ? 'bg-green-700 text-white shadow'
+                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
+
+            {totalPaginas > 3 && (
+              <>
+                <span className="text-slate-500 text-sm">…</span>
+                <button
+                  onClick={() => irPagina(totalPaginas)}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                    paginaActual === totalPaginas
+                      ? 'bg-green-700 text-white shadow'
+                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  }`}
+                >
+                  {totalPaginas}
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={paginaSiguiente}
+              disabled={paginaActual === totalPaginas}
+              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                paginaActual === totalPaginas
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+              }`}
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

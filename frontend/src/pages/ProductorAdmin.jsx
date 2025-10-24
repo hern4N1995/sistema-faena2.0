@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useMemo } from 'react';
 
 export default function ProductorAdmin() {
   const [nuevoProductor, setNuevoProductor] = useState({
@@ -11,49 +10,61 @@ export default function ProductorAdmin() {
   const [filtro, setFiltro] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  // Paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const itemsPorPagina = window.innerWidth < 768 ? 2 : 4;
 
   useEffect(() => {
-    fetchProductores();
+    fetchProductores().finally(() => setLoading(false));
   }, []);
 
   const fetchProductores = async () => {
     try {
-      const res = await axios.get('/api/productores');
-      setProductores(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
+      const res = await fetch('/api/productores');
+      const data = await res.json();
+      setProductores(Array.isArray(data) ? data : []);
+    } catch {
       setError('Error al cargar productores');
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setNuevoProductor({ ...nuevoProductor, [name]: value });
+    setNuevoProductor((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje('');
     setError('');
-
+    const url = editandoId
+      ? `/api/productores/${editandoId}`
+      : '/api/productores';
+    const method = editandoId ? 'PUT' : 'POST';
     try {
-      if (editandoId) {
-        await axios.put(`/api/productores/${editandoId}`, nuevoProductor);
-        setMensaje('✅ Productor modificado correctamente');
-      } else {
-        await axios.post('/api/productores', nuevoProductor);
-        setMensaje('✅ Productor agregado correctamente');
-      }
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevoProductor),
+      });
+      if (!res.ok) throw new Error('Error al guardar productor');
+      setMensaje(
+        editandoId ? 'Productor modificado ✅' : 'Productor creado ✅'
+      );
       setNuevoProductor({ cuit: '', nombre: '' });
       setEditandoId(null);
+      setPaginaActual(1);
       await fetchProductores();
     } catch (err) {
-      setError(err.response?.data?.error || '❌ Error inesperado');
+      setError(err.message);
     }
   };
 
-  const handleEditar = (prod) => {
-    setNuevoProductor({ cuit: prod.cuit, nombre: prod.nombre });
-    setEditandoId(prod.id_productor);
+  const handleEditar = (p) => {
+    setNuevoProductor({ cuit: p.cuit, nombre: p.nombre });
+    setEditandoId(p.id_productor);
     setMensaje('');
     setError('');
   };
@@ -61,106 +72,225 @@ export default function ProductorAdmin() {
   const handleEliminar = async (id) => {
     if (!window.confirm('¿Seguro que deseas eliminar este productor?')) return;
     try {
-      await axios.delete(`/api/productores/${id}`);
-      setMensaje('✅ Productor eliminado correctamente');
+      const res = await fetch(`/api/productores/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Error al eliminar productor');
+      setPaginaActual(1);
       await fetchProductores();
     } catch (err) {
-      setError('❌ Error al eliminar productor');
+      setError(err.message);
     }
   };
 
-  const productoresFiltrados = productores.filter((p) =>
-    `${p.cuit} ${p.nombre}`.toLowerCase().includes(filtro.toLowerCase())
+  // Filtro + paginación
+  const productoresFiltrados = useMemo(() => {
+    const texto = filtro.toLowerCase();
+    return productores.filter(
+      (p) =>
+        p.cuit.toString().includes(texto) ||
+        p.nombre.toLowerCase().includes(texto)
+    );
+  }, [productores, filtro]);
+
+  const totalPaginas = Math.ceil(productoresFiltrados.length / itemsPorPagina);
+  const visibles = productoresFiltrados.slice(
+    (paginaActual - 1) * itemsPorPagina,
+    paginaActual * itemsPorPagina
   );
 
-  return (
-    <div className="max-w-2xl mx-auto mt-6 p-4 border rounded shadow space-y-6">
-      <h2 className="text-xl font-semibold">
-        {editandoId ? 'Modificar Productor' : 'Agregar Productor'}
-      </h2>
+  const irPagina = (n) =>
+    setPaginaActual(Math.min(Math.max(n, 1), totalPaginas));
+  const paginaAnterior = () => irPagina(paginaActual - 1);
+  const paginaSiguiente = () => irPagina(paginaActual + 1);
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium">CUIT</label>
-          <input
-            type="text"
-            name="cuit"
-            value={nuevoProductor.cuit}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border rounded"
-            placeholder="Ej: 20-12345678-3"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Nombre</label>
-          <input
-            type="text"
-            name="nombre"
-            value={nuevoProductor.nombre}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border rounded"
-            placeholder="Nombre del productor"
-            required
-          />
-        </div>
+  const renderPaginacion = () => {
+    if (totalPaginas <= 1) return null;
+
+    return (
+      <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
         <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          onClick={paginaAnterior}
+          disabled={paginaActual === 1}
+          className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+            paginaActual === 1
+              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+              : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+          }`}
         >
-          {editandoId ? 'Guardar Cambios' : 'Guardar'}
+          ← Anterior
         </button>
-        {(mensaje || error) && (
-          <p
-            className={`mt-2 text-sm ${
-              mensaje ? 'text-green-700' : 'text-red-600'
-            }`}
-          >
-            {mensaje || error}
-          </p>
-        )}
-      </form>
 
-      <hr />
-
-      <h3 className="text-lg font-semibold">Productores Registrados</h3>
-      <input
-        type="text"
-        placeholder="Buscar por CUIT o nombre"
-        value={filtro}
-        onChange={(e) => setFiltro(e.target.value)}
-        className="mb-4 px-4 py-2 border rounded w-full"
-      />
-
-      <div className="max-h-[300px] overflow-y-auto space-y-2">
-        {productoresFiltrados.length > 0 ? (
-          productoresFiltrados.map((p) => (
-            <div
-              key={p.id_productor}
-              className="flex justify-between items-center border rounded px-4 py-2 bg-white"
+        {[...Array(Math.min(3, totalPaginas))].map((_, i) => {
+          const page = i + 1;
+          return (
+            <button
+              key={page}
+              onClick={() => irPagina(page)}
+              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                paginaActual === page
+                  ? 'bg-green-700 text-white shadow'
+                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+              }`}
             >
-              <div>
-                <strong>{p.nombre}</strong> — CUIT: {p.cuit}
-              </div>
-              <div className="space-x-2">
-                <button
-                  onClick={() => handleEditar(p)}
-                  className="text-blue-600 hover:underline"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleEliminar(p.id_productor)}
-                  className="text-red-600 hover:underline"
-                >
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-500">No se encontraron productores.</p>
+              {page}
+            </button>
+          );
+        })}
+
+        {totalPaginas > 3 && (
+          <>
+            <span className="text-slate-500 text-sm">…</span>
+            <button
+              onClick={() => irPagina(totalPaginas)}
+              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                paginaActual === totalPaginas
+                  ? 'bg-green-700 text-white shadow'
+                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+              }`}
+            >
+              {totalPaginas}
+            </button>
+          </>
         )}
+
+        <button
+          onClick={paginaSiguiente}
+          disabled={paginaActual === totalPaginas}
+          className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+            paginaActual === totalPaginas
+              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+              : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+          }`}
+        >
+          Siguiente →
+        </button>
+      </div>
+    );
+  };
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        Cargando productores...
+      </div>
+    );
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
+      <div className="max-w-6xl mx-auto space-y-10">
+        {/* Encabezado */}
+        <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
+          {editandoId ? '👤 Modificar Productor' : '👤 Agregar Productor'}
+        </h1>
+
+        {/* Formulario */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+          >
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                CUIT
+              </label>
+              <input
+                type="text"
+                name="cuit"
+                value={nuevoProductor.cuit}
+                onChange={handleChange}
+                required
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                Nombre
+              </label>
+              <input
+                type="text"
+                name="nombre"
+                value={nuevoProductor.nombre}
+                onChange={handleChange}
+                required
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+              />
+            </div>
+            <div className="flex items-end justify-end">
+              <button
+                type="submit"
+                className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition shadow"
+              >
+                {editandoId ? 'Guardar Cambios' : 'Guardar'}
+              </button>
+            </div>
+          </form>
+
+          {mensaje && (
+            <div className="mt-4 flex items-center gap-2 text-green-700">
+              <span className="text-lg">✅</span>
+              <span>{mensaje}</span>
+            </div>
+          )}
+          {error && (
+            <div className="mt-4 flex items-center gap-2 text-red-700">
+              <span className="text-lg">❌</span>
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Listado + Paginación */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            Productores Registrados
+          </h2>
+          <input
+            type="text"
+            placeholder="Buscar por CUIT o nombre"
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+          />
+
+          <div className="mt-4 rounded-xl ring-1 ring-gray-200">
+            {visibles.length > 0 ? (
+              <ul className="divide-y divide-gray-100">
+                {visibles.map((p) => (
+                  <li
+                    key={p.id_productor}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 hover:bg-gray-50 transition"
+                  >
+                    <div className="text-sm text-gray-700 space-y-1">
+                      <p>
+                        <span className="font-semibold">{p.nombre}</span> —
+                        CUIT: {p.cuit}
+                      </p>
+                    </div>
+                    <div className="mt-3 sm:mt-0 flex gap-2">
+                      <button
+                        onClick={() => handleEditar(p)}
+                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleEliminar(p.id_productor)}
+                        className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-center text-gray-500 py-6">
+                No se encontraron productores.
+              </p>
+            )}
+          </div>
+
+          {/* Paginación visual */}
+          {renderPaginacion()}
+        </div>
       </div>
     </div>
   );

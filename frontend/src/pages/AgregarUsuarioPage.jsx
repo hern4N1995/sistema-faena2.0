@@ -119,6 +119,7 @@ const InputField = ({
   required = false,
   type = 'text',
   className = '',
+  placeholder = '',
 }) => (
   <div className={`flex flex-col ${className}`}>
     <label className="mb-2 font-semibold text-gray-700 text-sm">{label}</label>
@@ -128,6 +129,7 @@ const InputField = ({
       value={value}
       onChange={onChange}
       required={required}
+      placeholder={placeholder}
       className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
     />
   </div>
@@ -387,6 +389,7 @@ const AgregarUsuarioPage = () => {
               value={form.nombre}
               onChange={handleChange}
               required
+              placeholder="Ej. Juan, María, etc."
             />
             <InputField
               label="Apellido"
@@ -394,6 +397,7 @@ const AgregarUsuarioPage = () => {
               value={form.apellido}
               onChange={handleChange}
               required
+              placeholder="Ej. Pérez, Gómez, etc."
             />
             <InputField
               label="DNI"
@@ -402,6 +406,7 @@ const AgregarUsuarioPage = () => {
               value={form.dni}
               onChange={handleChange}
               required
+              placeholder="Sin puntos ni espacios"
             />
 
             {/* Fila 2 */}
@@ -411,6 +416,7 @@ const AgregarUsuarioPage = () => {
               type="tel"
               value={form.n_telefono}
               onChange={handleChange}
+              placeholder="Ej. 3794123456"
             />
             <InputField
               label="Email"
@@ -419,6 +425,7 @@ const AgregarUsuarioPage = () => {
               value={form.email}
               onChange={handleChange}
               required
+              placeholder="Ej. usuario@dominio.com"
             />
             <InputField
               label="Contraseña"
@@ -427,7 +434,9 @@ const AgregarUsuarioPage = () => {
               value={form.password}
               onChange={handleChange}
               placeholder={
-                editandoId ? 'Dejar vacío para no cambiar' : 'Contraseña'
+                editandoId
+                  ? 'Dejar vacío para mantener la actual'
+                  : 'Mínimo 6 caracteres'
               }
             />
 
@@ -445,7 +454,7 @@ const AgregarUsuarioPage = () => {
                 }))
               }
               options={plantaOptions}
-              placeholder="-- Seleccionar Planta --"
+              placeholder="Seleccione una planta"
               required
             />
             <SelectField
@@ -458,7 +467,7 @@ const AgregarUsuarioPage = () => {
                 }))
               }
               options={rolOptions}
-              placeholder="-- Seleccionar Rol --"
+              placeholder="Seleccione un rol"
               required
             />
             <SelectField
@@ -471,7 +480,7 @@ const AgregarUsuarioPage = () => {
                 }))
               }
               options={estadoOptions}
-              placeholder="-- Seleccionar Estado --"
+              placeholder="Seleccione el estado"
             />
 
             {/* Botón */}
@@ -501,39 +510,51 @@ const AgregarUsuarioPage = () => {
 
         {/* Listado + Paginación */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+          <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+            <span className="text-green-600 text-xl">📋</span>
             Usuarios Registrados
           </h2>
-          <InputField
-            label="Buscar por DNI, nombre o apellido"
-            name="filtro"
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-            placeholder="Escriba para filtrar..."
-          />
 
-          <div className="mt-4 rounded-xl ring-1 ring-gray-200">
+          <div className="mb-4">
+            <InputField
+              label="Buscar por DNI, nombre o apellido"
+              name="filtro"
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              placeholder="Escriba para filtrar..."
+            />
+          </div>
+
+          <div className="rounded-xl ring-1 ring-gray-200">
             {visibles.length > 0 ? (
               <ul className="divide-y divide-gray-100">
-                {visibles.map((u) => (
+                {visibles.map((u, idx) => (
                   <li
                     key={u.id_usuario}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 hover:bg-gray-50 transition"
+                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 transition ${
+                      idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                    } hover:bg-green-50`}
                   >
                     <div className="text-sm text-gray-700 space-y-1">
                       <p>
-                        <span className="font-semibold">
+                        <span className="font-semibold text-green-700">
                           {u.nombre} {u.apellido}
                         </span>{' '}
-                        — DNI: {u.dni}
+                        — DNI: <span className="font-mono">{u.dni}</span>
                       </p>
                       <p>
-                        {u.email} — Tel: {u.n_telefono} — Rol:{' '}
-                        {u.id_rol === 2 ? 'Supervisor' : 'Usuario'}
+                        <span className="text-gray-600">{u.email}</span> — Tel:{' '}
+                        {u.n_telefono || '—'} — Rol:{' '}
+                        <span className="font-medium text-gray-800">
+                          {u.id_rol === 2 ? 'Supervisor' : 'Usuario'}
+                        </span>
                       </p>
                       <p>
-                        Planta: {u.planta_nombre || `ID ${u.id_planta}`} —
-                        Estado:{' '}
+                        Planta:{' '}
+                        <span className="font-medium text-gray-800">
+                          {u.planta_nombre || `ID ${u.id_planta}`}
+                        </span>{' '}
+                        — Estado:{' '}
                         <span
                           className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                             u.estado === true || u.estado === 'Activo'
@@ -545,22 +566,25 @@ const AgregarUsuarioPage = () => {
                             ? 'Activo'
                             : 'Inactivo'}
                         </span>{' '}
-                        — Creado: {new Date(u.creado_en).toLocaleDateString()}
+                        — Creado:{' '}
+                        <span className="text-gray-600">
+                          {new Date(u.creado_en).toLocaleDateString()}
+                        </span>
                       </p>
                     </div>
 
                     <div className="mt-3 sm:mt-0 flex gap-2">
                       <button
                         onClick={() => handleEditar(u)}
-                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition flex items-center gap-1"
                       >
-                        Editar
+                        ✏️ Editar
                       </button>
                       <button
                         onClick={() => handleEliminar(u.id_usuario)}
-                        className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                        className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition flex items-center gap-1"
                       >
-                        Eliminar
+                        🗑️ Eliminar
                       </button>
                     </div>
                   </li>
@@ -572,10 +596,14 @@ const AgregarUsuarioPage = () => {
               </p>
             )}
           </div>
-
-          {/* ---------- Paginación (igual a TropaForm / DecomisoPage) ---------- */}
-          {renderPaginacion()}
         </div>
+
+        {/* Paginación externa pero visualmente conectada */}
+        {totalPaginas > 1 && (
+          <div className="mt-[-8px] sm:mt-[-4px] flex justify-center items-center gap-2 flex-wrap">
+            {renderPaginacion()}
+          </div>
+        )}
       </div>
     </div>
   );

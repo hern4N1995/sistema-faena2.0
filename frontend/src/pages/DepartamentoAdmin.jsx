@@ -30,12 +30,12 @@ function SelectField({
         : state.isFocused
         ? '0 0 0 4px #d1fae5'
         : 'none',
-      transition: 'all 100ms ease',
+      transition: 'all 50ms ease',
       '&:hover': {
-        borderColor: '#6ee7b7',
+        borderColor: '#96f1b7',
       },
       '&:focus-within': {
-        borderColor: '#10b981',
+        borderColor: '#22c55e',
       },
     }),
     valueContainer: (base) => ({
@@ -170,7 +170,6 @@ const Paginacion = ({ currentPage, totalPages, onPageChange }) => {
     </div>
   );
 };
-
 export default function DepartamentoAdmin() {
   const [registros, setRegistros] = useState([]);
   const [provinciasDB, setProvinciasDB] = useState([]);
@@ -313,17 +312,18 @@ export default function DepartamentoAdmin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-6">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-2 mb-4">
-            🗂️ Administración de Departamentos
-          </h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
+      <div className="max-w-6xl mx-auto space-y-10">
+        {/* Encabezado */}
+        <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
+          🗂️ Administración de Departamentos
+        </h1>
 
-          {/* Formulario */}
+        {/* Formulario separado con sombra */}
+        <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <SelectField
-              label="Provincia *"
+              label="Provincia"
               value={
                 provinciaIdSeleccionada
                   ? {
@@ -337,7 +337,7 @@ export default function DepartamentoAdmin() {
                 setProvinciaSeleccionada(selected?.label || '');
               }}
               options={provinciasOptions}
-              placeholder="-- Seleccioná --"
+              placeholder="Seleccione..."
               maxMenuHeight={
                 deviceType === 'mobile'
                   ? 150
@@ -346,18 +346,20 @@ export default function DepartamentoAdmin() {
                   : 200
               }
             />
+
             <div className="flex flex-col">
               <label className="mb-2 font-semibold text-gray-700 text-sm">
-                Departamento *
+                Departamento
               </label>
               <input
                 type="text"
                 value={departamentoInput}
                 onChange={(e) => setDepartamentoInput(e.target.value)}
-                placeholder="Nombre"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                placeholder="Ej. Capital, Goya, San Martín..."
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
+
             <div className="flex items-end">
               <button
                 onClick={agregarDepartamento}
@@ -368,7 +370,7 @@ export default function DepartamentoAdmin() {
                     : 'bg-green-600 text-white hover:bg-green-700'
                 }`}
               >
-                ➕ Agregar
+                ➕ Agregar Departamento
               </button>
             </div>
           </div>
@@ -384,132 +386,123 @@ export default function DepartamentoAdmin() {
               {mensajeFeedback}
             </p>
           )}
+        </div>
 
-          {/* Lista de departamentos */}
-          {deviceType === 'mobile' ? (
-            <div className="space-y-4">
-              {paginatedRegistros.length === 0 ? (
-                <p className="text-center text-gray-500 py-6">
-                  Sin datos disponibles
-                </p>
-              ) : (
-                paginatedRegistros.map((r) => (
-                  <div
-                    key={r.id_departamento}
-                    className="bg-gray-50 p-4 rounded-xl shadow border border-gray-200"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 space-y-1 text-sm text-gray-700">
-                        <p>{r.provincia}</p>
-                        <p>{r.departamento}</p>
-                      </div>
-                      <div className="flex gap-2 ml-2">
-                        <button
-                          onClick={() => {
-                            const nuevo = prompt(
-                              'Nuevo nombre:',
-                              r.departamento
-                            );
-                            if (nuevo?.trim())
-                              modificarDepartamento(r.id_departamento, nuevo);
-                          }}
-                          className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() =>
-                            eliminarDepartamento(r.id_departamento)
-                          }
-                          className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                        >
-                          🗑️
-                        </button>
-                      </div>
+        {/* Listado y paginación */}
+        {deviceType === 'mobile' ? (
+          <div className="space-y-4">
+            {paginatedRegistros.length === 0 ? (
+              <p className="text-center text-gray-500 py-6">
+                Sin datos disponibles
+              </p>
+            ) : (
+              paginatedRegistros.map((r) => (
+                <div
+                  key={r.id_departamento}
+                  className="bg-white p-4 rounded-xl shadow border border-gray-200"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 space-y-1 text-sm text-gray-700">
+                      <p className="font-semibold text-gray-800">
+                        {r.provincia}
+                      </p>
+                      <p>{r.departamento}</p>
+                    </div>
+                    <div className="flex gap-2 ml-2">
+                      <button
+                        onClick={() => {
+                          const nuevo = prompt('Nuevo nombre:', r.departamento);
+                          if (nuevo?.trim())
+                            modificarDepartamento(r.id_departamento, nuevo);
+                        }}
+                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => eliminarDepartamento(r.id_departamento)}
+                        className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200">
-              <table className="min-w-full text-sm text-gray-700">
-                <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200 shadow-xl">
+            <table className="min-w-full text-sm text-gray-700">
+              <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Provincia
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Departamento
+                  </th>
+                  <th className="px-4 py-3 text-center font-semibold">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {paginatedRegistros.length === 0 ? (
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold">
-                      Provincia
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold">
-                      Departamento
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold">
-                      Acciones
-                    </th>
+                    <td colSpan="3" className="text-center text-gray-500 py-6">
+                      Sin datos disponibles
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedRegistros.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan="4"
-                        className="text-center text-gray-500 py-6"
-                      >
-                        Sin datos disponibles
+                ) : (
+                  paginatedRegistros.map((r) => (
+                    <tr
+                      key={r.id_departamento}
+                      className="hover:bg-gray-50 transition"
+                    >
+                      <td className="px-4 py-3">{r.provincia}</td>
+                      <td className="px-4 py-3">{r.departamento}</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={() => {
+                              const nuevo = prompt(
+                                'Nuevo nombre:',
+                                r.departamento
+                              );
+                              if (nuevo?.trim())
+                                modificarDepartamento(r.id_departamento, nuevo);
+                            }}
+                            className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                          >
+                            ✏️ Editar
+                          </button>
+                          <button
+                            onClick={() =>
+                              eliminarDepartamento(r.id_departamento)
+                            }
+                            className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                          >
+                            🗑️ Eliminar
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ) : (
-                    paginatedRegistros.map((r) => (
-                      <tr
-                        key={r.id_departamento}
-                        className="hover:bg-gray-50 transition"
-                      >
-                        <td className="px-4 py-3">{r.provincia}</td>
-                        <td className="px-4 py-3">{r.departamento}</td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => {
-                                const nuevo = prompt(
-                                  'Nuevo nombre:',
-                                  r.departamento
-                                );
-                                if (nuevo?.trim())
-                                  modificarDepartamento(
-                                    r.id_departamento,
-                                    nuevo
-                                  );
-                              }}
-                              className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                            >
-                              ✏️ Editar
-                            </button>
-                            <button
-                              onClick={() =>
-                                eliminarDepartamento(r.id_departamento)
-                              }
-                              className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                            >
-                              🗑️ Eliminar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-          {/* Paginación */}
-          {totalPages > 1 && (
-            <Paginacion
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          )}
-        </div>
+        {/* Paginación externa */}
+        {totalPages > 1 && (
+          <Paginacion
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   );

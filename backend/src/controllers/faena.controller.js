@@ -78,37 +78,39 @@ const crearFaena = async (req, res) => {
 };
 
 // Obtener faenas realizadas con filtros y paginación
+// Obtener faenas realizadas con filtros, paginación y total_faenados
 const obtenerFaenasRealizadas = async (req, res) => {
   const {
-    fecha = '',
-    dte_dtu = '',
+    desde = '',
+    hasta = '',
     n_tropa = '',
-    limit = '20',
+    limit = '100', // por defecto mayor para permitir sumar en backend
     offset = '0',
   } = req.query;
 
   const filtros = [];
   const valores = [];
 
-  if (fecha.trim()) {
-    filtros.push(`f.fecha_faena::date = $${valores.length + 1}`);
-    valores.push(fecha);
+  if (desde.trim()) {
+    valores.push(desde);
+    filtros.push(`f.fecha_faena::date >= $${valores.length}`);
   }
-  if (dte_dtu.trim()) {
-    filtros.push(`t.dte_dtu ILIKE $${valores.length + 1}`);
-    valores.push(`%${dte_dtu}%`);
+  if (hasta.trim()) {
+    valores.push(hasta);
+    filtros.push(`f.fecha_faena::date <= $${valores.length}`);
   }
   if (n_tropa.trim()) {
-    filtros.push(`t.n_tropa::text ILIKE $${valores.length + 1}`);
     valores.push(`%${n_tropa}%`);
+    filtros.push(`t.n_tropa::text ILIKE $${valores.length}`);
   }
 
   const where = filtros.length > 0 ? `WHERE ${filtros.join(' AND ')}` : '';
 
-  const limitNum = parseInt(limit, 10) || 20;
+  const limitNum = parseInt(limit, 10) || 100;
   const offsetNum = parseInt(offset, 10) || 0;
 
   try {
+    // Query principal: devuelve faenas agregadas por faena + total_faenado por faena
     const query = `
       SELECT
         f.id_faena,
@@ -120,7 +122,7 @@ const obtenerFaenasRealizadas = async (req, res) => {
         depto.nombre_departamento AS departamento,
         tf.nombre AS titular_faena,
         esp.descripcion AS especie,
-        SUM(fd.cantidad_faena) AS total_faenado,
+        SUM(fd.cantidad_faena)::int AS total_faenado,
         t.id_tropa
       FROM faena f
       JOIN faena_detalle fd ON f.id_faena = fd.id_faena
@@ -129,7 +131,7 @@ const obtenerFaenasRealizadas = async (req, res) => {
       JOIN especie esp ON td.id_especie = esp.id_especie
       JOIN productor prod ON t.id_productor = prod.id_productor
       JOIN departamento depto ON t.id_departamento = depto.id_departamento
-      JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
       ${where}
       GROUP BY f.id_faena, f.fecha_faena, t.dte_dtu, t.guia_policial, t.n_tropa,
                prod.nombre, depto.nombre_departamento, tf.nombre, esp.descripcion, t.id_tropa
@@ -142,7 +144,16 @@ const obtenerFaenasRealizadas = async (req, res) => {
       limitNum,
       offsetNum,
     ]);
-    res.json(resultado.rows);
+
+    const faenas = resultado.rows || [];
+
+    // Calcular total faenados en el conjunto retornado (puede ser optimizado con otro query si necesitás total global)
+    const totalFaenados = faenas.reduce(
+      (acc, r) => acc + Number(r.total_faenado ?? 0),
+      0,
+    );
+
+    res.status(200).json({ faenas, total_faenados: totalFaenados });
   } catch (error) {
     console.error('Error al obtener faenas realizadas:', error.message);
     res.status(500).json({ error: 'Error al obtener faenas realizadas' });

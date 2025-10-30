@@ -14,9 +14,11 @@ const useMediaQuery = (query) => {
 
 const FaenasRealizadasPage = () => {
   const [faenas, setFaenas] = useState([]);
-  const [filtro, setFiltro] = useState({ fecha: '', dte_dtu: '', n_tropa: '' });
+  // ahora: desde / hasta (filtrarán por fecha_faena) y n_tropa
+  const [filtro, setFiltro] = useState({ desde: '', hasta: '', n_tropa: '' });
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalFaenados, setTotalFaenados] = useState(0);
   const navigate = useNavigate();
 
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -24,28 +26,64 @@ const FaenasRealizadasPage = () => {
 
   const rowsPerPage = isMobile ? 3 : isTablet ? 3 : 4;
 
+  // fetchFaenas: envía desde/hasta cuando ambos están presentes,
+  // si sólo hay una fecha envía fecha (compatible con la versión que filtra por fecha exacta)
   const fetchFaenas = async () => {
     setLoading(true);
     try {
-      const query = new URLSearchParams(
-        Object.fromEntries(
-          Object.entries(filtro).filter(([_, v]) => v.trim() !== '')
-        )
-      ).toString();
+      const params = {};
 
-      const res = await fetch(`/api/faenas-realizadas?${query}`);
+      // Fechas: si hay desde y hasta, las enviamos como "desde" y "hasta".
+      // Si sólo hay una fecha (desde o hasta), enviamos "fecha" para mantener compatibilidad.
+      const desde = filtro.desde?.trim();
+      const hasta = filtro.hasta?.trim();
+
+      if (desde && hasta) {
+        params.desde = desde;
+        params.hasta = hasta;
+      } else if (desde) {
+        params.fecha = desde;
+      } else if (hasta) {
+        params.fecha = hasta;
+      }
+
+      // n_tropa como antes
+      if (filtro.n_tropa && String(filtro.n_tropa).trim() !== '') {
+        params.n_tropa = filtro.n_tropa;
+      }
+
+      const query = new URLSearchParams(params).toString();
+      const url = query
+        ? `/api/faenas-realizadas?${query}`
+        : `/api/faenas-realizadas`;
+      const res = await fetch(url);
       const data = await res.json();
 
-      const ordenadas = Array.isArray(data)
-        ? [...data].sort(
-            (a, b) => new Date(b.fecha_faena) - new Date(a.fecha_faena)
-          )
+      // tu frontend espera un array; adaptamos por si el backend devuelve { faenas, ... }
+      const arr = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.faenas)
+        ? data.faenas
         : [];
 
+      const ordenadas = [...arr].sort(
+        (a, b) => new Date(b.fecha_faena) - new Date(a.fecha_faena)
+      );
+
       setFaenas(ordenadas);
+
+      // Mantener la suma client-side como ya lo tenés
+      const total = ordenadas.reduce((acc, item) => {
+        const v = Number(item.total_faenado ?? 0);
+        return acc + (Number.isFinite(v) ? v : 0);
+      }, 0);
+      setTotalFaenados(total);
+
+      setCurrentPage(1);
     } catch (err) {
       console.error('Error al cargar faenas realizadas:', err);
       setFaenas([]);
+      setTotalFaenados(0);
     } finally {
       setLoading(false);
     }
@@ -53,6 +91,7 @@ const FaenasRealizadasPage = () => {
 
   useEffect(() => {
     fetchFaenas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtro]);
 
   const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
@@ -70,38 +109,71 @@ const FaenasRealizadasPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 sm:px-6 lg:px-6">
       <header className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-center text-slate-800 drop-shadow mb-10">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-center text-slate-800 drop-shadow mb-6">
           🧾 Faenas Realizadas
         </h1>
 
+        <div className="flex justify-center mb-4">
+          <div className="w-full max-w-3xl">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col">
+                <label className="text-xs font-medium text-slate-600 mb-1">
+                  Fecha desde
+                </label>
+                <input
+                  type="date"
+                  value={filtro.desde}
+                  onChange={(e) =>
+                    setFiltro((f) => ({ ...f, desde: e.target.value }))
+                  }
+                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs font-medium text-slate-600 mb-1">
+                  Fecha hasta
+                </label>
+                <input
+                  type="date"
+                  value={filtro.hasta}
+                  onChange={(e) =>
+                    setFiltro((f) => ({ ...f, hasta: e.target.value }))
+                  }
+                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-xs font-medium text-slate-600 mb-1">
+                  Buscar Nº Tropa
+                </label>
+                <input
+                  type="text"
+                  placeholder="N° Tropa"
+                  value={filtro.n_tropa}
+                  onChange={(e) =>
+                    setFiltro((f) => ({ ...f, n_tropa: e.target.value }))
+                  }
+                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="flex justify-center">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl">
-            <input
-              type="date"
-              value={filtro.fecha}
-              onChange={(e) =>
-                setFiltro((f) => ({ ...f, fecha: e.target.value }))
-              }
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-            />
-            <input
-              type="text"
-              placeholder="Buscar DTE/DTU"
-              value={filtro.dte_dtu}
-              onChange={(e) =>
-                setFiltro((f) => ({ ...f, dte_dtu: e.target.value }))
-              }
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-            />
-            <input
-              type="text"
-              placeholder="Buscar Nº Tropa"
-              value={filtro.n_tropa}
-              onChange={(e) =>
-                setFiltro((f) => ({ ...f, n_tropa: e.target.value }))
-              }
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-            />
+          <div className="w-full max-w-3xl flex items-center justify-between gap-4">
+            <div className="text-sm text-slate-700">
+              <span className="font-medium">Total faenados:</span>{' '}
+              <span className="font-bold text-green-700">{totalFaenados}</span>
+            </div>
+
+            <div className="text-sm text-slate-500">
+              <span className="mr-2">Mostrando</span>
+              <span className="font-medium">{faenas.length}</span>
+              <span className="ml-1">registro(s)</span>
+            </div>
           </div>
         </div>
       </header>

@@ -1,13 +1,87 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Select from 'react-select';
 import api from '../services/api';
 
-/**
- * TropaForm.jsx
- * - No hay estados visuales de loading en botones (no quedan trabados)
- * - Al guardar muestra toast con resultado (success/error)
- * - Normaliza plantas a { id_planta, nombre }
- * - Modales crean registros, se cierran tras la respuesta y notifican al padre
- */
+function SelectField({ label, value, onChange, options, placeholder }) {
+  const [isFocusing, setIsFocusing] = useState(false);
+
+  const customStyles = {
+    control: (base, state) => ({
+      ...base,
+      height: '48px',
+      minHeight: '48px',
+      paddingLeft: '16px',
+      paddingRight: '16px',
+      backgroundColor: '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '0.5rem',
+      boxShadow: isFocusing
+        ? '0 0 0 1px #000'
+        : state.isFocused
+        ? '0 0 0 4px #d1fae5'
+        : 'none',
+      transition: 'all 50ms ease',
+      '&:hover': { borderColor: '#96f1b7' },
+      '&:focus-within': { borderColor: '#22c55e' },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 0 0 2px',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+      fontSize: '14px',
+      fontFamily: 'inherit',
+      color: '#111827',
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#111827',
+      margin: 0,
+    }),
+    placeholder: (base) => ({ ...base, fontSize: '14px', color: '#6b7280' }),
+    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused }) => ({
+      ...base,
+      fontSize: '14px',
+      padding: '10px 16px',
+      backgroundColor: isFocused ? '#d1fae5' : '#fff',
+      color: isFocused ? '#065f46' : '#111827',
+    }),
+  };
+
+  return (
+    <div className="flex flex-col">
+      <label className="mb-2 font-semibold text-gray-700 text-sm">
+        {label}
+      </label>
+      <Select
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={placeholder}
+        styles={customStyles}
+        noOptionsMessage={() => 'Sin opciones'}
+        components={{ IndicatorSeparator: () => null }}
+        onFocus={() => {
+          setIsFocusing(true);
+          setTimeout(() => setIsFocusing(false), 50);
+        }}
+      />
+    </div>
+  );
+}
 
 export default function TropaForm({ onCreated }) {
   const [form, setForm] = useState({
@@ -22,18 +96,18 @@ export default function TropaForm({ onCreated }) {
   });
 
   const [departamentos, setDepartamentos] = useState([]);
-  const [plantas, setPlantas] = useState([]); // normalizado: { id_planta, nombre }
+  const [plantas, setPlantas] = useState([]);
   const [productores, setProductores] = useState([]);
   const [titulares, setTitulares] = useState([]);
   const [provincias, setProvincias] = useState([]);
 
-  const [toast, setToast] = useState(null); // { type, text }
+  const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
   const [usuario, setUsuario] = useState(null);
   const [plantaAsignada, setPlantaAsignada] = useState(null);
 
-  const [modalFor, setModalFor] = useState(null); // 'departamento'|'productor'|'titular'
+  const [modalFor, setModalFor] = useState(null);
   const openerRef = useRef(null);
   const mountedRef = useRef(true);
 
@@ -42,27 +116,25 @@ export default function TropaForm({ onCreated }) {
     loadInitial();
     return () => {
       mountedRef.current = false;
-      clearToast();
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current);
+        toastTimer.current = null;
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function showToast(type, text, ms = 3500) {
-    clearToast();
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+      toastTimer.current = null;
+    }
     setToast({ type, text });
     toastTimer.current = setTimeout(() => {
       setToast(null);
       toastTimer.current = null;
     }, ms);
   }
-  function clearToast() {
-    if (toastTimer.current) {
-      clearTimeout(toastTimer.current);
-      toastTimer.current = null;
-    }
-  }
 
-  // ---------- loadInitial: normaliza respuestas ----------
   async function loadInitial() {
     try {
       const [userRes, depsRes, plantasRes, prodsRes, titsRes, provsRes] =
@@ -155,8 +227,6 @@ export default function TropaForm({ onCreated }) {
         showToast('error', 'Error cargando listas. Reintentá.');
     }
   }
-
-  // ---------- opciones para selects ----------
   const deptOptions = useMemo(
     () =>
       departamentos.map((d) => ({
@@ -167,7 +237,6 @@ export default function TropaForm({ onCreated }) {
       })),
     [departamentos]
   );
-
   const plantaOptions = useMemo(
     () =>
       plantas.map((p) => ({
@@ -201,7 +270,6 @@ export default function TropaForm({ onCreated }) {
     [provincias]
   );
 
-  // ---------- handlers ----------
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -209,7 +277,9 @@ export default function TropaForm({ onCreated }) {
   const handleSelectNative = (name) => (e) =>
     setForm((prev) => ({ ...prev, [name]: e.target.value }));
 
-  // Guardar tropa: no bloquea botones, muestra toast al resultado
+  const handleSelectChange = (name) => (selected) =>
+    setForm((prev) => ({ ...prev, [name]: selected ? selected.value : '' }));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const required = [
@@ -262,99 +332,117 @@ export default function TropaForm({ onCreated }) {
     openerRef.current = opener || null;
     setModalFor(type);
   };
-
-  // Al recibir objeto creado por modal: recarga, selecciona y muestra toast
+  // Cuando el modal crea un registro, actualizamos el estado local y seleccionamos el nuevo ítem
+  // Reemplaza tu handleCreatedModal completa por esto
   const handleCreatedModal = (type) => async (obj) => {
     try {
-      // recargar listas desde BD
-      await loadInitial();
+      console.log('handleCreatedModal called with obj:', obj);
+
+      const created = obj || {};
 
       if (type === 'departamento') {
-        const id = obj?.id_departamento ?? obj?.id;
-        if (id) {
-          setForm((f) => ({ ...f, id_departamento: String(id) }));
-        } else {
-          const name =
-            obj?.nombre_departamento ?? obj?.departamento ?? obj?.nombre;
-          if (name) {
-            const found = departamentos.find(
-              (d) =>
-                String(d.nombre_departamento).trim().toLowerCase() ===
-                String(name).trim().toLowerCase()
-            );
-            if (found)
-              setForm((f) => ({
-                ...f,
-                id_departamento: String(found.id_departamento ?? found.id),
-              }));
-          }
-        }
-        showToast('success', 'Departamento guardado correctamente.');
+        // normalizar
+        const id = created.id_departamento ?? created.id ?? null;
+        const nombre =
+          created.nombre_departamento ??
+          created.departamento ??
+          created.nombre ??
+          `Departamento ${Date.now()}`;
+        const id_provincia = created.id_provincia ?? null;
+        const finalId = id ? String(id) : `local-dep-${Date.now()}`;
+
+        const newDep = {
+          id_departamento: id ?? finalId,
+          nombre_departamento: nombre,
+          provincia: created.provincia ?? created.descripcion ?? '',
+          id_provincia,
+        };
+
+        setDepartamentos((prev) => {
+          const exists = prev.find(
+            (p) =>
+              String(p.id_departamento) === String(newDep.id_departamento) ||
+              (newDep.nombre_departamento &&
+                String(p.nombre_departamento).trim().toLowerCase() ===
+                  String(newDep.nombre_departamento).trim().toLowerCase())
+          );
+          if (exists) return prev;
+          return [...prev, newDep];
+        });
+
+        // forzamos selección: ponemos el id en form
+        setForm((f) => ({
+          ...f,
+          id_departamento: String(newDep.id_departamento),
+        }));
+        console.log('departamentos updated, selecting:', newDep);
       }
 
       if (type === 'productor') {
-        const id = obj?.id_productor ?? obj?.id;
-        if (id) setForm((f) => ({ ...f, id_productor: String(id) }));
-        else {
-          const found = productores.find(
+        const id = created.id_productor ?? created.id ?? null;
+        const nombre =
+          created.nombre ?? created.razon_social ?? `Productor ${Date.now()}`;
+        const cuit = created.cuit ?? null;
+        const finalId = id ? String(id) : `local-prod-${Date.now()}`;
+
+        const newProd = { id_productor: id ?? finalId, nombre, cuit };
+
+        setProductores((prev) => {
+          const exists = prev.find(
             (p) =>
-              (obj?.cuit &&
-                String(p.cuit || '')
-                  .trim()
-                  .toLowerCase() ===
-                  String(obj.cuit || '')
-                    .trim()
-                    .toLowerCase()) ||
-              String(p.nombre).trim().toLowerCase() ===
-                String(obj?.nombre || '')
-                  .trim()
-                  .toLowerCase()
+              String(p.id_productor) === String(newProd.id_productor) ||
+              (newProd.cuit && String(p.cuit) === String(newProd.cuit))
           );
-          if (found)
-            setForm((f) => ({
-              ...f,
-              id_productor: String(found.id_productor ?? found.id),
-            }));
-        }
-        showToast('success', 'Productor guardado correctamente.');
+          if (exists) return prev;
+          return [...prev, newProd];
+        });
+
+        setForm((f) => ({ ...f, id_productor: String(newProd.id_productor) }));
+        console.log('productores updated, selecting:', newProd);
       }
 
       if (type === 'titular') {
-        const id = obj?.id_titular_faena ?? obj?.id;
-        if (id) setForm((f) => ({ ...f, id_titular_faena: String(id) }));
-        else {
-          const found = titulares.find(
+        const id = created.id_titular_faena ?? created.id ?? null;
+        const nombre = created.nombre ?? `Titular ${Date.now()}`;
+        const localidad = created.localidad ?? '';
+        const finalId = id ? String(id) : `local-tit-${Date.now()}`;
+
+        const newTit = {
+          id_titular_faena: id ?? finalId,
+          nombre,
+          localidad,
+          provincia: created.provincia ?? '',
+        };
+
+        setTitulares((prev) => {
+          const exists = prev.find(
             (t) =>
-              String(t.nombre || '')
-                .trim()
-                .toLowerCase() ===
-                String(obj?.nombre || '')
-                  .trim()
-                  .toLowerCase() &&
-              (obj?.localidad
-                ? String(t.localidad || '')
-                    .trim()
-                    .toLowerCase() ===
-                  String(obj.localidad || '')
-                    .trim()
-                    .toLowerCase()
-                : true)
+              String(t.id_titular_faena) === String(newTit.id_titular_faena) ||
+              (newTit.nombre &&
+                String(t.nombre).trim().toLowerCase() ===
+                  String(newTit.nombre).trim().toLowerCase())
           );
-          if (found)
-            setForm((f) => ({
-              ...f,
-              id_titular_faena: String(found.id_titular_faena ?? found.id),
-            }));
-        }
-        showToast('success', 'Titular guardado correctamente.');
+          if (exists) return prev;
+          return [...prev, newTit];
+        });
+
+        setForm((f) => ({
+          ...f,
+          id_titular_faena: String(newTit.id_titular_faena),
+        }));
+        console.log('titulares updated, selecting:', newTit);
       }
 
+      // Cerrar modal
       setModalFor(null);
       if (openerRef.current && openerRef.current.focus)
         openerRef.current.focus();
     } catch (err) {
       console.error('handleCreatedModal error', err);
-      showToast('error', 'Creado, pero hubo un problema actualizando listas.');
+      showToast(
+        'error',
+        'Creado, pero no se pudo actualizar la UI automáticamente.'
+      );
       setModalFor(null);
     }
   };
@@ -363,7 +451,7 @@ export default function TropaForm({ onCreated }) {
     <>
       <form
         onSubmit={handleSubmit}
-        className="max-w-5xl mx-auto bg-white p-4 sm:p-6 rounded-xl shadow-md space-y-6"
+        className="max-w-5xl mx-auto bg-white p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100 space-y-6"
       >
         {toast && (
           <div
@@ -378,6 +466,15 @@ export default function TropaForm({ onCreated }) {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SelectField
+            label="Planta"
+            value={
+              plantaOptions.find((o) => o.value === form.id_planta) || null
+            }
+            onChange={(sel) => handleSelectChange('id_planta')(sel)}
+            options={plantaOptions}
+            placeholder="Seleccione una planta"
+          />
           <div className="flex flex-col">
             <label className="mb-2 font-semibold text-gray-700 text-sm">
               DTE/DTU
@@ -387,7 +484,8 @@ export default function TropaForm({ onCreated }) {
               value={form.dte_dtu}
               onChange={handleChange}
               required
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50"
+              placeholder="Ej. 123456"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
             />
           </div>
 
@@ -400,12 +498,13 @@ export default function TropaForm({ onCreated }) {
               value={form.guia_policial}
               onChange={handleChange}
               required
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50"
+              placeholder="Ej. 789456"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
             />
           </div>
 
           <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700 text-sm">
+            <label className="mb-3.5 font-semibold text-gray-700 text-sm">
               N° Tropa
             </label>
             <input
@@ -414,132 +513,89 @@ export default function TropaForm({ onCreated }) {
               value={form.n_tropa}
               onChange={handleChange}
               required
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50"
+              placeholder="Ej. 1001"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
             />
           </div>
 
-          {/* Departamento */}
           <div className="flex flex-col">
-            <label className="mb-1 font-medium text-gray-700 text-sm">
-              Departamento
-            </label>
-            <div className="flex gap-2">
-              <select
-                name="id_departamento"
-                value={form.id_departamento}
-                onChange={handleSelectNative('id_departamento')}
-                required
-                className="w-full border rounded px-3 py-2 bg-white"
-              >
-                <option value="">Seleccione un departamento</option>
-                {deptOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+            <div className="flex justify-between items-center mb-0">
+              <label className="font-semibold text-gray-700 text-sm">
+                Departamento
+              </label>
               <button
                 type="button"
                 onClick={(e) => openModal('departamento', e.currentTarget)}
-                className="px-3 py-2 bg-green-600 text-white rounded"
+                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium hover:bg-green-200 transition focus:outline-none focus:ring-2 focus:ring-green-200"
               >
-                ➕
+                Agregar +
               </button>
             </div>
+            <SelectField
+              label=""
+              value={
+                deptOptions.find((o) => o.value === form.id_departamento) ||
+                null
+              }
+              onChange={(sel) => handleSelectChange('id_departamento')(sel)}
+              options={deptOptions}
+              placeholder="Seleccione un departamento"
+            />
           </div>
 
-          {/* Planta */}
           <div className="flex flex-col">
-            <label className="mb-1 font-medium text-gray-700 text-sm">
-              Planta
-            </label>
-            <div className="flex gap-2">
-              <select
-                name="id_planta"
-                value={form.id_planta}
-                onChange={handleSelectNative('id_planta')}
-                required
-                className="w-full border rounded px-3 py-2 bg-white"
-              >
-                <option value="">Seleccione una planta</option>
-                {plantaOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {plantaAsignada
-                ? `Planta asignada: ${plantaAsignada.nombre}`
-                : 'Sin planta asignada'}
-            </div>
-          </div>
-
-          {/* Productor */}
-          <div className="flex flex-col">
-            <label className="mb-1 font-medium text-gray-700 text-sm">
-              Productor
-            </label>
-            <div className="flex gap-2">
-              <select
-                name="id_productor"
-                value={form.id_productor}
-                onChange={handleSelectNative('id_productor')}
-                required
-                className="w-full border rounded px-3 py-2 bg-white"
-              >
-                <option value="">Seleccione un productor</option>
-                {prodOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+            <div className="flex justify-between items-center mb-0">
+              <label className="font-semibold text-gray-700 text-sm">
+                Productor
+              </label>
               <button
                 type="button"
                 onClick={(e) => openModal('productor', e.currentTarget)}
-                className="px-3 py-2 bg-green-600 text-white rounded"
+                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium hover:bg-green-200 transition focus:outline-none focus:ring-2 focus:ring-green-200"
               >
-                ➕
+                Agregar +
               </button>
             </div>
+            <SelectField
+              label=""
+              value={
+                prodOptions.find((o) => o.value === form.id_productor) || null
+              }
+              onChange={(sel) => handleSelectChange('id_productor')(sel)}
+              options={prodOptions}
+              placeholder="Seleccione un productor"
+            />
           </div>
 
-          {/* Titular */}
-          <div className="flex flex-col">
-            <label className="mb-1 font-medium text-gray-700 text-sm">
-              Titular Faena
-            </label>
-            <div className="flex gap-2">
-              <select
-                name="id_titular_faena"
-                value={form.id_titular_faena}
-                onChange={handleSelectNative('id_titular_faena')}
-                required
-                className="w-full border rounded px-3 py-2 bg-white"
-              >
-                <option value="">Seleccione un titular</option>
-                {titOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+          <div className="sm:col-span-1">
+            <div className="flex justify-between items-center mb-0">
+              <label className="font-semibold text-gray-700 text-sm">
+                Titular Faena
+              </label>
               <button
                 type="button"
                 onClick={(e) => openModal('titular', e.currentTarget)}
-                className="px-3 py-2 bg-green-600 text-white rounded"
+                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium hover:bg-green-200 transition focus:outline-none focus:ring-2 focus:ring-green-200"
               >
-                ➕
+                Agregar +
               </button>
             </div>
+            <SelectField
+              label=""
+              value={
+                titOptions.find((o) => o.value === form.id_titular_faena) ||
+                null
+              }
+              onChange={(sel) => handleSelectChange('id_titular_faena')(sel)}
+              options={titOptions}
+              placeholder="Seleccione un titular"
+            />
           </div>
         </div>
 
         <button
           type="submit"
-          className="w-full bg-[#00902f] text-white py-2.5 rounded-md hover:bg-[#008d36]"
+          className="w-full bg-[#00902f] text-white py-2.5 rounded-md hover:bg-[#008d36] transition shadow mt-4"
         >
           Siguiente
         </button>
@@ -559,7 +615,7 @@ export default function TropaForm({ onCreated }) {
   );
 }
 
-/* ---------- InlineCreateModal (sin bloqueo visual en botones) ---------- */
+/* InlineCreateModal estilizado (solo se cambió handleCreate para garantizar que onCreated reciba objeto útil) */
 function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
   const [values, setValues] = useState(() => {
     if (type === 'departamento')
@@ -608,13 +664,12 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
     setValues((v) => ({ ...v, [name]: value }));
     setError(null);
   };
-
   const validate = () => {
     if (type === 'departamento')
       return (
         values.nombre_departamento.trim().length >= 1 && values.id_provincia
       );
-    if (type === 'productor') return values.nombre.trim().length > 0; // CUIT opcional según tu controller original
+    if (type === 'productor') return values.nombre.trim().length > 0;
     if (type === 'titular')
       return (
         values.nombre.trim().length > 0 &&
@@ -667,7 +722,6 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
       const res = await api.post(endpoint, payload());
       const data = res?.data;
       if (res.status >= 200 && res.status < 300) {
-        // Notificar al padre y cerrar modal inmediatamente
         if (mounted.current && onCreated) {
           if (
             data &&
@@ -678,12 +732,13 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
           ) {
             await onCreated(data);
           } else {
-            await onCreated({
-              ...data,
-              nombre: values.nombre,
-              cuit: values.cuit || null,
-              nombre_departamento: values.nombre_departamento || undefined,
-            });
+            // backend no devolvió id: enviar fallback con campos visibles para que el padre lo inserte localmente y lo seleccione
+            const fallback = { ...payload() };
+            if (type === 'departamento')
+              fallback.nombre_departamento = values.nombre_departamento;
+            if (type === 'productor') fallback.nombre = values.nombre;
+            if (type === 'titular') fallback.nombre = values.nombre;
+            await onCreated(fallback);
           }
         }
         onCancel();
@@ -713,28 +768,25 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
           <label className="block text-sm font-medium text-gray-700">
             Provincia
           </label>
-          <select
-            name="id_provincia"
-            value={values.id_provincia}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          >
-            <option value="">Seleccione provincia</option>
-            {provOptions.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-
-          <label className="block text-sm font-medium text-gray-700">
+          <SelectField
+            label=""
+            value={
+              provOptions.find((o) => o.value === values.id_provincia) || null
+            }
+            onChange={(sel) =>
+              setValues((v) => ({ ...v, id_provincia: sel ? sel.value : '' }))
+            }
+            options={provOptions}
+            placeholder="Seleccione provincia"
+          />
+          <label className="block text-sm font-medium text-gray-700 mt-3">
             Nombre departamento
           </label>
           <input
             name="nombre_departamento"
             value={values.nombre_departamento}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mt-1"
           />
         </>
       )}
@@ -748,7 +800,7 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
             name="cuit"
             value={values.cuit}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2"
           />
           <label className="block text-sm font-medium text-gray-700">
             Nombre productor
@@ -757,7 +809,7 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
             name="nombre"
             value={values.nombre}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2"
           />
         </>
       )}
@@ -767,30 +819,26 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
           <label className="block text-sm font-medium text-gray-700">
             Provincia
           </label>
-          <select
-            name="id_provincia"
-            value={values.id_provincia}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          >
-            <option value="">Seleccione provincia</option>
-            {provOptions.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-
-          <label className="block text-sm font-medium text-gray-700">
+          <SelectField
+            label=""
+            value={
+              provOptions.find((o) => o.value === values.id_provincia) || null
+            }
+            onChange={(sel) =>
+              setValues((v) => ({ ...v, id_provincia: sel ? sel.value : '' }))
+            }
+            options={provOptions}
+            placeholder="Seleccione provincia"
+          />
+          <label className="block text-sm font-medium text-gray-700 mt-3">
             Nombre titular
           </label>
           <input
             name="nombre"
             value={values.nombre}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2 mt-1"
           />
-
           <label className="block text-sm font-medium text-gray-700">
             Localidad
           </label>
@@ -798,9 +846,8 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
             name="localidad"
             value={values.localidad}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2"
           />
-
           <label className="block text-sm font-medium text-gray-700">
             Dirección (opcional)
           </label>
@@ -808,9 +855,8 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
             name="direccion"
             value={values.direccion}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2"
           />
-
           <label className="block text-sm font-medium text-gray-700">
             Documento (opcional)
           </label>
@@ -818,7 +864,7 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
             name="documento"
             value={values.documento}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2"
           />
         </>
       )}
@@ -836,7 +882,7 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
         <button
           type="button"
           onClick={handleCreate}
-          className="px-4 py-2 bg-green-600 text-white rounded"
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
         >
           Crear y seleccionar
         </button>
@@ -845,7 +891,7 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
   );
 }
 
-/* ---------- Modal wrapper ---------- */
+/* Modal wrapper */
 function Modal({ children, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">

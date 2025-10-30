@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const useMediaQuery = (query) => {
-  const [matches, setMatches] = useState(window.matchMedia(query).matches);
+  const [matches, setMatches] = useState(
+    () => window.matchMedia(query).matches
+  );
   useEffect(() => {
     const media = window.matchMedia(query);
     const listener = () => setMatches(media.matches);
@@ -12,29 +14,31 @@ const useMediaQuery = (query) => {
   return matches;
 };
 
-const FaenasRealizadasPage = () => {
+export default function FaenasRealizadasPage() {
   const [faenas, setFaenas] = useState([]);
-  // ahora: desde / hasta (filtrarán por fecha_faena) y n_tropa
   const [filtro, setFiltro] = useState({ desde: '', hasta: '', n_tropa: '' });
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalFaenados, setTotalFaenados] = useState(0);
-  const navigate = useNavigate();
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
 
-  const rowsPerPage = isMobile ? 3 : isTablet ? 3 : 4;
+  // filas por página configurables: 4, 7, 10, 20
+  const rowsPerPageOptions = [4, 7, 10, 20];
+  const initialRows = isMobile ? 4 : isTablet ? 4 : 4;
+  const [rowsPerPage, setRowsPerPage] = useState(initialRows);
 
-  // fetchFaenas: envía desde/hasta cuando ambos están presentes,
-  // si sólo hay una fecha envía fecha (compatible con la versión que filtra por fecha exacta)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalFaenados, setTotalFaenados] = useState(0);
+
+  // Orden por fecha: 'desc' = más recientes primero; 'asc' = más antiguas primero
+  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' | 'asc'
+
+  const navigate = useNavigate();
+
   const fetchFaenas = async () => {
     setLoading(true);
     try {
       const params = {};
-
-      // Fechas: si hay desde y hasta, las enviamos como "desde" y "hasta".
-      // Si sólo hay una fecha (desde o hasta), enviamos "fecha" para mantener compatibilidad.
       const desde = filtro.desde?.trim();
       const hasta = filtro.hasta?.trim();
 
@@ -47,7 +51,6 @@ const FaenasRealizadasPage = () => {
         params.fecha = hasta;
       }
 
-      // n_tropa como antes
       if (filtro.n_tropa && String(filtro.n_tropa).trim() !== '') {
         params.n_tropa = filtro.n_tropa;
       }
@@ -59,31 +62,27 @@ const FaenasRealizadasPage = () => {
       const res = await fetch(url);
       const data = await res.json();
 
-      // tu frontend espera un array; adaptamos por si el backend devuelve { faenas, ... }
       const arr = Array.isArray(data)
         ? data
         : Array.isArray(data?.faenas)
         ? data.faenas
         : [];
 
-      const ordenadas = [...arr].sort(
-        (a, b) => new Date(b.fecha_faena) - new Date(a.fecha_faena)
-      );
+      setFaenas(arr);
 
-      setFaenas(ordenadas);
-
-      // Mantener la suma client-side como ya lo tenés
-      const total = ordenadas.reduce((acc, item) => {
+      const total = arr.reduce((acc, item) => {
         const v = Number(item.total_faenado ?? 0);
         return acc + (Number.isFinite(v) ? v : 0);
       }, 0);
       setTotalFaenados(total);
 
+      // cuando recargamos por filtro, aseguramos volver a página 1
       setCurrentPage(1);
     } catch (err) {
       console.error('Error al cargar faenas realizadas:', err);
       setFaenas([]);
       setTotalFaenados(0);
+      setCurrentPage(1);
     } finally {
       setLoading(false);
     }
@@ -94,18 +93,101 @@ const FaenasRealizadasPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtro]);
 
+  // cuando cambia rowsPerPage o sortOrder volver a la página 1
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rowsPerPage, sortOrder]);
+
   const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
 
   const handleDecomisar = (id_faena) => {
     navigate(`/decomisos/nuevo/${id_faena}`);
   };
+  // Ordenar y paginar (memoizados)
+  const sortedFaenas = useMemo(() => {
+    if (!Array.isArray(faenas)) return [];
+    const copy = [...faenas];
+    copy.sort((a, b) => {
+      const da = a?.fecha_faena ? new Date(a.fecha_faena).getTime() : -Infinity;
+      const db = b?.fecha_faena ? new Date(b.fecha_faena).getTime() : -Infinity;
+      if (sortOrder === 'desc') return db - da;
+      return da - db;
+    });
+    return copy;
+  }, [faenas, sortOrder]);
 
-  const totalPages = Math.ceil(faenas.length / rowsPerPage);
-  const paginatedFaenas = faenas.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  const totalPages = Math.max(1, Math.ceil(sortedFaenas.length / rowsPerPage));
 
+  // asegurar currentPage válido si totalPages cambia
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedFaenas = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    return sortedFaenas.slice(start, start + rowsPerPage);
+  }, [sortedFaenas, currentPage, rowsPerPage]);
+
+  // Construir botones de página mostrando 1, last, ventana centrada y ellipsis
+  const getPageButtons = () => {
+    const maxButtons = 7;
+    if (totalPages <= maxButtons)
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+
+    const pages = new Set();
+    pages.add(1);
+    pages.add(totalPages);
+
+    const side = 2;
+    let start = Math.max(2, currentPage - side);
+    let end = Math.min(totalPages - 1, currentPage + side);
+
+    if (currentPage <= 1 + side) {
+      start = 2;
+      end = Math.min(totalPages - 1, 2 + side * 2);
+    }
+    if (currentPage >= totalPages - side) {
+      start = Math.max(2, totalPages - (2 + side * 2));
+      end = totalPages - 1;
+    }
+
+    for (let p = start; p <= end; p++) pages.add(p);
+
+    return Array.from(pages).sort((a, b) => a - b);
+  };
+
+  const renderPageButtons = () => {
+    const pages = getPageButtons();
+    const elems = [];
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      const prev = pages[i - 1];
+      if (i > 0 && page - prev > 1) {
+        elems.push(
+          <span key={`ellipsis-${i}`} className="text-slate-500 px-2">
+            …
+          </span>
+        );
+      }
+      elems.push(
+        <button
+          key={page}
+          onClick={() => setCurrentPage(page)}
+          aria-current={currentPage === page ? 'page' : undefined}
+          className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+            currentPage === page
+              ? 'bg-green-700 text-white shadow'
+              : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+          }`}
+        >
+          {page}
+        </button>
+      );
+    }
+    return elems;
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 sm:px-6 lg:px-6">
       <header className="mb-6">
@@ -169,10 +251,41 @@ const FaenasRealizadasPage = () => {
               <span className="font-bold text-green-700">{totalFaenados}</span>
             </div>
 
-            <div className="text-sm text-slate-500">
-              <span className="mr-2">Mostrando</span>
-              <span className="font-medium">{faenas.length}</span>
-              <span className="ml-1">registro(s)</span>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-slate-500 mr-2">
+                <span className="mr-2">Mostrando</span>
+                <span className="font-medium">{faenas.length}</span>
+                <span className="ml-1">registro(s)</span>
+              </div>
+
+              {/* Selector filas por página */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-600">Filas</label>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                  className="border rounded px-2 py-1 text-sm bg-white"
+                >
+                  {rowsPerPageOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Selector de orden por fecha */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-600">Orden</label>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="border rounded px-2 py-1 text-sm bg-white"
+                >
+                  <option value="desc">Más recientes primero</option>
+                  <option value="asc">Más antiguas primero</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -298,7 +411,8 @@ const FaenasRealizadasPage = () => {
         </>
       )}
 
-      {faenas.length > rowsPerPage && (
+      {/* Paginación profesional */}
+      {sortedFaenas.length > 0 && (
         <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
           <button
             onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
@@ -312,38 +426,7 @@ const FaenasRealizadasPage = () => {
             ← Anterior
           </button>
 
-          {[...Array(Math.min(3, totalPages))].map((_, i) => {
-            const page = i + 1;
-            return (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                  currentPage === page
-                    ? 'bg-green-700 text-white shadow'
-                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                }`}
-              >
-                {page}
-              </button>
-            );
-          })}
-
-          {totalPages > 3 && (
-            <>
-              <span className="text-slate-500 text-sm">…</span>
-              <button
-                onClick={() => setCurrentPage(totalPages)}
-                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                  currentPage === totalPages
-                    ? 'bg-green-700 text-white shadow'
-                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                }`}
-              >
-                {totalPages}
-              </button>
-            </>
-          )}
+          {renderPageButtons()}
 
           <button
             onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
@@ -360,6 +443,4 @@ const FaenasRealizadasPage = () => {
       )}
     </div>
   );
-};
-
-export default FaenasRealizadasPage;
+}

@@ -2,14 +2,18 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import Select from 'react-select';
 
-export default function DetalleEspecieForm({ idTropa, onSave }) {
+export default function DetalleEspecieForm({
+  idTropa,
+  onSave,
+  especies: especiesProp = [],
+  defaultEspecieId = null,
+}) {
   const [especies, setEspecies] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [especieSeleccionada, setEspecieSeleccionada] = useState(null);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
 
   const [detalle, setDetalle] = useState([]);
-
   const [cantidad, setCantidad] = useState('');
   const [loadingCategorias, setLoadingCategorias] = useState(false);
   const [error, setError] = useState('');
@@ -19,11 +23,22 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  // Traer especies activas
+  // Normalizar opciones para react-select
+  const mapEspeciesToOptions = (arr) =>
+    (arr || []).map((e) => ({
+      value: String(e.id_especie ?? e.id ?? ''),
+      label: e.descripcion ?? e.nombre ?? '',
+    }));
+
+  // Si el padre pasa especies ya cargadas, preferirlas; si no, cargar desde API
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
+        if (Array.isArray(especiesProp) && especiesProp.length > 0) {
+          if (mounted) setEspecies(especiesProp);
+          return;
+        }
         const res = await api.get('/especies', { headers: getTokenHeaders() });
         const data = Array.isArray(res.data) ? res.data : [];
         const activos = data.filter((e) =>
@@ -37,9 +52,44 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
     };
     load();
     return () => (mounted = false);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [especiesProp]);
 
-  // Traer categorías cuando cambia especie
+  // Preselección: si el padre entregó defaultEspecieId se usa; si no, buscar "bovino" en descripción
+  useEffect(() => {
+    if (!Array.isArray(especies) || especies.length === 0) return;
+
+    // Si viene default explícito, seleccionarlo
+    if (defaultEspecieId) {
+      const idStr = String(defaultEspecieId);
+      const found = especies.find(
+        (e) => String(e.id_especie ?? e.id) === idStr
+      );
+      if (found) {
+        setEspecieSeleccionada({
+          value: String(found.id_especie ?? found.id),
+          label: found.descripcion ?? found.nombre ?? '',
+        });
+        return;
+      }
+    }
+
+    // Si no vino default, buscar "bovino" (case-insensitive, incluye variantes)
+    const buscada = especies.find((e) => {
+      const text = String(e.descripcion ?? e.nombre ?? '').toLowerCase();
+      return text.includes('bovino') || text.includes('bovinos');
+    });
+
+    if (buscada) {
+      setEspecieSeleccionada({
+        value: String(buscada.id_especie ?? buscada.id),
+        label: buscada.descripcion ?? buscada.nombre ?? '',
+      });
+    }
+    // si no hay coincidencia, no cambiar selección
+  }, [especies, defaultEspecieId]);
+
+  // Cargar categorías cuando cambia especieSeleccionada
   useEffect(() => {
     if (!especieSeleccionada?.value) {
       setCategorias([]);
@@ -103,25 +153,15 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
       return;
     }
 
-    const especieObj =
-      especies.find(
-        (e) => String(e.id_especie ?? e.id) === String(especieSeleccionada)
-      ) ?? {};
-    const categoriaObj =
-      categorias.find(
-        (c) => String(c.id) === String(categoriaSeleccionada?.value)
-      ) ?? {};
-
     const nuevo = {
-      especie_id: especieSeleccionada?.value,
-      especie_nombre: especieSeleccionada?.label,
-      categoria_id: Number(categoriaSeleccionada?.value),
-      categoria_nombre: categoriaSeleccionada?.label,
+      especie_id: especieSeleccionada.value,
+      especie_nombre: especieSeleccionada.label,
+      categoria_id: Number(categoriaSeleccionada.value),
+      categoria_nombre: categoriaSeleccionada.label,
       cantidad: cantidadNum,
     };
 
     setDetalle((prev) => [...prev, nuevo]);
-
     setCategoriaSeleccionada(null);
     setCantidad('');
   };
@@ -143,7 +183,8 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
         headers: getTokenHeaders(),
       });
       setDetalle([]);
-      setEspecieSeleccionada(null);
+      // mantener la especie seleccionada para flujo rápido; si querés resetear, descomenta la siguiente:
+      // setEspecieSeleccionada(null);
       alert('Detalles guardados correctamente');
       if (typeof onSave === 'function') onSave();
     } catch (err) {
@@ -152,7 +193,7 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
     }
   };
 
-  // ---------- Estilos visuales iguales a TropaForm ----------
+  // estilos select (mantener apariencia)
   const customSelectStyles = {
     control: (base, state) => ({
       ...base,
@@ -165,12 +206,8 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
       borderRadius: '0.5rem',
       boxShadow: state.isFocused ? '0 0 0 4px rgba(16, 185, 129, 0.1)' : 'none',
       transition: 'all 200ms ease',
-      '&:hover': {
-        borderColor: '#6ee7b7',
-      },
-      '&:focus-within': {
-        borderColor: '#10b981',
-      },
+      '&:hover': { borderColor: '#6ee7b7' },
+      '&:focus-within': { borderColor: '#10b981' },
     }),
     valueContainer: (base) => ({
       ...base,
@@ -193,10 +230,7 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
       color: '#6b7280',
       margin: 0,
     }),
-    indicatorsContainer: (base) => ({
-      ...base,
-      height: '48px',
-    }),
+    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
     menu: (base) => ({
       ...base,
       borderRadius: '0.5rem',
@@ -221,10 +255,7 @@ export default function DetalleEspecieForm({ idTropa, onSave }) {
         <Select
           value={especieSeleccionada}
           onChange={(selected) => setEspecieSeleccionada(selected)}
-          options={especies.map((e) => ({
-            value: String(e.id_especie ?? e.id),
-            label: e.descripcion ?? e.nombre ?? '',
-          }))}
+          options={mapEspeciesToOptions(especies)}
           placeholder="Seleccionar especie"
           styles={customSelectStyles}
           noOptionsMessage={() => 'Sin opciones'}

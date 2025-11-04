@@ -1,7 +1,9 @@
+// TropaForm.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Select from 'react-select';
 import api from '../services/api';
 
+/* ---------- SelectField (estilo anterior) ---------- */
 function SelectField({ label, value, onChange, options, placeholder }) {
   const [isFocusing, setIsFocusing] = useState(false);
 
@@ -83,6 +85,7 @@ function SelectField({ label, value, onChange, options, placeholder }) {
   );
 }
 
+/* ---------- TropaForm (completo, corregido) ---------- */
 export default function TropaForm({ onCreated }) {
   const [form, setForm] = useState({
     fecha: '',
@@ -121,6 +124,7 @@ export default function TropaForm({ onCreated }) {
         toastTimer.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function showToast(type, text, ms = 3500) {
@@ -135,6 +139,7 @@ export default function TropaForm({ onCreated }) {
     }, ms);
   }
 
+  /* ---------- loadInitial devuelve listas normalizadas ---------- */
   async function loadInitial() {
     try {
       const [userRes, depsRes, plantasRes, prodsRes, titsRes, provsRes] =
@@ -147,7 +152,7 @@ export default function TropaForm({ onCreated }) {
           api.get('/provincias').catch(() => ({ data: [] })),
         ]);
 
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) return null;
 
       setUsuario(userRes.data ?? null);
 
@@ -201,12 +206,14 @@ export default function TropaForm({ onCreated }) {
         descripcion: p.descripcion ?? p.nombre ?? '',
       }));
 
+      // set states
       setDepartamentos(deps);
       setPlantas(pls);
       setProductores(prods);
       setTitulares(tits);
       setProvincias(provs);
 
+      // preselección planta según usuario
       if (userRes.data && userRes.data.id_planta != null) {
         const planta = pls.find(
           (p) => String(p.id_planta) === String(userRes.data.id_planta)
@@ -221,12 +228,23 @@ export default function TropaForm({ onCreated }) {
           }));
         }
       }
+
+      // devolver listas para uso inmediato por el caller
+      return {
+        departamentos: deps,
+        plantas: pls,
+        productores: prods,
+        titulares: tits,
+        provincias: provs,
+      };
     } catch (err) {
       console.error('loadInitial error', err);
       if (mountedRef.current)
         showToast('error', 'Error cargando listas. Reintentá.');
+      return null;
     }
   }
+
   const deptOptions = useMemo(
     () =>
       departamentos.map((d) => ({
@@ -276,7 +294,6 @@ export default function TropaForm({ onCreated }) {
   };
   const handleSelectNative = (name) => (e) =>
     setForm((prev) => ({ ...prev, [name]: e.target.value }));
-
   const handleSelectChange = (name) => (selected) =>
     setForm((prev) => ({ ...prev, [name]: selected ? selected.value : '' }));
 
@@ -332,16 +349,14 @@ export default function TropaForm({ onCreated }) {
     openerRef.current = opener || null;
     setModalFor(type);
   };
-  // Cuando el modal crea un registro, actualizamos el estado local y seleccionamos el nuevo ítem
-  // Reemplaza tu handleCreatedModal completa por esto
+
+  /* ---------- handleCreatedModal: actualiza state local y selecciona el nuevo ítem ---------- */
   const handleCreatedModal = (type) => async (obj) => {
     try {
-      console.log('handleCreatedModal called with obj:', obj);
-
+      // obj viene desde el modal: puede contener id_* o solo campos (fallback)
       const created = obj || {};
 
       if (type === 'departamento') {
-        // normalizar
         const id = created.id_departamento ?? created.id ?? null;
         const nombre =
           created.nombre_departamento ??
@@ -370,12 +385,11 @@ export default function TropaForm({ onCreated }) {
           return [...prev, newDep];
         });
 
-        // forzamos selección: ponemos el id en form
         setForm((f) => ({
           ...f,
           id_departamento: String(newDep.id_departamento),
         }));
-        console.log('departamentos updated, selecting:', newDep);
+        showToast('success', 'Departamento guardado y seleccionado.');
       }
 
       if (type === 'productor') {
@@ -387,6 +401,7 @@ export default function TropaForm({ onCreated }) {
 
         const newProd = { id_productor: id ?? finalId, nombre, cuit };
 
+        // añadir de forma idempotente
         setProductores((prev) => {
           const exists = prev.find(
             (p) =>
@@ -398,7 +413,7 @@ export default function TropaForm({ onCreated }) {
         });
 
         setForm((f) => ({ ...f, id_productor: String(newProd.id_productor) }));
-        console.log('productores updated, selecting:', newProd);
+        showToast('success', 'Productor guardado y seleccionado.');
       }
 
       if (type === 'titular') {
@@ -430,19 +445,16 @@ export default function TropaForm({ onCreated }) {
           ...f,
           id_titular_faena: String(newTit.id_titular_faena),
         }));
-        console.log('titulares updated, selecting:', newTit);
+        showToast('success', 'Titular guardado y seleccionado.');
       }
 
-      // Cerrar modal
+      // Cerrar modal y devolver foco al opener
       setModalFor(null);
       if (openerRef.current && openerRef.current.focus)
         openerRef.current.focus();
     } catch (err) {
       console.error('handleCreatedModal error', err);
-      showToast(
-        'error',
-        'Creado, pero no se pudo actualizar la UI automáticamente.'
-      );
+      showToast('error', 'Creado, pero hubo un problema actualizando listas.');
       setModalFor(null);
     }
   };
@@ -475,6 +487,7 @@ export default function TropaForm({ onCreated }) {
             options={plantaOptions}
             placeholder="Seleccione una planta"
           />
+
           <div className="flex flex-col">
             <label className="mb-2 font-semibold text-gray-700 text-sm">
               DTE/DTU
@@ -485,7 +498,7 @@ export default function TropaForm({ onCreated }) {
               onChange={handleChange}
               required
               placeholder="Ej. 123456"
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50"
             />
           </div>
 
@@ -499,7 +512,7 @@ export default function TropaForm({ onCreated }) {
               onChange={handleChange}
               required
               placeholder="Ej. 789456"
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50"
             />
           </div>
 
@@ -514,7 +527,7 @@ export default function TropaForm({ onCreated }) {
               onChange={handleChange}
               required
               placeholder="Ej. 1001"
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50"
             />
           </div>
 
@@ -526,7 +539,7 @@ export default function TropaForm({ onCreated }) {
               <button
                 type="button"
                 onClick={(e) => openModal('departamento', e.currentTarget)}
-                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium hover:bg-green-200 transition focus:outline-none focus:ring-2 focus:ring-green-200"
+                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium"
               >
                 Agregar +
               </button>
@@ -551,7 +564,7 @@ export default function TropaForm({ onCreated }) {
               <button
                 type="button"
                 onClick={(e) => openModal('productor', e.currentTarget)}
-                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium hover:bg-green-200 transition focus:outline-none focus:ring-2 focus:ring-green-200"
+                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium"
               >
                 Agregar +
               </button>
@@ -575,7 +588,7 @@ export default function TropaForm({ onCreated }) {
               <button
                 type="button"
                 onClick={(e) => openModal('titular', e.currentTarget)}
-                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium hover:bg-green-200 transition focus:outline-none focus:ring-2 focus:ring-green-200"
+                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium"
               >
                 Agregar +
               </button>
@@ -595,7 +608,7 @@ export default function TropaForm({ onCreated }) {
 
         <button
           type="submit"
-          className="w-full bg-[#00902f] text-white py-2.5 rounded-md hover:bg-[#008d36] transition shadow mt-4"
+          className="w-full bg-[#00902f] text-white py-2.5 rounded-md hover:bg-[#008d36]"
         >
           Siguiente
         </button>
@@ -608,6 +621,7 @@ export default function TropaForm({ onCreated }) {
             provincias={provincias}
             onCancel={() => setModalFor(null)}
             onCreated={handleCreatedModal(modalFor)}
+            onNotify={showToast} // pasar showToast para notificar desde el modal
           />
         </Modal>
       )}
@@ -615,8 +629,14 @@ export default function TropaForm({ onCreated }) {
   );
 }
 
-/* InlineCreateModal estilizado (solo se cambió handleCreate para garantizar que onCreated reciba objeto útil) */
-function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
+/* ---------- InlineCreateModal (modificado para notificar éxito/error) ---------- */
+function InlineCreateModal({
+  type,
+  provincias = [],
+  onCancel,
+  onCreated,
+  onNotify,
+}) {
   const [values, setValues] = useState(() => {
     if (type === 'departamento')
       return { nombre_departamento: '', id_provincia: '' };
@@ -631,6 +651,7 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
       };
     return {};
   });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const mounted = useRef(true);
   const [localProvincias, setLocalProvincias] = useState(provincias || []);
@@ -716,12 +737,35 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
   const handleCreate = async () => {
     if (!validate()) {
       setError('Completá los campos obligatorios correctamente.');
+      if (onNotify) onNotify('error', 'Completá los campos obligatorios.');
       return;
     }
+    setError(null);
+    setLoading(true);
     try {
       const res = await api.post(endpoint, payload());
       const data = res?.data;
+
+      // log para debugging temporal
+      console.log(
+        'INLINE_CREATE_MODAL POST RESPONSE',
+        endpoint,
+        res?.status,
+        data
+      );
+
       if (res.status >= 200 && res.status < 300) {
+        // notificar éxito
+        if (onNotify) {
+          const nice =
+            type === 'departamento'
+              ? 'Departamento creado correctamente'
+              : type === 'productor'
+              ? 'Productor creado correctamente'
+              : 'Titular creado correctamente';
+          onNotify('success', nice);
+        }
+
         if (mounted.current && onCreated) {
           if (
             data &&
@@ -732,7 +776,7 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
           ) {
             await onCreated(data);
           } else {
-            // backend no devolvió id: enviar fallback con campos visibles para que el padre lo inserte localmente y lo seleccione
+            // fallback: enviar campos visibles para que el padre haga matching/inserte localmente
             const fallback = { ...payload() };
             if (type === 'departamento')
               fallback.nombre_departamento = values.nombre_departamento;
@@ -741,15 +785,23 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
             await onCreated(fallback);
           }
         }
+
         onCancel();
+        setLoading(false);
         return;
       }
-      setError(data?.error || data?.mensaje || 'Error creando');
+
+      const errMsg = data?.error || data?.mensaje || 'Error creando';
+      setError(errMsg);
+      if (onNotify) onNotify('error', errMsg);
+      setLoading(false);
     } catch (err) {
       console.error('POST modal error', err);
-      setError(
-        err?.response?.data?.error || err?.message || 'Error del servidor'
-      );
+      const msg =
+        err?.response?.data?.error || err?.message || 'Error del servidor';
+      setError(msg);
+      if (onNotify) onNotify('error', msg);
+      setLoading(false);
     }
   };
 
@@ -768,25 +820,27 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
           <label className="block text-sm font-medium text-gray-700">
             Provincia
           </label>
-          <SelectField
-            label=""
-            value={
-              provOptions.find((o) => o.value === values.id_provincia) || null
-            }
-            onChange={(sel) =>
-              setValues((v) => ({ ...v, id_provincia: sel ? sel.value : '' }))
-            }
-            options={provOptions}
-            placeholder="Seleccione provincia"
-          />
-          <label className="block text-sm font-medium text-gray-700 mt-3">
+          <select
+            name="id_provincia"
+            value={values.id_provincia}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          >
+            <option value="">Seleccione provincia</option>
+            {provOptions.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <label className="block text-sm font-medium text-gray-700">
             Nombre departamento
           </label>
           <input
             name="nombre_departamento"
             value={values.nombre_departamento}
             onChange={handleChange}
-            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mt-1"
+            className="w-full border rounded px-3 py-2 mb-2"
           />
         </>
       )}
@@ -794,22 +848,22 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
       {type === 'productor' && (
         <>
           <label className="block text-sm font-medium text-gray-700">
-            CUIT (opcional)
-          </label>
-          <input
-            name="cuit"
-            value={values.cuit}
-            onChange={handleChange}
-            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2"
-          />
-          <label className="block text-sm font-medium text-gray-700">
             Nombre productor
           </label>
           <input
             name="nombre"
             value={values.nombre}
             onChange={handleChange}
-            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2"
+            className="w-full border rounded px-3 py-2 mb-2"
+          />
+          <label className="block text-sm font-medium text-gray-700">
+            CUIT (opcional)
+          </label>
+          <input
+            name="cuit"
+            value={values.cuit}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
           />
         </>
       )}
@@ -819,25 +873,27 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
           <label className="block text-sm font-medium text-gray-700">
             Provincia
           </label>
-          <SelectField
-            label=""
-            value={
-              provOptions.find((o) => o.value === values.id_provincia) || null
-            }
-            onChange={(sel) =>
-              setValues((v) => ({ ...v, id_provincia: sel ? sel.value : '' }))
-            }
-            options={provOptions}
-            placeholder="Seleccione provincia"
-          />
-          <label className="block text-sm font-medium text-gray-700 mt-3">
+          <select
+            name="id_provincia"
+            value={values.id_provincia}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          >
+            <option value="">Seleccione provincia</option>
+            {provOptions.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <label className="block text-sm font-medium text-gray-700">
             Nombre titular
           </label>
           <input
             name="nombre"
             value={values.nombre}
             onChange={handleChange}
-            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2 mt-1"
+            className="w-full border rounded px-3 py-2 mb-2"
           />
           <label className="block text-sm font-medium text-gray-700">
             Localidad
@@ -846,7 +902,7 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
             name="localidad"
             value={values.localidad}
             onChange={handleChange}
-            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2"
+            className="w-full border rounded px-3 py-2 mb-2"
           />
           <label className="block text-sm font-medium text-gray-700">
             Dirección (opcional)
@@ -855,7 +911,7 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
             name="direccion"
             value={values.direccion}
             onChange={handleChange}
-            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2"
+            className="w-full border rounded px-3 py-2 mb-2"
           />
           <label className="block text-sm font-medium text-gray-700">
             Documento (opcional)
@@ -864,7 +920,7 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
             name="documento"
             value={values.documento}
             onChange={handleChange}
-            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 mb-2"
+            className="w-full border rounded px-3 py-2 mb-2"
           />
         </>
       )}
@@ -876,22 +932,24 @@ function InlineCreateModal({ type, provincias = [], onCancel, onCreated }) {
           type="button"
           onClick={onCancel}
           className="px-4 py-2 border rounded"
+          disabled={loading}
         >
           Cancelar
         </button>
         <button
           type="button"
           onClick={handleCreate}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+          className="px-4 py-2 bg-green-600 text-white rounded"
+          disabled={loading}
         >
-          Crear y seleccionar
+          {loading ? 'Guardando...' : 'Crear y seleccionar'}
         </button>
       </div>
     </div>
   );
 }
 
-/* Modal wrapper */
+/* ---------- Modal wrapper ---------- */
 function Modal({ children, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">

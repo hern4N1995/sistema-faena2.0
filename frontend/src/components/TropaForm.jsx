@@ -1,12 +1,11 @@
 // TropaForm.jsx
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Select from 'react-select';
-import api from '../services/api';
+import api from '../services/api'; // tu instancia axios
 
-/* ---------- SelectField (estilo anterior) ---------- */
+/* ---------- SelectField (local) ---------- */
 function SelectField({ label, value, onChange, options, placeholder }) {
   const [isFocusing, setIsFocusing] = useState(false);
-
   const customStyles = {
     control: (base, state) => ({
       ...base,
@@ -23,8 +22,6 @@ function SelectField({ label, value, onChange, options, placeholder }) {
         ? '0 0 0 4px #d1fae5'
         : 'none',
       transition: 'all 50ms ease',
-      '&:hover': { borderColor: '#96f1b7' },
-      '&:focus-within': { borderColor: '#22c55e' },
     }),
     valueContainer: (base) => ({
       ...base,
@@ -65,9 +62,11 @@ function SelectField({ label, value, onChange, options, placeholder }) {
 
   return (
     <div className="flex flex-col">
-      <label className="mb-2 font-semibold text-gray-700 text-sm">
-        {label}
-      </label>
+      {label && (
+        <label className="mb-2 font-semibold text-gray-700 text-sm">
+          {label}
+        </label>
+      )}
       <Select
         value={value}
         onChange={onChange}
@@ -85,7 +84,383 @@ function SelectField({ label, value, onChange, options, placeholder }) {
   );
 }
 
-/* ---------- TropaForm (completo, corregido) ---------- */
+/* ---------- Modal wrapper ---------- */
+function Modal({ children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black opacity-30" onClick={onClose} />
+      <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md z-10">
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+        >
+          ✖
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- InlineCreateModal (local) ----------
+   special handling: for productor, after POST we re-fetch productores and match by cuit or name
+*/
+function InlineCreateModal({
+  type,
+  provincias = [],
+  onCancel,
+  onCreated,
+  onNotify,
+}) {
+  const [values, setValues] = useState(() => {
+    if (type === 'departamento')
+      return { nombre_departamento: '', id_provincia: '' };
+    if (type === 'productor') return { nombre: '', cuit: '' };
+    if (type === 'titular')
+      return {
+        nombre: '',
+        id_provincia: '',
+        localidad: '',
+        direccion: '',
+        documento: '',
+      };
+    return {};
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, [type]);
+
+  const validate = () => {
+    if (type === 'departamento')
+      return values.nombre_departamento?.trim() && values.id_provincia;
+    if (type === 'productor') return values.nombre?.trim();
+    if (type === 'titular')
+      return (
+        values.nombre?.trim() && values.id_provincia && values.localidad?.trim()
+      );
+    return false;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setValues((p) => ({ ...p, [name]: value }));
+    setError(null);
+  };
+
+  // helper para reconsultar productores y buscar la entidad creada
+  const fetchAndMatchProductor = async (sent) => {
+    try {
+      // intenta varias rutas comunes
+      const candidates = [
+        '/productores',
+        '/productores/productores',
+        '/api/productores',
+        '/api/productores/productores',
+      ];
+      let list = [];
+      for (const p of candidates) {
+        try {
+          const res = await api.get(p);
+          if (res && Array.isArray(res.data)) {
+            list = res.data;
+            break;
+          }
+          if (res && res.data && Array.isArray(res.data.data)) {
+            list = res.data.data;
+            break;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      // normalizar cada item
+      const normalized = (list || []).map((x) => ({
+        id_productor: x.id_productor ?? x.id ?? null,
+        nombre: x.nombre ?? x.razon_social ?? x.nombre_productor ?? '',
+        cuit: x.cuit ?? null,
+      }));
+      // match por CUIT si existe, sino por nombre exacto (case-insensitive), luego por nombre parcial
+      if (sent.cuit) {
+        const byCuit = normalized.find(
+          (n) => n.cuit && String(n.cuit) === String(sent.cuit)
+        );
+        if (byCuit) return byCuit;
+      }
+      const name = sent.nombre?.trim()?.toLowerCase();
+      if (name) {
+        const byName = normalized.find(
+          (n) => n.nombre && n.nombre.trim().toLowerCase() === name
+        );
+        if (byName) return byName;
+        const byPartial = normalized.find(
+          (n) => n.nombre && n.nombre.trim().toLowerCase().includes(name)
+        );
+        if (byPartial) return byPartial;
+      }
+      return null;
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!validate()) {
+      setError('Completá los campos obligatorios correctamente.');
+      if (onNotify) onNotify('error', 'Completá los campos obligatorios.');
+      return;
+    }
+    setLoading(true);
+    try {
+      let endpoint =
+        type === 'departamento'
+          ? '/departamentos'
+          : type === 'productor'
+          ? '/productores'
+          : '/titulares-faena';
+      const payload =
+        type === 'departamento'
+          ? {
+              nombre_departamento: values.nombre_departamento.trim(),
+              id_provincia: Number(values.id_provincia),
+            }
+          : type === 'productor'
+          ? { nombre: values.nombre.trim(), cuit: values.cuit || null }
+          : {
+              nombre: values.nombre.trim(),
+              id_provincia: Number(values.id_provincia),
+              localidad: values.localidad.trim(),
+              direccion: values.direccion || null,
+              documento: values.documento || null,
+            };
+
+      const res = await api.post(endpoint, payload);
+      const data = res?.data?.data ?? res?.data ?? null;
+
+      // Si el controller devolvió la entidad, la usamos directamente
+      if (
+        res.status >= 200 &&
+        res.status < 300 &&
+        data &&
+        (data.id_productor ||
+          data.id ||
+          data.id_departamento ||
+          data.id_titular_faena)
+      ) {
+        if (onNotify)
+          onNotify(
+            'success',
+            type === 'productor'
+              ? 'Productor creado correctamente'
+              : type === 'departamento'
+              ? 'Departamento creado correctamente'
+              : 'Titular creado correctamente'
+          );
+        if (mounted.current && onCreated) await onCreated(data);
+        setLoading(false);
+        return;
+      }
+
+      // Caso especial: productor controller no devuelve la entidad (devuelve mensaje). Re-fetch y match.
+      if (type === 'productor') {
+        // intenta obtener el registro nuevo por cuit o nombre
+        const matched = await fetchAndMatchProductor(payload);
+        if (matched) {
+          if (onNotify) onNotify('success', 'Productor creado correctamente');
+          if (mounted.current && onCreated) await onCreated(matched);
+          setLoading(false);
+          return;
+        }
+        // fallback: crear un objeto local con id provisional
+        const fallback = {
+          id_productor: `local-prod-${Date.now()}`,
+          nombre: payload.nombre,
+          cuit: payload.cuit ?? null,
+        };
+        if (onNotify)
+          onNotify(
+            'success',
+            'Productor creado (sin id devuelto) — seleccionado localmente'
+          );
+        if (mounted.current && onCreated) await onCreated(fallback);
+        setLoading(false);
+        return;
+      }
+
+      // Otros tipos: error con payload
+      const errMsg =
+        (data && (data.error || data.mensaje)) ||
+        'Respuesta inesperada del servidor';
+      setError(errMsg);
+      if (onNotify) onNotify('error', errMsg);
+      setLoading(false);
+    } catch (err) {
+      console.error('POST modal error', err);
+      const msg =
+        err?.response?.data?.error || err?.message || 'Error del servidor';
+      setError(msg);
+      if (onNotify) onNotify('error', msg);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h3 className="text-lg font-semibold mb-3">
+        {type === 'departamento'
+          ? 'Crear Departamento'
+          : type === 'productor'
+          ? 'Crear Productor'
+          : 'Crear Titular Faena'}
+      </h3>
+
+      {type === 'departamento' && (
+        <>
+          <label className="block text-sm font-medium text-gray-700">
+            Provincia
+          </label>
+          <select
+            name="id_provincia"
+            value={values.id_provincia}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          >
+            <option value="">Seleccione provincia</option>
+            {(provincias || []).map((p) => (
+              <option
+                key={String(p.id ?? p.id_provincia)}
+                value={String(p.id ?? p.id_provincia)}
+              >
+                {p.descripcion ?? p.nombre}
+              </option>
+            ))}
+          </select>
+          <label className="block text-sm font-medium text-gray-700">
+            Nombre departamento
+          </label>
+          <input
+            name="nombre_departamento"
+            value={values.nombre_departamento}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          />
+        </>
+      )}
+
+      {type === 'productor' && (
+        <>
+          <label className="block text-sm font-medium text-gray-700">
+            Nombre productor
+          </label>
+          <input
+            name="nombre"
+            value={values.nombre}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          />
+          <label className="block text-sm font-medium text-gray-700">
+            CUIT (opcional)
+          </label>
+          <input
+            name="cuit"
+            value={values.cuit}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          />
+        </>
+      )}
+
+      {type === 'titular' && (
+        <>
+          <label className="block text-sm font-medium text-gray-700">
+            Provincia
+          </label>
+          <select
+            name="id_provincia"
+            value={values.id_provincia}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          >
+            <option value="">Seleccione provincia</option>
+            {(provincias || []).map((p) => (
+              <option
+                key={String(p.id ?? p.id_provincia)}
+                value={String(p.id ?? p.id_provincia)}
+              >
+                {p.descripcion ?? p.nombre}
+              </option>
+            ))}
+          </select>
+          <label className="block text-sm font-medium text-gray-700">
+            Nombre titular
+          </label>
+          <input
+            name="nombre"
+            value={values.nombre}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          />
+          <label className="block text-sm font-medium text-gray-700">
+            Localidad
+          </label>
+          <input
+            name="localidad"
+            value={values.localidad}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          />
+          <label className="block text-sm font-medium text-gray-700">
+            Dirección (opcional)
+          </label>
+          <input
+            name="direccion"
+            value={values.direccion}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          />
+          <label className="block text-sm font-medium text-gray-700">
+            Documento (opcional)
+          </label>
+          <input
+            name="documento"
+            value={values.documento}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2 mb-2"
+          />
+        </>
+      )}
+
+      {error && <div className="text-red-600 mb-2">{error}</div>}
+
+      <div className="flex justify-end gap-2 mt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 border rounded"
+          disabled={loading}
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleCreate}
+          className="px-4 py-2 bg-green-600 text-white rounded"
+          disabled={loading}
+        >
+          {loading ? 'Guardando...' : 'Crear y seleccionar'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- TropaForm (completo) ---------- */
 export default function TropaForm({ onCreated }) {
   const [form, setForm] = useState({
     fecha: '',
@@ -139,18 +514,44 @@ export default function TropaForm({ onCreated }) {
     }, ms);
   }
 
-  /* ---------- loadInitial devuelve listas normalizadas ---------- */
+  // intenta varias rutas habituales para productores
+  async function tryFetchProductoresList() {
+    const candidates = [
+      '/productores',
+      '/productores/productores',
+      '/api/productores',
+      '/api/productores/productores',
+    ];
+    for (const path of candidates) {
+      try {
+        const res = await api.get(path);
+        if (res && Array.isArray(res.data)) return res.data;
+        if (res && res.data && Array.isArray(res.data.data))
+          return res.data.data;
+      } catch (e) {
+        // ignore
+      }
+    }
+    return [];
+  }
+
   async function loadInitial() {
     try {
-      const [userRes, depsRes, plantasRes, prodsRes, titsRes, provsRes] =
-        await Promise.all([
-          api.get('/usuario-actual').catch(() => ({ data: null })),
-          api.get('/departamentos').catch(() => ({ data: [] })),
-          api.get('/plantas').catch(() => ({ data: [] })),
-          api.get('/productores').catch(() => ({ data: [] })),
-          api.get('/titulares-faena').catch(() => ({ data: [] })),
-          api.get('/provincias').catch(() => ({ data: [] })),
-        ]);
+      const [
+        userRes,
+        depsRes,
+        plantasRes,
+        prodsRes, // not used directly, we'll normalize with helper if needed
+        titsRes,
+        provsRes,
+      ] = await Promise.all([
+        api.get('/usuario-actual').catch(() => ({ data: null })),
+        api.get('/departamentos').catch(() => ({ data: [] })),
+        api.get('/plantas').catch(() => ({ data: [] })),
+        tryFetchProductoresList().catch(() => []),
+        api.get('/titulares-faena').catch(() => ({ data: [] })),
+        api.get('/provincias').catch(() => ({ data: [] })),
+      ]);
 
       if (!mountedRef.current) return null;
 
@@ -184,10 +585,14 @@ export default function TropaForm({ onCreated }) {
         })
         .filter((p) => p.id_planta != null);
 
-      const prodsRaw = Array.isArray(prodsRes.data) ? prodsRes.data : [];
+      const prodsRaw = Array.isArray(prodsRes)
+        ? prodsRes
+        : Array.isArray(prodsRes.data)
+        ? prodsRes.data
+        : [];
       const prods = prodsRaw.map((p) => ({
         id_productor: p.id_productor ?? p.id ?? null,
-        nombre: p.nombre ?? p.razon_social ?? '',
+        nombre: p.nombre ?? p.razon_social ?? p.nombre_productor ?? '',
         cuit: p.cuit ?? null,
       }));
 
@@ -206,14 +611,12 @@ export default function TropaForm({ onCreated }) {
         descripcion: p.descripcion ?? p.nombre ?? '',
       }));
 
-      // set states
       setDepartamentos(deps);
       setPlantas(pls);
       setProductores(prods);
       setTitulares(tits);
       setProvincias(provs);
 
-      // preselección planta según usuario
       if (userRes.data && userRes.data.id_planta != null) {
         const planta = pls.find(
           (p) => String(p.id_planta) === String(userRes.data.id_planta)
@@ -229,7 +632,6 @@ export default function TropaForm({ onCreated }) {
         }
       }
 
-      // devolver listas para uso inmediato por el caller
       return {
         departamentos: deps,
         plantas: pls,
@@ -265,10 +667,12 @@ export default function TropaForm({ onCreated }) {
   );
   const prodOptions = useMemo(
     () =>
-      productores.map((p) => ({
-        value: String(p.id_productor ?? p.id ?? ''),
-        label: p.nombre || '',
-      })),
+      productores
+        .map((p) => ({
+          value: String(p.id_productor ?? p.id ?? ''),
+          label: p.nombre || '',
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
     [productores]
   );
   const titOptions = useMemo(
@@ -292,8 +696,6 @@ export default function TropaForm({ onCreated }) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
-  const handleSelectNative = (name) => (e) =>
-    setForm((prev) => ({ ...prev, [name]: e.target.value }));
   const handleSelectChange = (name) => (selected) =>
     setForm((prev) => ({ ...prev, [name]: selected ? selected.value : '' }));
 
@@ -350,10 +752,8 @@ export default function TropaForm({ onCreated }) {
     setModalFor(type);
   };
 
-  /* ---------- handleCreatedModal: actualiza state local y selecciona el nuevo ítem ---------- */
   const handleCreatedModal = (type) => async (obj) => {
     try {
-      // obj viene desde el modal: puede contener id_* o solo campos (fallback)
       const created = obj || {};
 
       if (type === 'departamento') {
@@ -365,14 +765,12 @@ export default function TropaForm({ onCreated }) {
           `Departamento ${Date.now()}`;
         const id_provincia = created.id_provincia ?? null;
         const finalId = id ? String(id) : `local-dep-${Date.now()}`;
-
         const newDep = {
           id_departamento: id ?? finalId,
           nombre_departamento: nombre,
           provincia: created.provincia ?? created.descripcion ?? '',
           id_provincia,
         };
-
         setDepartamentos((prev) => {
           const exists = prev.find(
             (p) =>
@@ -384,7 +782,6 @@ export default function TropaForm({ onCreated }) {
           if (exists) return prev;
           return [...prev, newDep];
         });
-
         setForm((f) => ({
           ...f,
           id_departamento: String(newDep.id_departamento),
@@ -395,13 +792,13 @@ export default function TropaForm({ onCreated }) {
       if (type === 'productor') {
         const id = created.id_productor ?? created.id ?? null;
         const nombre =
-          created.nombre ?? created.razon_social ?? `Productor ${Date.now()}`;
+          created.nombre ??
+          created.razon_social ??
+          created.nombre_productor ??
+          `Productor ${Date.now()}`;
         const cuit = created.cuit ?? null;
         const finalId = id ? String(id) : `local-prod-${Date.now()}`;
-
         const newProd = { id_productor: id ?? finalId, nombre, cuit };
-
-        // añadir de forma idempotente
         setProductores((prev) => {
           const exists = prev.find(
             (p) =>
@@ -411,7 +808,6 @@ export default function TropaForm({ onCreated }) {
           if (exists) return prev;
           return [...prev, newProd];
         });
-
         setForm((f) => ({ ...f, id_productor: String(newProd.id_productor) }));
         showToast('success', 'Productor guardado y seleccionado.');
       }
@@ -421,14 +817,12 @@ export default function TropaForm({ onCreated }) {
         const nombre = created.nombre ?? `Titular ${Date.now()}`;
         const localidad = created.localidad ?? '';
         const finalId = id ? String(id) : `local-tit-${Date.now()}`;
-
         const newTit = {
           id_titular_faena: id ?? finalId,
           nombre,
           localidad,
           provincia: created.provincia ?? '',
         };
-
         setTitulares((prev) => {
           const exists = prev.find(
             (t) =>
@@ -440,7 +834,6 @@ export default function TropaForm({ onCreated }) {
           if (exists) return prev;
           return [...prev, newTit];
         });
-
         setForm((f) => ({
           ...f,
           id_titular_faena: String(newTit.id_titular_faena),
@@ -448,7 +841,6 @@ export default function TropaForm({ onCreated }) {
         showToast('success', 'Titular guardado y seleccionado.');
       }
 
-      // Cerrar modal y devolver foco al opener
       setModalFor(null);
       if (openerRef.current && openerRef.current.focus)
         openerRef.current.focus();
@@ -621,348 +1013,10 @@ export default function TropaForm({ onCreated }) {
             provincias={provincias}
             onCancel={() => setModalFor(null)}
             onCreated={handleCreatedModal(modalFor)}
-            onNotify={showToast} // pasar showToast para notificar desde el modal
+            onNotify={showToast}
           />
         </Modal>
       )}
     </>
-  );
-}
-
-/* ---------- InlineCreateModal (modificado para notificar éxito/error) ---------- */
-function InlineCreateModal({
-  type,
-  provincias = [],
-  onCancel,
-  onCreated,
-  onNotify,
-}) {
-  const [values, setValues] = useState(() => {
-    if (type === 'departamento')
-      return { nombre_departamento: '', id_provincia: '' };
-    if (type === 'productor') return { cuit: '', nombre: '' };
-    if (type === 'titular')
-      return {
-        nombre: '',
-        id_provincia: '',
-        localidad: '',
-        direccion: '',
-        documento: '',
-      };
-    return {};
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const mounted = useRef(true);
-  const [localProvincias, setLocalProvincias] = useState(provincias || []);
-
-  useEffect(
-    () => () => {
-      mounted.current = false;
-    },
-    []
-  );
-
-  useEffect(() => {
-    if (Array.isArray(provincias) && provincias.length > 0) {
-      setLocalProvincias(provincias);
-      return;
-    }
-    let canceled = false;
-    api
-      .get('/provincias')
-      .then((res) => {
-        if (!canceled && Array.isArray(res.data)) setLocalProvincias(res.data);
-      })
-      .catch(() => {});
-    return () => {
-      canceled = true;
-    };
-  }, [provincias]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setValues((v) => ({ ...v, [name]: value }));
-    setError(null);
-  };
-  const validate = () => {
-    if (type === 'departamento')
-      return (
-        values.nombre_departamento.trim().length >= 1 && values.id_provincia
-      );
-    if (type === 'productor') return values.nombre.trim().length > 0;
-    if (type === 'titular')
-      return (
-        values.nombre.trim().length > 0 &&
-        values.id_provincia &&
-        values.localidad.trim().length > 0
-      );
-    return false;
-  };
-
-  const provOptions = useMemo(
-    () =>
-      (localProvincias || []).map((p) => ({
-        value: String(p.id ?? p.id_provincia ?? ''),
-        label: p.descripcion ?? p.nombre ?? '',
-      })),
-    [localProvincias]
-  );
-
-  const endpoint =
-    type === 'departamento'
-      ? '/departamentos'
-      : type === 'productor'
-      ? '/productores'
-      : '/titulares-faena';
-  const payload = () => {
-    if (type === 'departamento')
-      return {
-        nombre_departamento: values.nombre_departamento.trim(),
-        id_provincia: parseInt(values.id_provincia, 10),
-      };
-    if (type === 'productor')
-      return { cuit: values.cuit || null, nombre: values.nombre.trim() };
-    if (type === 'titular')
-      return {
-        nombre: values.nombre.trim(),
-        id_provincia: parseInt(values.id_provincia, 10),
-        localidad: values.localidad.trim(),
-        direccion: values.direccion || null,
-        documento: values.documento || null,
-      };
-    return {};
-  };
-
-  const handleCreate = async () => {
-    if (!validate()) {
-      setError('Completá los campos obligatorios correctamente.');
-      if (onNotify) onNotify('error', 'Completá los campos obligatorios.');
-      return;
-    }
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await api.post(endpoint, payload());
-      const data = res?.data;
-
-      // log para debugging temporal
-      console.log(
-        'INLINE_CREATE_MODAL POST RESPONSE',
-        endpoint,
-        res?.status,
-        data
-      );
-
-      if (res.status >= 200 && res.status < 300) {
-        // notificar éxito
-        if (onNotify) {
-          const nice =
-            type === 'departamento'
-              ? 'Departamento creado correctamente'
-              : type === 'productor'
-              ? 'Productor creado correctamente'
-              : 'Titular creado correctamente';
-          onNotify('success', nice);
-        }
-
-        if (mounted.current && onCreated) {
-          if (
-            data &&
-            (data.id_departamento ||
-              data.id ||
-              data.id_titular_faena ||
-              data.id_productor)
-          ) {
-            await onCreated(data);
-          } else {
-            // fallback: enviar campos visibles para que el padre haga matching/inserte localmente
-            const fallback = { ...payload() };
-            if (type === 'departamento')
-              fallback.nombre_departamento = values.nombre_departamento;
-            if (type === 'productor') fallback.nombre = values.nombre;
-            if (type === 'titular') fallback.nombre = values.nombre;
-            await onCreated(fallback);
-          }
-        }
-
-        onCancel();
-        setLoading(false);
-        return;
-      }
-
-      const errMsg = data?.error || data?.mensaje || 'Error creando';
-      setError(errMsg);
-      if (onNotify) onNotify('error', errMsg);
-      setLoading(false);
-    } catch (err) {
-      console.error('POST modal error', err);
-      const msg =
-        err?.response?.data?.error || err?.message || 'Error del servidor';
-      setError(msg);
-      if (onNotify) onNotify('error', msg);
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div>
-      <h3 className="text-lg font-semibold mb-3">
-        {type === 'departamento'
-          ? 'Crear Departamento'
-          : type === 'productor'
-          ? 'Crear Productor'
-          : 'Crear Titular Faena'}
-      </h3>
-
-      {type === 'departamento' && (
-        <>
-          <label className="block text-sm font-medium text-gray-700">
-            Provincia
-          </label>
-          <select
-            name="id_provincia"
-            value={values.id_provincia}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          >
-            <option value="">Seleccione provincia</option>
-            {provOptions.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <label className="block text-sm font-medium text-gray-700">
-            Nombre departamento
-          </label>
-          <input
-            name="nombre_departamento"
-            value={values.nombre_departamento}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          />
-        </>
-      )}
-
-      {type === 'productor' && (
-        <>
-          <label className="block text-sm font-medium text-gray-700">
-            Nombre productor
-          </label>
-          <input
-            name="nombre"
-            value={values.nombre}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          />
-          <label className="block text-sm font-medium text-gray-700">
-            CUIT (opcional)
-          </label>
-          <input
-            name="cuit"
-            value={values.cuit}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          />
-        </>
-      )}
-
-      {type === 'titular' && (
-        <>
-          <label className="block text-sm font-medium text-gray-700">
-            Provincia
-          </label>
-          <select
-            name="id_provincia"
-            value={values.id_provincia}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          >
-            <option value="">Seleccione provincia</option>
-            {provOptions.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <label className="block text-sm font-medium text-gray-700">
-            Nombre titular
-          </label>
-          <input
-            name="nombre"
-            value={values.nombre}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          />
-          <label className="block text-sm font-medium text-gray-700">
-            Localidad
-          </label>
-          <input
-            name="localidad"
-            value={values.localidad}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          />
-          <label className="block text-sm font-medium text-gray-700">
-            Dirección (opcional)
-          </label>
-          <input
-            name="direccion"
-            value={values.direccion}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          />
-          <label className="block text-sm font-medium text-gray-700">
-            Documento (opcional)
-          </label>
-          <input
-            name="documento"
-            value={values.documento}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          />
-        </>
-      )}
-
-      {error && <div className="text-red-600 mb-2">{error}</div>}
-
-      <div className="flex justify-end gap-2 mt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 border rounded"
-          disabled={loading}
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={handleCreate}
-          className="px-4 py-2 bg-green-600 text-white rounded"
-          disabled={loading}
-        >
-          {loading ? 'Guardando...' : 'Crear y seleccionar'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Modal wrapper ---------- */
-function Modal({ children, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black opacity-30" onClick={onClose} />
-      <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md z-10">
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-        >
-          ✖
-        </button>
-        {children}
-      </div>
-    </div>
   );
 }

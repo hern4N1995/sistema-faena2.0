@@ -1,19 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 
-/* ------------------------------------------------------------------ */
-/*  SelectField (igual que TropaForm)                                 */
-/* ------------------------------------------------------------------ */
+/* Visual constants */
+const INPUT_BASE_CLASS =
+  'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
+
+/* SelectField replicando estilo de TropaForm */
 function SelectField({
   label,
   value,
   onChange,
   options = [],
-  placeholder,
-  maxMenuHeight,
-  required = false,
+  placeholder = '',
   disabled = false,
+  maxMenuHeight = 200,
 }) {
   const [isFocusing, setIsFocusing] = useState(false);
 
@@ -28,17 +29,13 @@ function SelectField({
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
       boxShadow: isFocusing
-        ? '0 0 0 1px #000' // ✅ borde negro fino (1px)
+        ? '0 0 0 1px #000'
         : state.isFocused
-        ? '0 0 0 4px #d1fae5' // ✅ mismo tono que ring-green-100
+        ? '0 0 0 4px #d1fae5'
         : 'none',
       transition: 'all 50ms ease',
-      '&:hover': {
-        borderColor: '#96f1b7',
-      },
-      '&:focus-within': {
-        borderColor: '#22c55e',
-      },
+      display: 'flex',
+      alignItems: 'center',
     }),
     valueContainer: (base) => ({
       ...base,
@@ -60,19 +57,9 @@ function SelectField({
       fontSize: '14px',
       color: '#111827',
       margin: 0,
-      top: 'initial',
-      transform: 'none',
     }),
-    placeholder: (base) => ({
-      ...base,
-      fontSize: '14px',
-      color: '#6b7280',
-      margin: 0,
-    }),
-    indicatorsContainer: (base) => ({
-      ...base,
-      height: '48px',
-    }),
+    placeholder: (base) => ({ ...base, fontSize: '14px', color: '#6b7280' }),
+    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
     menu: (base) => ({
       ...base,
       borderRadius: '0.5rem',
@@ -85,23 +72,26 @@ function SelectField({
       backgroundColor: isFocused ? '#d1fae5' : '#fff',
       color: isFocused ? '#065f46' : '#111827',
     }),
+    indicatorSeparator: () => ({ display: 'none' }),
   };
 
   return (
     <div className="flex flex-col">
-      <label className="mb-2 font-semibold text-gray-700 text-sm">
-        {label}
-      </label>
+      {label && (
+        <label className="mb-2 font-semibold text-gray-700 text-sm">
+          {label}
+        </label>
+      )}
       <Select
-        value={value || null}
-        onChange={(selected) => onChange(selected || null)}
+        value={value}
+        onChange={onChange}
         options={options}
         placeholder={placeholder}
-        maxMenuHeight={maxMenuHeight}
-        isDisabled={disabled}
         styles={customStyles}
+        isDisabled={disabled}
         noOptionsMessage={() => 'Sin opciones'}
         components={{ IndicatorSeparator: () => null }}
+        maxMenuHeight={maxMenuHeight}
         onFocus={() => {
           setIsFocusing(true);
           setTimeout(() => setIsFocusing(false), 50);
@@ -111,37 +101,30 @@ function SelectField({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  InputField con soporte textarea                                   */
-/* ------------------------------------------------------------------ */
+/* InputField */
 function InputField({
   label,
-  name,
   value,
   onChange,
-  required = false,
-  type = 'text',
-  className = '',
   placeholder = '',
+  type = 'text',
   as = 'input',
+  className = '',
   step,
 }) {
-  const baseClass =
-    'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
-
   if (as === 'textarea') {
     return (
       <div className={`flex flex-col ${className}`}>
-        <label className="mb-2 font-semibold text-gray-700 text-sm">
-          {label}
-        </label>
+        {label && (
+          <label className="mb-2 font-semibold text-gray-700 text-sm">
+            {label}
+          </label>
+        )}
         <textarea
-          name={name}
           value={value}
           onChange={onChange}
-          required={required}
           placeholder={placeholder}
-          className={`${baseClass} resize-vertical min-h-[72px]`}
+          className={`${INPUT_BASE_CLASS} resize-vertical min-h-[72px]`}
         />
       </div>
     );
@@ -149,33 +132,201 @@ function InputField({
 
   return (
     <div className={`flex flex-col ${className}`}>
-      <label className="mb-2 font-semibold text-gray-700 text-sm">
-        {label}
-      </label>
+      {label && (
+        <label className="mb-2 font-semibold text-gray-700 text-sm">
+          {label}
+        </label>
+      )}
       <input
-        type={type}
-        name={name}
         value={value}
         onChange={onChange}
-        required={required}
         placeholder={placeholder}
+        type={type}
         step={step}
-        className={baseClass}
+        className={INPUT_BASE_CLASS}
       />
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  DecomisoPage                                                      */
-/* ------------------------------------------------------------------ */
-const DecomisoPage = () => {
+/* ReviewModal */
+function ReviewModal({
+  open,
+  onClose,
+  preview = [],
+  payload = [],
+  onConfirm,
+  serverErrors = [],
+}) {
+  if (!open) return null;
+
+  const totalLines = preview.length;
+  const totalCantidad = preview.reduce(
+    (s, d) => s + (Number(d.cantidad) || 0),
+    0
+  );
+  const totalAnimales = preview.reduce(
+    (s, d) => s + (Number(d.animales_afectados) || 0),
+    0
+  );
+  const totalPeso = preview.reduce((s, d) => {
+    const pRaw =
+      d.peso_kg !== null && d.peso_kg !== undefined
+        ? String(d.peso_kg).replace(',', '.')
+        : null;
+    const p = pRaw !== null ? Number(pRaw) : null;
+    return s + (Number.isFinite(p) ? p : 0);
+  }, 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6">
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div>
+            <h3 className="text-xl font-semibold text-slate-800">
+              Resumen antes de confirmar
+            </h3>
+            <p className="text-sm text-slate-500 mt-1">
+              Revisá las líneas y totales. Volvé a editar si algo no coincide.
+            </p>
+          </div>
+
+          <div className="flex gap-4 items-center">
+            <div className="text-right">
+              <p className="text-xs text-slate-500">Líneas</p>
+              <p className="text-lg font-semibold text-slate-800">
+                {totalLines}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-500">Total cantidad</p>
+              <p className="text-lg font-semibold text-slate-800">
+                {totalCantidad}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-500">Total animales</p>
+              <p className="text-lg font-semibold text-slate-800">
+                {totalAnimales || '—'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-500">Total peso (kg)</p>
+              <p className="text-lg font-semibold text-slate-800">
+                {totalPeso ? String(totalPeso).replace('.', ',') : '—'}
+              </p>
+            </div>
+          </div>
+        </header>
+
+        {serverErrors?.length > 0 && (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-red-700">
+            <p className="font-medium">Error del servidor</p>
+            <ul className="list-disc list-inside text-sm">
+              {serverErrors.map((e, i) => (
+                <li key={i}>{e}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="mb-3">
+          <div className="overflow-x-auto rounded-md border border-slate-100">
+            <table className="min-w-full text-sm text-slate-700">
+              <thead className="bg-slate-100 text-xs text-slate-600 uppercase">
+                <tr>
+                  <th className="px-3 py-2 text-left">#</th>
+                  <th className="px-3 py-2 text-left">Parte</th>
+                  <th className="px-3 py-2 text-left">Tipo</th>
+                  <th className="px-3 py-2 text-right">Cant</th>
+                  <th className="px-3 py-2 text-right">Peso kg</th>
+                  <th className="px-3 py-2 text-right">Animales</th>
+                  <th className="px-3 py-2 text-left">Destino</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y">
+                {preview.map((d, i) => {
+                  const tipoLabel = String(
+                    d.tipoLabel || d.id_tipo_parte_deco || ''
+                  ).toLowerCase();
+                  const tipoRes =
+                    tipoLabel.includes('res') || tipoLabel.includes('res.');
+                  const pesoRaw =
+                    d.peso_kg !== null && d.peso_kg !== undefined
+                      ? String(d.peso_kg)
+                      : '';
+                  const pesoPresent = pesoRaw !== '';
+                  const pesoDisplay = pesoPresent
+                    ? pesoRaw.replace('.', ',')
+                    : null;
+                  const pesoMissing = tipoRes && !pesoPresent;
+
+                  return (
+                    <tr key={i} className={pesoMissing ? 'bg-red-50' : ''}>
+                      <td className="px-3 py-2 align-middle">{i + 1}</td>
+                      <td className="px-3 py-2 align-middle">
+                        {d.parteLabel || d.id_parte_decomisada || '—'}
+                      </td>
+                      <td className="px-3 py-2 align-middle">
+                        {d.tipoLabel || d.id_tipo_parte_deco || '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right align-middle font-medium">
+                        {d.cantidad ?? '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right align-middle">
+                        {pesoMissing ? (
+                          <span className="text-red-600">Falta</span>
+                        ) : (
+                          pesoDisplay ?? '—'
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right align-middle">
+                        {d.animales_afectados ?? '—'}
+                      </td>
+                      <td className="px-3 py-2 align-middle">
+                        {d.destino_decomiso ?? '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 mt-4">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-md border hover:bg-slate-50"
+          >
+            Volver a editar
+          </button>
+          <button
+            onClick={() => onConfirm(payload)}
+            className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800"
+          >
+            Confirmar y guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* DecomisoPage */
+export default function DecomisoPage() {
   const { id_faena } = useParams();
   const navigate = useNavigate();
 
   const [infoFaena, setInfoFaena] = useState(null);
   const [datosFaena, setDatosFaena] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [tiposParte, setTiposParte] = useState([]);
+  const [partes, setPartes] = useState([]);
+  const [afecciones, setAfecciones] = useState([]);
 
   const [detalles, setDetalles] = useState([
     {
@@ -190,16 +341,18 @@ const DecomisoPage = () => {
     },
   ]);
 
-  const [tiposParte, setTiposParte] = useState([]);
-  const [partes, setPartes] = useState([]);
-  const [afecciones, setAfecciones] = useState([]);
+  const [errors, setErrors] = useState([]);
+  const [success, setSuccess] = useState(null);
 
-  /* ---------------------------------------------------------- */
-  /*  Carga inicial de datos                                    */
-  /* ---------------------------------------------------------- */
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewPreviewData, setReviewPreviewData] = useState([]);
+  const [reviewPayload, setReviewPayload] = useState([]);
+  const [reviewServerErrors, setReviewServerErrors] = useState([]);
+
   useEffect(() => {
     const fetchDatos = async () => {
       try {
+        setLoading(true);
         const token = localStorage.getItem('token') || '';
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -207,15 +360,14 @@ const DecomisoPage = () => {
           headers,
         });
         const faena = await resFaena.json();
-
         if (Array.isArray(faena) && faena.length > 0) {
           setInfoFaena({
             id_faena_detalle: faena[0].id_faena_detalle,
             n_tropa: faena[0].n_tropa,
             dte_dtu: faena[0].dte_dtu,
-            fecha_faena: new Date(faena[0].fecha_faena).toLocaleDateString(
-              'es-AR'
-            ),
+            fecha_faena: faena[0].fecha_faena
+              ? new Date(faena[0].fecha_faena).toLocaleDateString('es-AR')
+              : '—',
             faenados: faena.reduce(
               (acc, f) => acc + (Number(f.faenados) || 0),
               0
@@ -226,47 +378,60 @@ const DecomisoPage = () => {
 
         const resBase = await fetch('/api/decomisos/datos-base', { headers });
         const base = await resBase.json();
-
-        setTiposParte(Array.isArray(base.tiposParte) ? base.tiposParte : []);
-        setPartes(Array.isArray(base.partes) ? base.partes : []);
-        setAfecciones(Array.isArray(base.afecciones) ? base.afecciones : []);
-      } catch (err) {
-        console.error('❌ Error al cargar datos:', err);
+        setTiposParte(Array.isArray(base?.tiposParte) ? base.tiposParte : []);
+        setPartes(Array.isArray(base?.partes) ? base.partes : []);
+        setAfecciones(Array.isArray(base?.afecciones) ? base.afecciones : []);
+      } catch (e) {
+        console.error('Error cargando datos base de decomisos:', e);
+        setErrors(['Error cargando datos iniciales. Reintentá más tarde.']);
       } finally {
         setLoading(false);
       }
     };
-
     fetchDatos();
   }, [id_faena]);
 
-  /* ---------------------------------------------------------- */
-  /*  Reset de parte cuando cambia tipo                         */
-  /* ---------------------------------------------------------- */
-  useEffect(() => {
-    setDetalles((prev) =>
-      prev.map((detalle) => {
-        const partesValidas = partes.filter(
-          (p) =>
-            String(p.id_tipo_parte_deco) === String(detalle.id_tipo_parte_deco)
-        );
-        const parteValida = partesValidas.some(
-          (p) =>
-            String(p.id_parte_decomisada) ===
-            String(detalle.id_parte_decomisada)
-        );
-        return {
-          ...detalle,
-          id_parte_decomisada: parteValida ? detalle.id_parte_decomisada : '',
-        };
-      })
-    );
-  }, [partes]);
+  const onlyDigits = (raw) =>
+    raw == null ? '' : String(raw).replace(/\D/g, '');
+  const onlyNumberWithComma = (raw) => {
+    if (raw == null) return '';
+    let s = String(raw);
+    s = s.replace(/[^0-9,]/g, '');
+    const parts = s.split(',');
+    if (parts.length <= 1) return s;
+    return parts.shift() + ',' + parts.join('');
+  };
 
-  /* ---------------------------------------------------------- */
-  /*  Helpers                                                   */
-  /* ---------------------------------------------------------- */
-  const agregarDetalle = () => {
+  const tipoEsRes = (id_tipo_parte_deco) => {
+    if (!id_tipo_parte_deco) return false;
+    const t = tiposParte.find(
+      (x) => String(x.id_tipo_parte_deco) === String(id_tipo_parte_deco)
+    );
+    if (!t) return false;
+    const nombre = String(t.nombre_tipo_parte ?? t.nombre ?? '').toLowerCase();
+    return /\bres\b/.test(nombre) || /res/.test(nombre);
+  };
+
+  const actualizarDetalle = (index, campo, valor) => {
+    setDetalles((prev) => {
+      const copy = [...prev];
+      const det = { ...copy[index] };
+      if (campo === 'cantidad' || campo === 'animales_afectados')
+        det[campo] = onlyDigits(valor);
+      else if (campo === 'peso_kg') det.peso_kg = onlyNumberWithComma(valor);
+      else det[campo] = valor;
+      if (campo === 'id_tipo_parte_deco') {
+        det.id_parte_decomisada = '';
+        det.peso_kg = '';
+      }
+      copy[index] = det;
+      return copy;
+    });
+    setErrors([]);
+    setSuccess(null);
+  };
+
+  const agregarDetalle = () =>
     setDetalles((prev) => [
       ...prev,
       {
@@ -280,103 +445,243 @@ const DecomisoPage = () => {
         observaciones: '',
       },
     ]);
-  };
 
-  const eliminarDetalle = (index) => {
+  const eliminarDetalle = (i) =>
     setDetalles((prev) => {
-      const nuevos = prev.slice();
-      nuevos.splice(index, 1);
-      if (nuevos.length === 0) {
-        return [
-          {
-            id_tipo_parte_deco: '',
-            id_parte_decomisada: '',
-            id_afeccion: '',
-            cantidad: '',
-            animales_afectados: '',
-            peso_kg: '',
-            destino_decomiso: '',
-            observaciones: '',
-          },
-        ];
-      }
-      return nuevos;
+      const copy = prev.slice();
+      copy.splice(i, 1);
+      return copy.length
+        ? copy
+        : [
+            {
+              id_tipo_parte_deco: '',
+              id_parte_decomisada: '',
+              id_afeccion: '',
+              cantidad: '',
+              animales_afectados: '',
+              peso_kg: '',
+              destino_decomiso: '',
+              observaciones: '',
+            },
+          ];
     });
-  };
 
-  const actualizarDetalle = (index, campo, valor) => {
-    setDetalles((prev) => {
-      const nuevos = [...prev];
-      nuevos[index] = { ...nuevos[index], [campo]: valor };
-      if (campo === 'id_tipo_parte_deco')
-        nuevos[index].id_parte_decomisada = '';
-      return nuevos;
-    });
-  };
+  const tipoOptions = useMemo(
+    () =>
+      tiposParte.map((t) => ({
+        value: t.id_tipo_parte_deco,
+        label: (t.nombre_tipo_parte ?? t.nombre) || '—',
+      })),
+    [tiposParte]
+  );
+  const afeccOptions = useMemo(
+    () =>
+      afecciones.map((a) => ({
+        value: a.id_afeccion,
+        label: a.descripcion || a.nombre || '—',
+      })),
+    [afecciones]
+  );
+  const destinoOptions = useMemo(
+    () => [
+      { value: 'incineracion', label: 'Incineración' },
+      { value: 'rendering', label: 'Rendering' },
+      { value: 'entierro', label: 'Entierro' },
+      { value: 'desnaturalizacion', label: 'Desnaturalización' },
+      { value: 'otro', label: 'Otro' },
+    ],
+    []
+  );
+  const partesPorTipo = (id_tipo) =>
+    partes
+      .filter((p) => String(p.id_tipo_parte_deco) === String(id_tipo))
+      .map((p) => ({
+        value: p.id_parte_decomisada,
+        label: p.nombre_parte || p.nombre || p.descripcion || '—',
+        requiere_peso: p.requiere_peso,
+      }));
 
-  const handleGuardar = async () => {
-    if (!infoFaena?.id_faena_detalle) {
-      alert('No se pudo obtener el detalle de faena.');
-      return;
-    }
+  const openReview = () => {
+    setErrors([]);
+    setSuccess(null);
 
-    const token = localStorage.getItem('token') || '';
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
+    const validationErrors = [];
+    const preview = detalles.map((d, i) => {
+      const row = i + 1;
+      if (!d.id_parte_decomisada)
+        validationErrors.push(
+          `Detalle ${row}: Debés seleccionar la parte decomisada.`
+        );
+      if (!d.id_afeccion)
+        validationErrors.push(`Detalle ${row}: Debés seleccionar la afección.`);
+      if (!d.cantidad)
+        validationErrors.push(
+          `Detalle ${row}: La cantidad es obligatoria y debe ser un número entero mayor que 0.`
+        );
+      else if (Number(d.cantidad) <= 0)
+        validationErrors.push(
+          `Detalle ${row}: La cantidad debe ser mayor que 0.`
+        );
+      if (!d.destino_decomiso)
+        validationErrors.push(
+          `Detalle ${row}: Debés seleccionar el destino del decomiso.`
+        );
 
-    try {
-      for (const d of detalles) {
-        if (
-          !d.id_parte_decomisada ||
-          !d.id_afeccion ||
-          !d.cantidad ||
-          !d.destino_decomiso
-        ) {
-          throw new Error('Faltan datos obligatorios en algún detalle');
+      const tipoResFlag = tipoEsRes(d.id_tipo_parte_deco);
+      if (tipoResFlag) {
+        if (d.peso_kg === '' || d.peso_kg == null)
+          validationErrors.push(
+            `Detalle ${row}: Esta parte requiere ingresar el Peso (kg). Podés ingresar 0 o 0,0 si corresponde.`
+          );
+        else {
+          const numeric = Number(String(d.peso_kg).replace(',', '.'));
+          if (Number.isNaN(numeric) || numeric < 0)
+            validationErrors.push(
+              `Detalle ${row}: Peso inválido. Usá formato 1,56 o 0.`
+            );
         }
       }
 
-      const payload = detalles.map((d) => ({
+      const tipoLabel =
+        (
+          tiposParte.find(
+            (t) => String(t.id_tipo_parte_deco) === String(d.id_tipo_parte_deco)
+          ) || {}
+        ).nombre_tipo_parte ||
+        (
+          tiposParte.find(
+            (t) => String(t.id_tipo_parte_deco) === String(d.id_tipo_parte_deco)
+          ) || {}
+        ).nombre ||
+        null;
+      const parteLabel =
+        (
+          partes.find(
+            (p) =>
+              String(p.id_parte_decomisada) === String(d.id_parte_decomisada)
+          ) || {}
+        ).nombre_parte ||
+        (
+          partes.find(
+            (p) =>
+              String(p.id_parte_decomisada) === String(d.id_parte_decomisada)
+          ) || {}
+        ).nombre ||
+        null;
+      const afeccionLabel =
+        (
+          afecciones.find(
+            (a) => String(a.id_afeccion) === String(d.id_afeccion)
+          ) || {}
+        ).descripcion ||
+        (
+          afecciones.find(
+            (a) => String(a.id_afeccion) === String(d.id_afeccion)
+          ) || {}
+        ).nombre ||
+        null;
+
+      return {
+        ...d,
+        tipoLabel,
+        parteLabel,
+        afeccionLabel,
+        peso_kg_display:
+          d.peso_kg !== '' && d.peso_kg != null
+            ? String(d.peso_kg).replace('.', ',')
+            : null,
+      };
+    });
+
+    if (validationErrors.length) {
+      setErrors(validationErrors);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // IMPORTANT: Forzar peso_kg = 0 cuando está vacío o inválido para evitar null en DB
+    const payloadToSend = detalles.map((d) => {
+      const parsedPeso =
+        d.peso_kg !== '' && d.peso_kg != null
+          ? Number(String(d.peso_kg).replace(',', '.'))
+          : NaN;
+      const pesoNum = Number.isFinite(parsedPeso) ? parsedPeso : 0;
+      return {
         id_faena_detalle: infoFaena.id_faena_detalle,
         id_tipo_parte_deco: d.id_tipo_parte_deco || null,
         id_parte_decomisada: d.id_parte_decomisada,
         id_afeccion: d.id_afeccion,
-        cantidad: d.cantidad,
-        animales_afectados: d.animales_afectados || null,
-        peso_kg: d.peso_kg ? Number(d.peso_kg) : null,
+        cantidad: d.cantidad ? Number(d.cantidad) : null,
+        animales_afectados: d.animales_afectados
+          ? Number(d.animales_afectados)
+          : null,
+        peso_kg: pesoNum,
         destino_decomiso: d.destino_decomiso,
         observaciones: d.observaciones || null,
-      }));
+      };
+    });
 
+    setReviewPreviewData(preview);
+    setReviewPayload(payloadToSend);
+    setReviewServerErrors([]);
+    setReviewOpen(true);
+  };
+
+  const confirmAndSave = async (payload) => {
+    setReviewServerErrors([]);
+    try {
+      const token = localStorage.getItem('token') || '';
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
       const res = await fetch('/api/decomisos', {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
       });
-
       const data = await res.json();
-      if (!res.ok)
-        throw new Error(data.error || 'Error al registrar decomisos');
-
-      alert('✅ Decomiso registrado correctamente');
-      navigate(`/decomisos/detalle/${data.id_decomiso}`);
-    } catch (err) {
-      console.error('❌ Error al guardar decomisos:', err);
-      alert(`Error al guardar decomisos: ${err.message}`);
+      if (!res.ok) {
+        const serverMsg =
+          data?.error || data?.mensaje || 'Error desconocido del servidor';
+        setReviewServerErrors([`Error del servidor: ${serverMsg}`]);
+        return;
+      }
+      setReviewOpen(false);
+      setSuccess('Decomiso registrado correctamente.');
+      if (data?.id_decomiso) navigate(`/decomisos/detalle/${data.id_decomiso}`);
+    } catch (e) {
+      console.error('Error guardando desde modal', e);
+      setReviewServerErrors([
+        'Error guardando decomiso. Revisá la consola o intentá nuevamente.',
+      ]);
     }
   };
 
-  /* ---------------------------------------------------------- */
-  /*  Render                                                    */
-  /* ---------------------------------------------------------- */
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 sm:py-8 py-6">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 text-center mb-10 drop-shadow">
-          🩺 Registrar Decomisos
+        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 text-center mb-8">
+          🧾 Registrar Decomisos
         </h1>
+
+        {errors.length > 0 && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="font-semibold text-red-700 mb-2">
+              No se pudo validar. Corregí los siguientes errores:
+            </p>
+            <ul className="list-disc list-inside text-sm text-red-700">
+              {errors.map((err, i) => (
+                <li key={i}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {success && (
+          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+            {success}
+          </div>
+        )}
 
         {infoFaena && (
           <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -420,193 +725,134 @@ const DecomisoPage = () => {
           </div>
         )}
 
-        {/* Formulario de detalles */}
         <div className="space-y-4">
-          {detalles.map((detalle, index) => {
-            const partesFiltradas = partes.filter(
-              (p) =>
-                String(p.id_tipo_parte_deco) ===
-                String(detalle.id_tipo_parte_deco)
-            );
-            const parteValida = partesFiltradas.some(
-              (p) =>
-                String(p.id_parte_decomisada) ===
-                String(detalle.id_parte_decomisada)
-            );
-            const valorParte = parteValida ? detalle.id_parte_decomisada : '';
-
-            const toOption = (item, key, label) => ({
-              value: item[key],
-              label: item[label],
-            });
-
-            const tipoOptions = tiposParte.map((t) =>
-              toOption(t, 'id_tipo_parte_deco', 'nombre_tipo_parte')
-            );
-            const parteOptions = partesFiltradas.map((p) =>
-              toOption(p, 'id_parte_decomisada', 'nombre_parte')
-            );
-            const afeccOptions = afecciones.map((a) =>
-              toOption(a, 'id_afeccion', 'descripcion')
-            );
-            const destinoOptions = [
-              { value: 'incineración', label: 'Incineración' },
-              { value: 'rendering', label: 'Rendering' },
-              { value: 'entierro', label: 'Entierro' },
-              { value: 'desnaturalización', label: 'Desnaturalización' },
-              { value: 'otro', label: 'Otro' },
-            ];
+          {detalles.map((detalle, idx) => {
+            const partesOpts = partesPorTipo(detalle.id_tipo_parte_deco);
+            const tipoOption =
+              tipoOptions.find(
+                (o) => String(o.value) === String(detalle.id_tipo_parte_deco)
+              ) || null;
+            const parteOption =
+              partesOpts.find(
+                (p) => String(p.value) === String(detalle.id_parte_decomisada)
+              ) || null;
+            const afeccionOption =
+              afeccOptions.find(
+                (a) => String(a.value) === String(detalle.id_afeccion)
+              ) || null;
+            const destinoOption =
+              destinoOptions.find(
+                (d) => String(d.value) === String(detalle.destino_decomiso)
+              ) || null;
+            const mostrarPeso = tipoEsRes(detalle.id_tipo_parte_deco);
 
             return (
               <div
-                key={index}
-                className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-white p-4 rounded-2xl shadow-lg border border-slate-200 ring-1 ring-slate-100 transition hover:shadow-xl"
+                key={idx}
+                className="relative bg-white p-4 rounded-2xl shadow-lg border border-slate-200 ring-1 ring-slate-100 transition hover:shadow-xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
               >
-                {/* boton eliminar en esquina superior derecha */}
                 <div className="absolute top-3 right-3">
                   <button
                     type="button"
                     onClick={() => {
                       if (confirm('¿Eliminar este detalle?'))
-                        eliminarDetalle(index);
+                        eliminarDetalle(idx);
                     }}
                     className="text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md text-sm font-medium shadow-sm"
-                    aria-label={`Eliminar detalle ${index + 1}`}
+                    aria-label={`Eliminar detalle ${idx + 1}`}
                   >
-                    ✖
+                    ✕
                   </button>
                 </div>
 
-                {/* Tipo de parte */}
                 <SelectField
                   label="Tipo de parte"
-                  value={
-                    tipoOptions.find(
-                      (o) =>
-                        String(o.value) === String(detalle.id_tipo_parte_deco)
-                    ) || null
-                  }
-                  onChange={(selected) =>
-                    actualizarDetalle(
-                      index,
-                      'id_tipo_parte_deco',
-                      selected?.value || ''
-                    )
+                  value={tipoOption}
+                  onChange={(s) =>
+                    actualizarDetalle(idx, 'id_tipo_parte_deco', s?.value ?? '')
                   }
                   options={tipoOptions}
                   placeholder="Seleccione tipo"
-                  required
                 />
 
-                {/* Parte decomisada */}
                 <SelectField
                   label="Parte decomisada"
-                  value={
-                    parteOptions.find(
-                      (o) => String(o.value) === String(valorParte)
-                    ) || null
-                  }
-                  onChange={(selected) =>
+                  value={parteOption}
+                  onChange={(s) =>
                     actualizarDetalle(
-                      index,
+                      idx,
                       'id_parte_decomisada',
-                      selected?.value || ''
+                      s?.value ?? ''
                     )
                   }
-                  options={parteOptions}
+                  options={partesOpts.map((p) => ({
+                    value: p.value,
+                    label: p.label,
+                  }))}
                   placeholder="Seleccione parte"
-                  required
                   disabled={!detalle.id_tipo_parte_deco}
                 />
 
-                {/* Afección */}
                 <SelectField
                   label="Afección"
-                  value={
-                    afeccOptions.find(
-                      (o) => String(o.value) === String(detalle.id_afeccion)
-                    ) || null
-                  }
-                  onChange={(selected) =>
-                    actualizarDetalle(
-                      index,
-                      'id_afeccion',
-                      selected?.value || ''
-                    )
+                  value={afeccionOption}
+                  onChange={(s) =>
+                    actualizarDetalle(idx, 'id_afeccion', s?.value ?? '')
                   }
                   options={afeccOptions}
                   placeholder="Seleccione afección"
-                  required
                 />
 
-                {/* Cantidad */}
                 <InputField
                   label="Cantidad"
-                  type="number"
+                  type="text"
                   value={detalle.cantidad}
                   onChange={(e) =>
-                    actualizarDetalle(index, 'cantidad', e.target.value)
+                    actualizarDetalle(idx, 'cantidad', e.target.value)
                   }
-                  placeholder="Cantidad"
+                  placeholder="Sólo números enteros"
                 />
 
-                {/* Peso */}
-                <InputField
-                  label="Peso (kg)"
-                  type="number"
-                  step="0.1"
-                  value={detalle.peso_kg}
-                  onChange={(e) =>
-                    actualizarDetalle(index, 'peso_kg', e.target.value)
-                  }
-                  placeholder="Peso (kg)"
-                />
+                {mostrarPeso && (
+                  <InputField
+                    label="Peso (kg)"
+                    type="text"
+                    value={detalle.peso_kg}
+                    onChange={(e) =>
+                      actualizarDetalle(idx, 'peso_kg', e.target.value)
+                    }
+                    placeholder="Ej. 1,56 — podés ingresar 0"
+                  />
+                )}
 
-                {/* Animales afectados */}
                 <InputField
                   label="Animales afectados"
-                  type="number"
+                  type="text"
                   value={detalle.animales_afectados}
                   onChange={(e) =>
-                    actualizarDetalle(
-                      index,
-                      'animales_afectados',
-                      e.target.value
-                    )
+                    actualizarDetalle(idx, 'animales_afectados', e.target.value)
                   }
-                  placeholder="Animales afectados"
+                  placeholder="Sólo números enteros"
                 />
 
-                {/* Destino del decomiso */}
                 <SelectField
                   label="Destino del decomiso"
-                  value={
-                    destinoOptions.find(
-                      (o) =>
-                        String(o.value) === String(detalle.destino_decomiso)
-                    ) || null
-                  }
-                  onChange={(selected) =>
-                    actualizarDetalle(
-                      index,
-                      'destino_decomiso',
-                      selected?.value || ''
-                    )
+                  value={destinoOption}
+                  onChange={(s) =>
+                    actualizarDetalle(idx, 'destino_decomiso', s?.value ?? '')
                   }
                   options={destinoOptions}
                   placeholder="Seleccione destino"
-                  required
                 />
 
-                {/* Observaciones */}
                 <InputField
                   label="Observaciones"
                   as="textarea"
                   value={detalle.observaciones}
                   onChange={(e) =>
-                    actualizarDetalle(index, 'observaciones', e.target.value)
+                    actualizarDetalle(idx, 'observaciones', e.target.value)
                   }
-                  placeholder="Observaciones"
+                  placeholder="Observaciones opcionales"
                   className="md:col-span-3"
                 />
               </div>
@@ -614,7 +860,6 @@ const DecomisoPage = () => {
           })}
         </div>
 
-        {/* Botones inferiores */}
         <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <button
             type="button"
@@ -627,23 +872,31 @@ const DecomisoPage = () => {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={handleGuardar}
+              onClick={openReview}
               className="px-5 py-2 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-800 transition shadow"
             >
               Guardar Decomisos
             </button>
           </div>
         </div>
+
+        <ReviewModal
+          open={reviewOpen}
+          onClose={() => setReviewOpen(false)}
+          preview={reviewPreviewData}
+          payload={reviewPayload}
+          onConfirm={confirmAndSave}
+          serverErrors={reviewServerErrors}
+        />
       </div>
     </div>
   );
-};
+}
 
+/* Presentational Card */
 const Card = ({ title, value }) => (
-  <div className="bg-white rounded-xl shadow border border-slate-200 p-4 text-center transition hover:shadow-md">
+  <div className="bg-white rounded-xl shadow border border-slate-200 p-4 text-center">
     <p className="text-xs text-slate-500 mb-1">{title}</p>
     <p className="text-lg font-semibold text-slate-800">{value}</p>
   </div>
 );
-
-export default DecomisoPage;

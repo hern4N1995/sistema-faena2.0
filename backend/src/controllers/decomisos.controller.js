@@ -169,6 +169,10 @@ const registrarDecomiso = async (req, res) => {
   const detalles = req.body;
 
   try {
+    if (!Array.isArray(detalles) || detalles.length === 0) {
+      return res.status(400).json({ error: 'Payload inválido o vacío' });
+    }
+
     const { id_faena_detalle } = detalles[0];
 
     if (!id_faena_detalle) {
@@ -183,24 +187,65 @@ const registrarDecomiso = async (req, res) => {
 
     const id_decomiso = result.rows[0].id_decomiso;
 
-    // Paso 2: Insertar cada detalle
-    for (const d of detalles) {
+    // ---------------------------
+    // Normalizar y validar payload
+    // ---------------------------
+    const detallesNormalizados = detalles.map((d) => {
+      // parsear peso: aceptar números o strings con coma/punto
+      const parsedPeso =
+        d.peso_kg !== undefined &&
+        d.peso_kg !== null &&
+        String(d.peso_kg).trim() !== ''
+          ? Number(String(d.peso_kg).replace(',', '.'))
+          : NaN;
+      const peso = Number.isFinite(parsedPeso) ? parsedPeso : 0;
+
+      // cantidad
+      const parsedCantidad =
+        d.cantidad !== undefined &&
+        d.cantidad !== null &&
+        String(d.cantidad).trim() !== ''
+          ? Number(String(d.cantidad).replace(',', '.'))
+          : NaN;
+      const cantidad = Number.isFinite(parsedCantidad) ? parsedCantidad : 0;
+
+      // animales afectadps
+      const parsedAnimales =
+        d.animales_afectados !== undefined &&
+        d.animales_afectados !== null &&
+        String(d.animales_afectados).trim() !== ''
+          ? Number(String(d.animales_afectados).replace(',', '.'))
+          : NaN;
+      const animales_afectados = Number.isFinite(parsedAnimales)
+        ? parsedAnimales
+        : 0;
+
+      return {
+        ...d,
+        peso_kg: peso,
+        cantidad,
+        animales_afectados,
+      };
+    });
+
+    // Paso 2: Insertar cada detalle usando detallesNormalizados
+    for (const d of detallesNormalizados) {
       // Verificar si la combinación parte + afección existe
       const existe = await pool.query(
         `SELECT 1 FROM parte_deco_afeccion
-   WHERE id_parte_decomisada = $1 AND id_afeccion = $2`,
+         WHERE id_parte_decomisada = $1 AND id_afeccion = $2`,
         [d.id_parte_decomisada, d.id_afeccion],
       );
 
       if (existe.rowCount === 0) {
         await pool.query(
           `INSERT INTO parte_deco_afeccion (id_parte_decomisada, id_afeccion)
-     VALUES ($1, $2)`,
+           VALUES ($1, $2)`,
           [d.id_parte_decomisada, d.id_afeccion],
         );
       }
 
-      // Insertar detalle del decomiso
+      // Insertar detalle del decomiso (peso_kg ya es número, no usamos || null que convierta 0 en null)
       await pool.query(
         `INSERT INTO decomiso_detalle (
           id_decomiso,
@@ -218,7 +263,7 @@ const registrarDecomiso = async (req, res) => {
           d.id_afeccion,
           d.cantidad,
           d.animales_afectados,
-          d.peso_kg || null,
+          d.peso_kg,
           d.destino_decomiso || null,
           d.observaciones || null,
         ],

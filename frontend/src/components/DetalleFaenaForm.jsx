@@ -14,16 +14,21 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
 
   useEffect(() => {
     if (faena?.categorias?.length > 0) {
+      // inicializamos como undefined para que el campo se muestre vacío
       const inicial = {};
       faena.categorias.forEach((cat) => {
-        inicial[cat.id_tropa_detalle] = 0;
+        inicial[cat.id_tropa_detalle] = undefined;
       });
       setFaenaPorCategoria(inicial);
     }
   }, [faena]);
 
-  const handleCantidadChange = (id_tropa_detalle, val) => {
-    const cant = Math.max(0, parseInt(val) || 0);
+  // cleanedVal: '' -> undefined; otherwise integer >= 0
+  const handleCantidadChange = (id_tropa_detalle, rawVal) => {
+    const s = String(rawVal || '');
+    const cleaned = s.replace(/\D+/g, ''); // elimina no-dígitos
+    const cant =
+      cleaned === '' ? undefined : Math.max(0, parseInt(cleaned, 10));
     setFaenaPorCategoria((prev) => ({
       ...prev,
       [id_tropa_detalle]: cant,
@@ -35,8 +40,11 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
 
     if (!fecha) return setFeedback('⚠️ La fecha es obligatoria');
 
-    const detalles = faena.categorias
-      .filter((cat) => faenaPorCategoria[cat.id_tropa_detalle] > 0)
+    const detalles = (faena.categorias || [])
+      .filter((cat) => {
+        const v = faenaPorCategoria[cat.id_tropa_detalle];
+        return typeof v === 'number' && v > 0;
+      })
       .map((cat) => ({
         id_tropa_detalle: cat.id_tropa_detalle,
         cantidad: faenaPorCategoria[cat.id_tropa_detalle],
@@ -58,7 +66,13 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
       categorias: detalles,
     });
 
-    onSubmit({ fecha, categorias: detalles }); // ✅ delegamos al padre
+    onSubmit({ fecha, categorias: detalles });
+  };
+
+  const preventDotAndMinus = (e) => {
+    if (e.key === '.' || e.key === ',' || e.key === '-') {
+      e.preventDefault();
+    }
   };
 
   return (
@@ -97,7 +111,6 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
           onSubmit={handleSubmit}
           className="w-full max-w-5xl mx-auto space-y-6"
         >
-          {/* Fecha */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">
               Fecha de faena
@@ -107,11 +120,10 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
               required
-              className="w-full md:w-auto rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="w-full md:w-auto rounded-lg border-2 border-gray-200 px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
             />
           </div>
 
-          {/* Categorías */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-3">
               Categorías a faenar
@@ -123,7 +135,6 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
               </div>
             ) : (
               <>
-                {/* Desktop */}
                 <div className="hidden md:block overflow-x-auto rounded-xl ring-1 ring-slate-200">
                   <table className="min-w-[700px] w-full text-sm text-left text-slate-700">
                     <thead className="bg-green-700 text-white text-xs uppercase tracking-wider">
@@ -147,19 +158,27 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
                           </td>
                           <td className="px-4 py-3 text-right">
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="\d*"
                               min={0}
                               max={cat.remanente}
                               value={
-                                faenaPorCategoria[cat.id_tropa_detalle] || ''
+                                faenaPorCategoria[cat.id_tropa_detalle] !==
+                                undefined
+                                  ? String(
+                                      faenaPorCategoria[cat.id_tropa_detalle]
+                                    )
+                                  : ''
                               }
+                              onKeyDown={preventDotAndMinus}
                               onChange={(e) =>
                                 handleCantidadChange(
                                   cat.id_tropa_detalle,
                                   e.target.value
                                 )
                               }
-                              className="w-24 rounded border border-slate-300 px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-green-600"
+                              className="w-24 rounded-lg border-2 border-gray-200 px-4 py-3 text-right text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
                             />
                           </td>
                         </tr>
@@ -168,7 +187,6 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
                   </table>
                 </div>
 
-                {/* Mobile */}
                 <div className="md:hidden space-y-3">
                   {faena.categorias.map((cat) => (
                     <div
@@ -187,17 +205,24 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
                         A faenar
                       </label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="\d*"
                         min={0}
                         max={cat.remanente}
-                        value={faenaPorCategoria[cat.id_tropa_detalle] || ''}
+                        value={
+                          faenaPorCategoria[cat.id_tropa_detalle] !== undefined
+                            ? String(faenaPorCategoria[cat.id_tropa_detalle])
+                            : ''
+                        }
+                        onKeyDown={preventDotAndMinus}
                         onChange={(e) =>
                           handleCantidadChange(
                             cat.id_tropa_detalle,
                             e.target.value
                           )
                         }
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-600"
+                        className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
                       />
                     </div>
                   ))}
@@ -206,14 +231,12 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
             )}
           </div>
 
-          {/* Feedback */}
           {feedback && (
             <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
               {feedback}
             </div>
           )}
 
-          {/* Botón */}
           {faena.categorias?.length > 0 && (
             <button
               type="submit"

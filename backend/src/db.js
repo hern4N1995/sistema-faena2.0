@@ -10,6 +10,7 @@ const pool = new Pool({
   database: process.env.PGDATABASE, // el nombre de tu base de datos 
   PGD_SECRET: process.env.PGD_SECRET,*/
 
+  //Ivan
   host: process.env.DB_HOST, // ej: 'localhost'
   port: process.env.DB_PORT, // ej: 5432
   user: process.env.DB_USER, // ej: 'postgres'

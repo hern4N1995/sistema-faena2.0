@@ -17,6 +17,52 @@ const obtenerUsuarios = async (req, res) => {
   }
 };
 
+// devuelve usuario mínimo + planta asociada (id_planta y nombre)
+const usuarioActual = async (req, res) => {
+  try {
+    const id_usuario = req.user?.id_usuario;
+    if (!id_usuario) return res.status(401).json({ error: 'No autenticado' });
+
+    const q = `
+      SELECT
+        u.id_usuario,
+        u.nombre,
+        u.apellido,
+        u.email,
+        u.dni,
+        u.n_telefono,
+        u.id_planta,
+        p.nombre AS planta_nombre,
+        r.descripcion AS rol
+      FROM usuario u
+      LEFT JOIN planta p ON u.id_planta = p.id_planta
+      LEFT JOIN rol_usuario r ON u.id_rol = r.id_rol
+      WHERE u.id_usuario = $1
+      LIMIT 1
+    `;
+    const result = await pool.query(q, [id_usuario]);
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const row = result.rows[0];
+    // enviar formato compacto (id_planta + planta_nombre para facilitar preselección en frontend)
+    res.json({
+      id_usuario: row.id_usuario,
+      nombre: row.nombre,
+      apellido: row.apellido,
+      email: row.email,
+      dni: row.dni,
+      n_telefono: row.n_telefono,
+      id_planta: row.id_planta,
+      planta: row.planta_nombre ?? null,
+      rol: row.rol ?? null,
+    });
+  } catch (err) {
+    console.error('Error al obtener usuario actual:', err);
+    res.status(500).json({ error: 'Error al obtener usuario actual' });
+  }
+};
+
 // Crear nuevo usuario
 const crearUsuario = async (req, res) => {
   try {
@@ -267,4 +313,5 @@ module.exports = {
   eliminarUsuario,
   getPerfil,
   updatePerfil,
+  usuarioActual,
 };

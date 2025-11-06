@@ -3,19 +3,23 @@ const pool = require('../db');
 // Obtener todas las tropas
 exports.getAll = async (req, res) => {
   try {
+    // GET /tropas  -> controllers/tropa.controller.js (getAll)
     const result = await pool.query(`
-      SELECT 
-        t.id_tropa,
-        t.n_tropa,
-        t.fecha,
-        t.dte_dtu,
-        tf.nombre AS titular,
-        pr.nombre AS productor_nombre
-      FROM tropa t
-      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
-      LEFT JOIN productor pr ON t.id_productor = pr.id_productor
-      ORDER BY t.fecha DESC
-    `);
+  SELECT
+    t.id_tropa,
+    t.n_tropa,
+    t.fecha,
+    t.dte_dtu,
+    tf.nombre AS titular,
+    pr.nombre AS productor_nombre,
+    p.id_planta,
+    p.nombre AS planta_nombre
+  FROM tropa t
+  LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+  LEFT JOIN productor pr ON t.id_productor = pr.id_productor
+  LEFT JOIN planta p ON t.id_planta = p.id_planta
+  ORDER BY t.fecha DESC
+`);
     res.json(result.rows);
   } catch (err) {
     console.error('Error al obtener tropas:', err);

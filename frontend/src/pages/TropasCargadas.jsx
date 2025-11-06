@@ -1,4 +1,4 @@
-// TropasCargadas.jsx (filtrado solo en frontend)
+// TropasCargadas.jsx (con pageSize y filtrado por planta del usuario)
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api.js';
@@ -12,40 +12,48 @@ export default function TropasCargadas() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [query, setQuery] = useState('');
+  const [pageSize, setPageSize] = useState(7); // default según tu ejemplo
+  const [usuario, setUsuario] = useState(null); // usuario actual (para id_planta)
 
   const navigate = useNavigate();
   const debounceRef = useRef(null);
 
-  // Cargar tropas una sola vez
+  // Cargar tropas + usuario actual una sola vez
   useEffect(() => {
     let canceled = false;
     setLoading(true);
-    api
-      .get('/tropas')
-      .then((res) => {
+
+    const pTropas = api.get('/tropas').catch((e) => ({ data: [] }));
+    const pUsuario = api
+      .get('/usuarios/usuario-actual')
+      .catch(() => ({ data: null }));
+
+    Promise.all([pTropas, pUsuario])
+      .then(([resT, resU]) => {
         if (canceled) return;
-        const arr = Array.isArray(res.data) ? res.data : [];
-        // ordenar por fecha desc
+        const arr = Array.isArray(resT.data) ? resT.data : [];
         const ordenadas = arr
           .slice()
           .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
         setAllTropas(ordenadas);
-        // inicialmente mostrar hasta 6 (como antes)
-        setTropas(ordenadas.slice(0, 6));
+        setTropas(ordenadas.slice(0, pageSize));
+        setUsuario(resU.data ?? null);
       })
       .catch((err) => {
-        console.error('Error al obtener tropas:', err);
+        console.error('Error al obtener tropas o usuario:', err);
         if (!canceled) setError('Error al obtener tropas');
       })
       .finally(() => {
         if (!canceled) setLoading(false);
       });
+
     return () => {
       canceled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Función que aplica filtros en memoria
+  // Aplica filtros en memoria y además filtra por planta del usuario (si existe)
   const applyFilters = () => {
     const term = String(query || '')
       .trim()
@@ -54,13 +62,32 @@ export default function TropasCargadas() {
 
     let filtered = allTropas.slice();
 
-    // Filtrar por rango de fechas si están provistas
+    // 1) Filtrar por planta del usuario (si tenemos usuario con id_planta)
+    if (
+      usuario &&
+      usuario.id_planta !== undefined &&
+      usuario.id_planta !== null
+    ) {
+      filtered = filtered.filter((t) => {
+        // varios nombres posibles para campo planta en los objetos que tienes en backend:
+        // t.id_planta, t.planta_id, t.planta?.id_planta, t.planta_nombre etc.
+        // comprobamos las variantes más probables:
+        const tPlanta =
+          t.id_planta ??
+          t.planta_id ??
+          (t.planta && (t.planta.id_planta ?? t.planta.id)) ??
+          null;
+        if (tPlanta == null) return false;
+        return String(tPlanta) === String(usuario.id_planta);
+      });
+    }
+
+    // 2) Filtrar por rango de fechas
     if (startDate) {
       const s = new Date(startDate);
       filtered = filtered.filter((t) => {
         if (!t.fecha) return false;
         const d = new Date(t.fecha);
-        // comparar por día (ignorar hora)
         return d.setHours(0, 0, 0, 0) >= new Date(s).setHours(0, 0, 0, 0);
       });
     }
@@ -73,17 +100,14 @@ export default function TropasCargadas() {
       });
     }
 
-    // Filtrar por query: n_tropa exacto si es numérico; si no, dte_dtu parcial o productor parcial
+    // 3) Filtrar por query (n_tropa exacto si es numérico; dte_dtu o productor parcial)
     if (term) {
       filtered = filtered.filter((t) => {
-        // n_tropa exact match (si term es numérico)
         if (isNum && t.n_tropa !== undefined && t.n_tropa !== null) {
           if (String(t.n_tropa) === term) return true;
         }
-        // dte_dtu partial match
         if (t.dte_dtu && String(t.dte_dtu).toLowerCase().includes(term))
           return true;
-        // productor partial match (puede venir como productor_nombre o productor)
         const prod = (t.productor_nombre || t.productor || '')
           .toString()
           .toLowerCase();
@@ -92,35 +116,32 @@ export default function TropasCargadas() {
       });
     }
 
-    // ordenar por fecha desc y tomar hasta 6
+    // ordenar por fecha desc y tomar según pageSize
     const ordenadas = filtered.sort(
       (a, b) => new Date(b.fecha) - new Date(a.fecha)
     );
-    setTropas(ordenadas.slice(0, 6));
+    setTropas(ordenadas.slice(0, Number(pageSize)));
   };
 
-  // Debounce: aplicar filtros cuando cambian los inputs
+  // Debounce: aplicar filtros cuando cambian inputs o pageSize o usuario
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       applyFilters();
-    }, 300);
+    }, 250);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate, query, allTropas]);
+  }, [startDate, endDate, query, allTropas, pageSize, usuario]);
 
-  // Limpiar filtros
   const clearFilters = () => {
     setStartDate('');
     setEndDate('');
     setQuery('');
-    // restaurar primeras 6
-    setTropas(allTropas.slice(0, 6));
+    setTropas(allTropas.slice(0, pageSize));
   };
 
-  // optional: memoized UI state to show range validity
   const rangeInvalid = useMemo(() => {
     if (!startDate || !endDate) return false;
     return new Date(startDate) > new Date(endDate);
@@ -134,11 +155,12 @@ export default function TropasCargadas() {
             📋 Tropas Cargadas
           </h1>
           <p className="text-gray-500 text-sm">
-            Filtrá por rango de fecha o por N° Tropa, DTE/DTU o Productor
+            Filtrá por rango de fecha, N° Tropa, DTE/DTU o Productor. Se
+            muestran solo las tropas de la planta asignada al usuario.
           </p>
         </div>
 
-        {/* filtros */}
+        {/* filtros + pageSize */}
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mb-6">
           <div className="flex gap-2 items-center w-full sm:w-auto">
             <label className="text-sm text-gray-600">Desde</label>
@@ -168,6 +190,16 @@ export default function TropasCargadas() {
               onChange={(e) => setQuery(e.target.value)}
               className="flex-1 border rounded px-3 py-2 bg-white text-sm"
             />
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="border rounded px-3 py-2 bg-white text-sm"
+            >
+              <option value={4}>Mostrar 4</option>
+              <option value={7}>Mostrar 7</option>
+              <option value={10}>Mostrar 10</option>
+              <option value={20}>Mostrar 20</option>
+            </select>
             <button
               onClick={clearFilters}
               className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm"
@@ -183,7 +215,6 @@ export default function TropasCargadas() {
             Cargando tropas...
           </div>
         )}
-
         {error && <div className="text-center py-4 text-red-600">{error}</div>}
 
         {!loading && tropas.length === 0 && !error ? (
@@ -191,7 +222,9 @@ export default function TropasCargadas() {
             <div className="inline-flex items-center justify-center w-14 h-14 bg-gray-200 rounded-full mb-3">
               <span className="text-xl">🐄</span>
             </div>
-            <p className="text-gray-500 text-lg">No hay tropas registradas</p>
+            <p className="text-gray-500 text-lg">
+              No hay tropas registradas para tu planta
+            </p>
             <p className="text-gray-400 text-sm mt-1">
               Ajustá los filtros para ampliar la búsqueda
             </p>
@@ -231,13 +264,13 @@ export default function TropasCargadas() {
                   </div>
 
                   <div className="flex items-start space-x-2">
-                    <span className="text-gray-400 text-sm mt-0.5">🏭</span>
+                    <span className="text-gray-400 text-sm mt-0.5">🏠</span>
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-gray-800 text-sm">
                         Productor
                       </p>
                       <p className="text-gray-600 text-sm truncate">
-                        {tropa.productor_nombre || '—'}
+                        {tropa.productor_nombre || tropa.productor || '—'}
                       </p>
                     </div>
                   </div>
@@ -261,20 +294,18 @@ export default function TropasCargadas() {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                       navigate(`/tropas-cargadas/modificar/${tropa.id_tropa}`);
                     }}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 hover:text-green-800 font-medium py-2.5 px-3 rounded-lg transition-all duration-200 hover:scale-105 text-sm"
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 hover:text-green-800 font-medium py-2.5 px-3 rounded-lg transition-all duration-200 text-sm"
                   >
-                    <span className="text-sm">✏️</span>
-                    <span className="text-sm">Modificar</span>
+                    ✏️ Modificar
                   </button>
                   <button
                     onClick={() => {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                       navigate(`/tropas-cargadas/resumen/${tropa.id_tropa}`);
                     }}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 font-medium py-2.5 px-3 rounded-lg transition-all duration-200 hover:scale-105 text-sm"
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 font-medium py-2.5 px-3 rounded-lg transition-all duration-200 text-sm"
                   >
-                    <span className="text-sm">📄</span>
-                    <span className="text-sm">Resumen</span>
+                    📄 Resumen
                   </button>
                 </div>
               </div>
@@ -284,7 +315,7 @@ export default function TropasCargadas() {
 
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-sm">
-            Mostrando las últimas 6 tropas (filtradas)
+            Mostrando las últimas {pageSize} tropas (filtradas)
           </p>
         </div>
       </div>

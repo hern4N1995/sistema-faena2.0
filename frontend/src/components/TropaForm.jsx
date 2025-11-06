@@ -3,7 +3,14 @@ import Select from 'react-select';
 import api from '../services/api'; // tu instancia axios
 
 /* ---------- SelectField (local) ---------- */
-function SelectField({ label, value, onChange, options, placeholder }) {
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  isDisabled = false,
+}) {
   const [isFocusing, setIsFocusing] = useState(false);
   const customStyles = {
     control: (base, state) => ({
@@ -12,7 +19,7 @@ function SelectField({ label, value, onChange, options, placeholder }) {
       minHeight: '48px',
       paddingLeft: '16px',
       paddingRight: '16px',
-      backgroundColor: '#f9fafb',
+      backgroundColor: isDisabled ? '#f3f4f6' : '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
       boxShadow: isFocusing
@@ -21,6 +28,8 @@ function SelectField({ label, value, onChange, options, placeholder }) {
         ? '0 0 0 4px #d1fae5'
         : 'none',
       transition: 'all 50ms ease',
+      cursor: isDisabled ? 'not-allowed' : 'default',
+      opacity: isDisabled ? 0.85 : 1,
     }),
     valueContainer: (base) => ({
       ...base,
@@ -56,6 +65,7 @@ function SelectField({ label, value, onChange, options, placeholder }) {
       padding: '10px 16px',
       backgroundColor: isFocused ? '#d1fae5' : '#fff',
       color: isFocused ? '#065f46' : '#111827',
+      cursor: 'pointer',
     }),
   };
 
@@ -75,9 +85,12 @@ function SelectField({ label, value, onChange, options, placeholder }) {
         noOptionsMessage={() => 'Sin opciones'}
         components={{ IndicatorSeparator: () => null }}
         onFocus={() => {
-          setIsFocusing(true);
-          setTimeout(() => setIsFocusing(false), 50);
+          if (!isDisabled) {
+            setIsFocusing(true);
+            setTimeout(() => setIsFocusing(false), 50);
+          }
         }}
+        isDisabled={isDisabled}
       />
     </div>
   );
@@ -172,7 +185,7 @@ function InlineCreateModal({
             break;
           }
         } catch (e) {
-          // ignore
+          /* ignore */
         }
       }
       const normalized = (list || []).map((x) => ({
@@ -211,7 +224,7 @@ function InlineCreateModal({
     }
     setLoading(true);
     try {
-      let endpoint =
+      const endpoint =
         type === 'departamento'
           ? '/departamentos'
           : type === 'productor'
@@ -520,7 +533,7 @@ export default function TropaForm({ onCreated }) {
         if (res && res.data && Array.isArray(res.data.data))
           return res.data.data;
       } catch (e) {
-        // ignore
+        /* ignore */
       }
     }
     return [];
@@ -528,25 +541,20 @@ export default function TropaForm({ onCreated }) {
 
   async function loadInitial() {
     try {
-      const [
-        userRes,
-        depsRes,
-        plantasRes,
-        prodsRes, // not used directly, we'll normalize with helper if needed
-        titsRes,
-        provsRes,
-      ] = await Promise.all([
-        api.get('/usuarios/usuario-actual').catch(() => ({ data: null })),
-        api.get('/departamentos').catch(() => ({ data: [] })),
-        api.get('/plantas').catch(() => ({ data: [] })),
-        tryFetchProductoresList().catch(() => []),
-        api.get('/titulares-faena').catch(() => ({ data: [] })),
-        api.get('/provincias').catch(() => ({ data: [] })),
-      ]);
+      const [userRes, depsRes, plantasRes, prodsRes, titsRes, provsRes] =
+        await Promise.all([
+          api.get('/usuarios/usuario-actual').catch(() => ({ data: null })),
+          api.get('/departamentos').catch(() => ({ data: [] })),
+          api.get('/plantas').catch(() => ({ data: [] })),
+          tryFetchProductoresList().catch(() => []),
+          api.get('/titulares-faena').catch(() => ({ data: [] })),
+          api.get('/provincias').catch(() => ({ data: [] })),
+        ]);
 
       if (!mountedRef.current) return null;
 
-      setUsuario(userRes.data ?? null);
+      const usuarioData = userRes.data ?? null;
+      setUsuario(usuarioData);
 
       const depsRaw = Array.isArray(depsRes.data) ? depsRes.data : [];
       const deps = depsRaw.map((d) => ({
@@ -608,9 +616,9 @@ export default function TropaForm({ onCreated }) {
       setTitulares(tits);
       setProvincias(provs);
 
-      if (userRes.data && userRes.data.id_planta != null) {
+      if (usuarioData && usuarioData.id_planta != null) {
         const planta = pls.find(
-          (p) => String(p.id_planta) === String(userRes.data.id_planta)
+          (p) => String(p.id_planta) === String(usuarioData.id_planta)
         );
         if (planta) {
           setPlantaAsignada(planta);
@@ -618,7 +626,7 @@ export default function TropaForm({ onCreated }) {
         } else {
           setForm((prev) => ({
             ...prev,
-            id_planta: String(userRes.data.id_planta),
+            id_planta: String(usuarioData.id_planta),
           }));
         }
       }
@@ -690,6 +698,20 @@ export default function TropaForm({ onCreated }) {
   const handleSelectChange = (name) => (selected) =>
     setForm((prev) => ({ ...prev, [name]: selected ? selected.value : '' }));
 
+  // bloquear planta si rol es supervisor (2) o usuario (3) — acepta texto o número devuelto por backend
+  const isPlantaLocked = (() => {
+    if (!usuario) return false;
+    const rol = usuario.rol;
+    if (rol === null || rol === undefined) return false;
+    const rolStr = String(rol).trim().toLowerCase();
+    return (
+      rolStr === 'supervisor' ||
+      rolStr === 'usuario' ||
+      rolStr === '2' ||
+      rolStr === '3'
+    );
+  })();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const required = [
@@ -701,14 +723,26 @@ export default function TropaForm({ onCreated }) {
       'id_productor',
       'id_titular_faena',
     ];
-    const missing = required.filter((k) => !form[k]);
+    // if planta locked, force id_planta to usuario.id_planta
+    if (isPlantaLocked && usuario?.id_planta) {
+      setForm((prev) => ({ ...prev, id_planta: String(usuario.id_planta) }));
+    }
+    const missing = required.filter(
+      (k) =>
+        !form[k] && !(k === 'id_planta' && isPlantaLocked && usuario?.id_planta)
+    );
     if (missing.length) {
       showToast('error', 'Completá todos los campos obligatorios.');
       return;
     }
 
     try {
-      const res = await api.post('/tropas', form);
+      // ensure payload uses locked planta if needed
+      const payload = { ...form };
+      if (isPlantaLocked && usuario?.id_planta)
+        payload.id_planta = String(usuario.id_planta);
+
+      const res = await api.post('/tropas', payload);
       if (res?.data?.id_tropa) {
         if (onCreated) onCreated(res.data.id_tropa);
         showToast('success', 'Tropa creada correctamente.');
@@ -869,6 +903,7 @@ export default function TropaForm({ onCreated }) {
             onChange={(sel) => handleSelectChange('id_planta')(sel)}
             options={plantaOptions}
             placeholder="Seleccione una planta"
+            isDisabled={isPlantaLocked}
           />
 
           <div className="flex flex-col">

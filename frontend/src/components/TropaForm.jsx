@@ -1,4 +1,3 @@
-// TropaForm.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Select from 'react-select';
 import api from '../services/api'; // tu instancia axios
@@ -102,9 +101,7 @@ function Modal({ children, onClose }) {
   );
 }
 
-/* ---------- InlineCreateModal (local) ----------
-   special handling: for productor, after POST we re-fetch productores and match by cuit or name
-*/
+/* ---------- InlineCreateModal (local) ---------- */
 function InlineCreateModal({
   type,
   provincias = [],
@@ -154,10 +151,8 @@ function InlineCreateModal({
     setError(null);
   };
 
-  // helper para reconsultar productores y buscar la entidad creada
   const fetchAndMatchProductor = async (sent) => {
     try {
-      // intenta varias rutas comunes
       const candidates = [
         '/productores',
         '/productores/productores',
@@ -180,13 +175,11 @@ function InlineCreateModal({
           // ignore
         }
       }
-      // normalizar cada item
       const normalized = (list || []).map((x) => ({
         id_productor: x.id_productor ?? x.id ?? null,
         nombre: x.nombre ?? x.razon_social ?? x.nombre_productor ?? '',
         cuit: x.cuit ?? null,
       }));
-      // match por CUIT si existe, sino por nombre exacto (case-insensitive), luego por nombre parcial
       if (sent.cuit) {
         const byCuit = normalized.find(
           (n) => n.cuit && String(n.cuit) === String(sent.cuit)
@@ -243,7 +236,6 @@ function InlineCreateModal({
       const res = await api.post(endpoint, payload);
       const data = res?.data?.data ?? res?.data ?? null;
 
-      // Si el controller devolvió la entidad, la usamos directamente
       if (
         res.status >= 200 &&
         res.status < 300 &&
@@ -264,20 +256,19 @@ function InlineCreateModal({
           );
         if (mounted.current && onCreated) await onCreated(data);
         setLoading(false);
+        onCancel();
         return;
       }
 
-      // Caso especial: productor controller no devuelve la entidad (devuelve mensaje). Re-fetch y match.
       if (type === 'productor') {
-        // intenta obtener el registro nuevo por cuit o nombre
         const matched = await fetchAndMatchProductor(payload);
         if (matched) {
           if (onNotify) onNotify('success', 'Productor creado correctamente');
           if (mounted.current && onCreated) await onCreated(matched);
           setLoading(false);
+          onCancel();
           return;
         }
-        // fallback: crear un objeto local con id provisional
         const fallback = {
           id_productor: `local-prod-${Date.now()}`,
           nombre: payload.nombre,
@@ -290,10 +281,10 @@ function InlineCreateModal({
           );
         if (mounted.current && onCreated) await onCreated(fallback);
         setLoading(false);
+        onCancel();
         return;
       }
 
-      // Otros tipos: error con payload
       const errMsg =
         (data && (data.error || data.mensaje)) ||
         'Respuesta inesperada del servidor';
@@ -332,7 +323,7 @@ function InlineCreateModal({
             className="w-full border rounded px-3 py-2 mb-2"
           >
             <option value="">Seleccione provincia</option>
-            {(provincias || []).map((p) => (
+            {provincias.map((p) => (
               <option
                 key={String(p.id ?? p.id_provincia)}
                 value={String(p.id ?? p.id_provincia)}
@@ -388,7 +379,7 @@ function InlineCreateModal({
             className="w-full border rounded px-3 py-2 mb-2"
           >
             <option value="">Seleccione provincia</option>
-            {(provincias || []).map((p) => (
+            {provincias.map((p) => (
               <option
                 key={String(p.id ?? p.id_provincia)}
                 value={String(p.id ?? p.id_provincia)}
@@ -545,7 +536,7 @@ export default function TropaForm({ onCreated }) {
         titsRes,
         provsRes,
       ] = await Promise.all([
-        api.get('/usuario-actual').catch(() => ({ data: null })),
+        api.get('/usuarios/usuario-actual').catch(() => ({ data: null })),
         api.get('/departamentos').catch(() => ({ data: [] })),
         api.get('/plantas').catch(() => ({ data: [] })),
         tryFetchProductoresList().catch(() => []),
@@ -910,7 +901,7 @@ export default function TropaForm({ onCreated }) {
 
           <div className="flex flex-col">
             <label className="mb-3.5 font-semibold text-gray-700 text-sm">
-              N° Tropa
+              Nº Tropa
             </label>
             <input
               name="n_tropa"

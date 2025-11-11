@@ -188,6 +188,54 @@ exports.saveDetalle = async (req, res) => {
   }
 };
 
+// Obtener tropas de la planta del usuario logueado
+exports.getByUsuarioPlanta = async (req, res) => {
+  try {
+    const id_usuario = req.user?.id_usuario;
+    if (!id_usuario) return res.status(401).json({ error: 'No autenticado' });
+
+    // Obtener id_planta del usuario (puede venir ya en req.user si tu middleware lo setea)
+    // Si no está en req.user, obtenelo de la DB
+    let id_planta = req.user.id_planta ?? null;
+    if (!id_planta) {
+      const uRes = await pool.query(
+        `SELECT id_planta FROM usuario WHERE id_usuario = $1 LIMIT 1`,
+        [id_usuario],
+      );
+      id_planta = uRes.rows[0]?.id_planta ?? null;
+    }
+
+    if (!id_planta)
+      return res.status(404).json({ error: 'Usuario sin planta asignada' });
+
+    const q = `
+      SELECT
+        t.id_tropa,
+        t.n_tropa,
+        t.fecha,
+        t.dte_dtu,
+        t.guia_policial,
+        t.id_planta,
+        p.nombre AS planta_nombre,
+        tf.nombre AS titular,
+        pr.nombre AS productor_nombre,
+        d.nombre_departamento AS departamento
+      FROM tropa t
+      LEFT JOIN planta p ON t.id_planta = p.id_planta
+      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      LEFT JOIN productor pr ON t.id_productor = pr.id_productor
+      LEFT JOIN departamento d ON t.id_departamento = d.id_departamento
+      WHERE t.id_planta = $1
+      ORDER BY t.fecha DESC
+    `;
+    const result = await pool.query(q, [id_planta]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener tropas por planta:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
 // Obtener detalle agrupado (opcional)
 exports.getDetalleAgrupado = async (req, res) => {
   const { id } = req.params;

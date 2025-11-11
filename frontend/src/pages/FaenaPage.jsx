@@ -1,20 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 const useMediaQuery = (query) => {
-  const [matches, setMatches] = useState(window.matchMedia(query).matches);
+  const [matches, setMatches] = useState(
+    typeof window !== 'undefined' ? window.matchMedia(query).matches : false
+  );
   useEffect(() => {
     const media = window.matchMedia(query);
     const listener = () => setMatches(media.matches);
-    media.addEventListener('change', listener);
-    return () => media.removeEventListener('change', listener);
+    media.addEventListener?.('change', listener);
+    return () => media.removeEventListener?.('change', listener);
   }, [query]);
   return matches;
 };
 
 const FaenaPage = () => {
   const [tropas, setTropas] = useState([]);
-  const [totalFaenar, setTotalFaenar] = useState(0); // ✅ nuevo estado
+  const [totalFaenar, setTotalFaenar] = useState(0);
   const [loading, setLoading] = useState(true);
   const [redirigiendoId, setRedirigiendoId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,50 +27,206 @@ const FaenaPage = () => {
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
   const rowsPerPage = isMobile ? 3 : isTablet ? 5 : 7;
 
-  const fetchTropas = async () => {
+  // Normaliza datos básicos de la tropa (lo mínimo)
+  const normalizeBasic = (r) => {
+    let planta = null;
+    if (r.planta)
+      planta =
+        typeof r.planta === 'object' ? r.planta : { nombre: String(r.planta) };
+    else if (r.planta_nombre) planta = { nombre: r.planta_nombre };
+    else if (r.planta_id) planta = { id: r.planta_id, nombre: null };
+
+    return {
+      id_tropa: r.id_tropa ?? r.id ?? null,
+      n_tropa: r.n_tropa || r.nTropa || r.nro_tropa || r.nro || '',
+      fecha: r.fecha || r.fecha_ingreso || r.created_at || null,
+      dte_dtu: r.dte_dtu || r.dte || r.dtu || null,
+      guia_policial: r.guia_policial || r.guia || null,
+      productor: r.productor || r.productor_nombre || r.razon_social || null,
+      departamento: r.departamento || r.nombre_departamento || null,
+      titular_faena: r.titular || r.titular_faena || null,
+      especie: r.especie ?? null, // se intentará completar con detalle
+      total_a_faenar:
+        r.total_a_faenar != null ? Number(r.total_a_faenar) : null, // se completará con detalle si no viene
+      id_faena: r.id_faena ?? r.idFaena ?? null,
+      planta,
+      __raw: r,
+    };
+  };
+
+  // Pide lista de tropas filtrada por planta del usuario (ruta protegida)
+  const fetchTropasPorPlanta = async () => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/faena/tropas');
-      const data = await res.json();
-      const disponibles = data.filter((t) => parseInt(t.total_a_faenar) > 0);
-      const ordenadas = disponibles.sort(
-        (a, b) => new Date(b.fecha) - new Date(a.fecha)
+      const res = await api.get('/tropas/por-planta'); // usa instancia axios con credenciales
+      const data = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.data)
+        ? res.data.data
+        : [];
+      const basics = data.map(normalizeBasic);
+
+      // Para asegurar especie y total: pedir detalle por tropa (si endpoint disponible)
+      const detallePromises = basics.map((t) =>
+        api
+          .get(`/tropas/${t.id_tropa}/detalle`)
+          .then((r) => ({ status: 'fulfilled', id: t.id_tropa, data: r.data }))
+          .catch((err) => ({ status: 'rejected', id: t.id_tropa, error: err }))
       );
-      const totalGeneral = disponibles.reduce(
-        (acc, t) => acc + (parseInt(t.total_a_faenar) || 0),
+
+      const detalles = await Promise.allSettled(detallePromises);
+
+      // Map id -> detalleData (cuando disponible)
+      const detalleMap = new Map();
+      for (const p of detalles) {
+        if (
+          p.status === 'fulfilled' &&
+          p.value &&
+          p.value.status === 'fulfilled' &&
+          p.value.data
+        ) {
+          detalleMap.set(p.value.id, p.value.data);
+        } else if (
+          p.status === 'fulfilled' &&
+          p.value &&
+          p.value.status === 'rejected'
+        ) {
+          // la promesa interna falló; ignoramos
+        } else if (p.status === 'rejected') {
+          // Promise.allSettled wrapper rejected (no debería pasar), ignoramos
+        }
+      }
+
+      // Consolida datos: si detalle disponible, extrae especie y total (remanente o cantidad - faenados)
+      const consolidated = basics.map((t) => {
+        const det = detalleMap.get(t.id_tropa) ?? null;
+        if (!det) return t;
+
+        // det puede venir como objeto con categorias: [{ nombre_categoria, remanente, especie, ... }]
+        // o como array de filas; manejamos variantes.
+        let categorias = [];
+        if (Array.isArray(det.categorias)) categorias = det.categorias;
+        else if (Array.isArray(det)) categorias = det;
+        else if (Array.isArray(det.data)) categorias = det.data;
+
+        // Obtener especie: priorizar primera categoria.especie o categoria.especie
+        let especie = t.especie;
+        if (!especie && categorias.length > 0) {
+          const first = categorias.find(
+            (c) =>
+              c.especie ||
+              c.nombre_especie ||
+              c.nombre_categoria ||
+              c.especie_nombre
+          );
+          especie =
+            first?.especie ??
+            first?.nombre_especie ??
+            first?.especie_nombre ??
+            null;
+        }
+
+        // Calcular total_a_faenar:
+        // - si categorias tienen remanente, sumarlo.
+        // - si tienen cantidad y faenados/cantidad_faena, sumar (cantidad - faenados).
+        let total = t.total_a_faenar;
+        if ((total == null || total === 0) && categorias.length > 0) {
+          // buscar remanente directo
+          const sumRem = categorias.reduce((acc, c) => {
+            const rem =
+              c.remanente ?? c.remanente_total ?? c.remanente_categoria ?? null;
+            if (rem != null && !Number.isNaN(Number(rem)))
+              return acc + Number(rem);
+            // si no viene remanente, intentar cantidad - faenados
+            const cantidad = c.cantidad ?? c.cantidad_total ?? c.cant ?? null;
+            const faenados =
+              c.faenados ?? c.cantidad_faena ?? c.cantidad_faenada ?? 0;
+            if (cantidad != null && !Number.isNaN(Number(cantidad))) {
+              const remCalc = Number(cantidad) - Number(faenados || 0);
+              return acc + (Number.isFinite(remCalc) ? remCalc : 0);
+            }
+            return acc;
+          }, 0);
+          total = sumRem;
+        }
+
+        return {
+          ...t,
+          especie: especie ?? t.especie ?? null,
+          total_a_faenar: total != null ? Number(total) : t.total_a_faenar,
+        };
+      });
+
+      // Filtrar según criterio: si total_a_faenar existe, mostrar >0; si es null mostramos igualmente (como antes)
+      const disponibles = consolidated.filter(
+        (t) =>
+          t.id_tropa != null &&
+          (t.total_a_faenar == null ? true : t.total_a_faenar > 0)
+      );
+
+      // ordenar por fecha desc
+      const ordenadas = disponibles.slice().sort((a, b) => {
+        const da = a.fecha ? new Date(a.fecha) : new Date(0);
+        const db = b.fecha ? new Date(b.fecha) : new Date(0);
+        return db - da;
+      });
+
+      const totalGeneral = ordenadas.reduce(
+        (acc, t) =>
+          acc +
+          (Number.isFinite(Number(t.total_a_faenar))
+            ? Number(t.total_a_faenar)
+            : 0),
         0
       );
+
       setTropas(ordenadas);
-      setTotalFaenar(totalGeneral); // ✅ guardar total
+      setTotalFaenar(totalGeneral);
     } catch (err) {
-      console.error('Error al cargar tropas', err);
+      console.error('Error al cargar tropas por planta:', err);
+      setTropas([]);
+      setTotalFaenar(0);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTropas();
+    fetchTropasPorPlanta();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
 
-  const handleFaenar = async (t) => {
+  const handleFaenar = (t) => {
     setRedirigiendoId(t.id_tropa);
     const destino = t.id_faena
       ? `/faena/${t.id_faena}`
       : `/faena/nueva/${t.id_tropa}`;
     navigate(destino);
     setTimeout(() => {
-      fetchTropas();
+      fetchTropasPorPlanta();
       setRedirigiendoId(null);
     }, 1000);
   };
 
   const esTropaVencida = (t) => {
+    if (!t.fecha) return false;
     const fechaTropa = new Date(t.fecha);
     const hoy = new Date();
     const diferenciaDias = (hoy - fechaTropa) / (1000 * 60 * 60 * 24);
-    return diferenciaDias > 2 && parseInt(t.total_a_faenar) > 0;
+    return (
+      diferenciaDias > 2 &&
+      (t.total_a_faenar == null ? false : t.total_a_faenar > 0)
+    );
+  };
+
+  const plantaLabel = (t) => {
+    if (!t) return '—';
+    if (t.planta && typeof t.planta === 'object') {
+      return t.planta.nombre ?? (t.planta.id ? `Planta #${t.planta.id}` : '—');
+    }
+    return t.planta_nombre ?? t.planta ?? '—';
   };
 
   const TropaCard = ({ t }) => (
@@ -89,7 +248,7 @@ const FaenaPage = () => {
           <strong>DTE/DTU:</strong> {t.dte_dtu || '—'}
         </p>
         <p>
-          <strong>Guía Policial:</strong> {t.guia_policial || '—'}
+          <strong>Planta:</strong> {plantaLabel(t)}
         </p>
         <p>
           <strong>Productor:</strong> {t.productor || '—'}
@@ -123,7 +282,7 @@ const FaenaPage = () => {
     </div>
   );
 
-  const totalPages = Math.ceil(tropas.length / rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(tropas.length / rowsPerPage));
   const paginatedTropas = tropas.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
@@ -145,7 +304,7 @@ const FaenaPage = () => {
 
       {loading ? (
         <div className="flex justify-center items-center h-40">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-700"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-700" />
         </div>
       ) : tropas.length === 0 ? (
         <div className="text-center text-slate-500 mt-10">
@@ -154,7 +313,10 @@ const FaenaPage = () => {
       ) : isMobile ? (
         <div className="max-w-2xl mx-auto">
           {paginatedTropas.map((t) => (
-            <TropaCard key={t.id_tropa} t={t} />
+            <TropaCard
+              key={t.id_tropa ?? `${t.n_tropa}-${Math.random()}`}
+              t={t}
+            />
           ))}
         </div>
       ) : (
@@ -165,7 +327,7 @@ const FaenaPage = () => {
                 <tr>
                   <th className="px-3 py-2">Fecha</th>
                   <th className="px-3 py-2">DTE/DTU</th>
-                  <th className="px-3 py-2">Guía Policial</th>
+                  <th className="px-3 py-2">Planta</th>
                   <th className="px-3 py-2">Nº Tropa</th>
                   <th className="px-3 py-2">Productor</th>
                   <th className="px-3 py-2">Departamento</th>
@@ -178,7 +340,7 @@ const FaenaPage = () => {
               <tbody>
                 {paginatedTropas.map((t) => (
                   <tr
-                    key={t.id_tropa}
+                    key={t.id_tropa ?? `${t.n_tropa}-${Math.random()}`}
                     className={`border-b last:border-b-0 transition-colors ${
                       esTropaVencida(t)
                         ? 'bg-red-400 hover:bg-red-500'
@@ -189,7 +351,7 @@ const FaenaPage = () => {
                       {formatDate(t.fecha)}
                     </td>
                     <td className="px-3 py-2">{t.dte_dtu || '—'}</td>
-                    <td className="px-3 py-2">{t.guia_policial || '—'}</td>
+                    <td className="px-3 py-2">{plantaLabel(t)}</td>
                     <td className="px-3 py-2 font-semibold text-green-800">
                       {t.n_tropa || '—'}
                     </td>
@@ -236,7 +398,6 @@ const FaenaPage = () => {
           >
             ← Anterior
           </button>
-
           {[...Array(Math.min(3, totalPages))].map((_, i) => {
             const page = i + 1;
             return (
@@ -253,7 +414,6 @@ const FaenaPage = () => {
               </button>
             );
           })}
-
           {totalPages > 3 && (
             <>
               <span className="text-slate-500 text-sm">…</span>
@@ -269,7 +429,6 @@ const FaenaPage = () => {
               </button>
             </>
           )}
-
           <button
             onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
             disabled={currentPage === totalPages}

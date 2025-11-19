@@ -2,21 +2,28 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = new Pool({
-  host: process.env.PGHOST, // ej: 'localhost'
-  port: process.env.PGPORT, // ej: 5432
-  user: process.env.PGUSER, // ej: 'postgres'
-  password: process.env.PGPASSWORD, // tu contraseña de PostgreSQL
-  database: process.env.PGDATABASE, // el nombre de tu base de datos
-  JWT_SECRET: process.env.JWT_SECRET,
+const connectionString = process.env.DATABASE_URL || null;
 
-  //Ivan
-  /*   host: process.env.DB_HOST, // ej: 'localhost'
-  port: process.env.DB_PORT, // ej: 5432
-  user: process.env.DB_USER, // ej: 'postgres'
-  password: process.env.DB_PASS, // tu contraseña de PostgreSQL
-  database: process.env.DB_NAME, // el nombre de tu base de datos
-  JWT_SECRET: process.env.JWT_SECRET, */
-});
+const pool = connectionString
+  ? new Pool({ connectionString })
+  : new Pool({
+      host: process.env.PGHOST, // ej: 'localhost'
+      port: process.env.PGPORT && Number(process.env.PGPORT), // ej: 5432
+      user: process.env.PGUSER, // ej: 'postgres'
+      password: process.env.PGPASSWORD, // tu contraseña de PostgreSQL
+      database: process.env.PGDATABASE, // el nombre de tu base de datos
+    });
 
 module.exports = pool;
+
+/*
+  Versión anterior (comentada) — no usar:
+  const pool = new Pool({
+    host: process.env.PGHOST,
+    port: process.env.PGPORT,
+    user: process.env.PGUSER,
+    password: process.env.PGPASSWORD,
+    database: process.env.PGDATABASE,
+    JWT_SECRET: process.env.JWT_SECRET, // NO incluir JWT_SECRET en la configuración de PG
+  });
+*/

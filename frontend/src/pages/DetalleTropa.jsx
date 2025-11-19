@@ -36,6 +36,12 @@ function SelectField({
         ? '0 0 0 4px #d1fae5'
         : 'none',
       transition: 'all 50ms ease',
+      '&:hover': {
+        borderColor: '#96f1b7',
+      },
+      '&:focus-within': {
+        borderColor: '#22c55e',
+      },
       display: 'flex',
       alignItems: 'center',
       cursor: isDisabled ? 'not-allowed' : 'default',

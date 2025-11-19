@@ -2,14 +2,33 @@ const pool = require('../db');
 const bcrypt = require('bcrypt');
 
 // Obtener todos los usuarios con nombre de planta
+// Obtener usuarios (activos por defecto), con soporte de ?estado=all | activos | inactivos
 const obtenerUsuarios = async (req, res) => {
   try {
-    const resultado = await pool.query(`
+    // valores aceptados: 'activos' (default), 'inactivos', 'all'
+    const estadoQuery = String(req.query.estado || '')
+      .trim()
+      .toLowerCase();
+    const estadoMode =
+      estadoQuery === 'all' ||
+      estadoQuery === 'inactivos' ||
+      estadoQuery === 'activos'
+        ? estadoQuery
+        : 'activos';
+
+    let where = '';
+    if (estadoMode === 'activos') where = 'WHERE u.estado = true';
+    else if (estadoMode === 'inactivos') where = 'WHERE u.estado = false';
+    // 'all' => sin WHERE
+
+    const q = `
       SELECT u.*, p.nombre AS planta_nombre
       FROM usuario u
       LEFT JOIN planta p ON u.id_planta = p.id_planta
-      WHERE u.estado = true
-    `);
+      ${where}
+      ORDER BY u.id_usuario ASC
+    `;
+    const resultado = await pool.query(q);
     res.json(resultado.rows);
   } catch (error) {
     console.error('Error al obtener usuarios:', error);
@@ -306,6 +325,30 @@ function normalizarEstado(valor) {
   return false;
 }
 
+// Cambiar estado de un usuario (PATCH minimalista)
+const cambiarEstadoUsuario = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { estado } = req.body;
+
+    if (isNaN(id))
+      return res.status(400).json({ error: 'ID de usuario inválido' });
+    const estadoBooleano = normalizarEstado(estado);
+
+    const r = await pool.query(
+      'UPDATE usuario SET estado = $1 WHERE id_usuario = $2 RETURNING *',
+      [estadoBooleano, id],
+    );
+
+    if (r.rowCount === 0)
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ message: 'Estado actualizado', usuario: r.rows[0] });
+  } catch (err) {
+    console.error('Error al cambiar estado:', err);
+    res.status(500).json({ error: 'Error al cambiar estado del usuario' });
+  }
+};
+
 module.exports = {
   obtenerUsuarios,
   crearUsuario,
@@ -314,4 +357,5 @@ module.exports = {
   getPerfil,
   updatePerfil,
   usuarioActual,
+  cambiarEstadoUsuario, // <-- exportar
 };

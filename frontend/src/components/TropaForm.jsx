@@ -2,16 +2,64 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Select from 'react-select';
 import api from '../services/api'; // tu instancia axios
 
+/* ---------- Visual constants ---------- */
+const INPUT_BASE_CLASS =
+  'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
+
+/* ---------- Helpers para inputs numéricos ---------- */
+function onlyDigitsPaste(e) {
+  const paste = (e.clipboardData || window.clipboardData).getData('text');
+  if (!/^\d+$/.test(paste)) {
+    e.preventDefault();
+    const digits = paste.replace(/\D+/g, '');
+    if (digits.length) {
+      const el = e.target;
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const value = el.value;
+      const next = value.slice(0, start) + digits + value.slice(end);
+      // programmatic set + trigger input event
+      el.value = next;
+      const ev = new Event('input', { bubbles: true });
+      el.dispatchEvent(ev);
+    }
+  }
+}
+
+function onlyDigitsKeyDown(e) {
+  const allowedKeys = [
+    'Backspace',
+    'Delete',
+    'ArrowLeft',
+    'ArrowRight',
+    'Tab',
+    'Home',
+    'End',
+  ];
+  if (allowedKeys.includes(e.key)) return;
+  // permitir Ctrl/Cmd + A/C/V/X
+  if (
+    (e.ctrlKey || e.metaKey) &&
+    ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())
+  )
+    return;
+  if (!/^\d$/.test(e.key)) e.preventDefault();
+}
+
 /* ---------- SelectField (local) ---------- */
 function SelectField({
   label,
   value,
   onChange,
-  options,
-  placeholder,
+  options = [],
+  placeholder = '',
+  maxMenuHeight = 200,
+  required = false,
   isDisabled = false,
+  className = '',
 }) {
   const [isFocusing, setIsFocusing] = useState(false);
+
   const customStyles = {
     control: (base, state) => ({
       ...base,
@@ -28,6 +76,14 @@ function SelectField({
         ? '0 0 0 4px #d1fae5'
         : 'none',
       transition: 'all 50ms ease',
+      '&:hover': {
+        borderColor: '#96f1b7',
+      },
+      '&:focus-within': {
+        borderColor: '#22c55e',
+      },
+      display: 'flex',
+      alignItems: 'center',
       cursor: isDisabled ? 'not-allowed' : 'default',
       opacity: isDisabled ? 0.85 : 1,
     }),
@@ -51,9 +107,19 @@ function SelectField({
       fontSize: '14px',
       color: '#111827',
       margin: 0,
+      top: 'initial',
+      transform: 'none',
     }),
-    placeholder: (base) => ({ ...base, fontSize: '14px', color: '#6b7280' }),
-    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#6b7280',
+      margin: 0,
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '48px',
+    }),
     menu: (base) => ({
       ...base,
       borderRadius: '0.5rem',
@@ -67,36 +133,37 @@ function SelectField({
       color: isFocused ? '#065f46' : '#111827',
       cursor: 'pointer',
     }),
+    indicatorSeparator: () => ({ display: 'none' }),
   };
 
   return (
-    <div className="flex flex-col">
+    <div className={`flex flex-col ${className}`}>
       {label && (
         <label className="mb-2 font-semibold text-gray-700 text-sm">
           {label}
         </label>
       )}
       <Select
-        value={value}
-        onChange={onChange}
+        value={value ?? null}
+        onChange={(sel) => onChange(sel ?? null)}
         options={options}
         placeholder={placeholder}
+        maxMenuHeight={maxMenuHeight}
+        required={required}
         styles={customStyles}
         noOptionsMessage={() => 'Sin opciones'}
         components={{ IndicatorSeparator: () => null }}
+        isDisabled={isDisabled}
         onFocus={() => {
           if (!isDisabled) {
             setIsFocusing(true);
             setTimeout(() => setIsFocusing(false), 50);
           }
         }}
-        isDisabled={isDisabled}
       />
     </div>
   );
 }
-
-/* ---------- Modal wrapper ---------- */
 function Modal({ children, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -164,6 +231,18 @@ function InlineCreateModal({
     setError(null);
   };
 
+  // headers con token para llamadas del modal
+  const getTokenHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  // provOptions para SelectField dentro del modal
+  const provOptions = provincias.map((p) => ({
+    value: String(p.id ?? p.id_provincia ?? ''),
+    label: p.descripcion ?? p.nombre ?? '',
+  }));
+
   const fetchAndMatchProductor = async (sent) => {
     try {
       const candidates = [
@@ -175,7 +254,7 @@ function InlineCreateModal({
       let list = [];
       for (const p of candidates) {
         try {
-          const res = await api.get(p);
+          const res = await api.get(p, { headers: getTokenHeaders() });
           if (res && Array.isArray(res.data)) {
             list = res.data;
             break;
@@ -215,7 +294,6 @@ function InlineCreateModal({
       return null;
     }
   };
-
   const handleCreate = async () => {
     if (!validate()) {
       setError('Completá los campos obligatorios correctamente.');
@@ -230,6 +308,7 @@ function InlineCreateModal({
           : type === 'productor'
           ? '/productores'
           : '/titulares-faena';
+
       const payload =
         type === 'departamento'
           ? {
@@ -246,17 +325,47 @@ function InlineCreateModal({
               documento: values.documento || null,
             };
 
-      const res = await api.post(endpoint, payload);
-      const data = res?.data?.data ?? res?.data ?? null;
+      const res = await api.post(endpoint, payload, {
+        headers: getTokenHeaders(),
+      });
+      console.log(
+        '[InlineCreateModal] POST',
+        endpoint,
+        'payload:',
+        payload,
+        'resp:',
+        res?.data
+      );
+
+      const raw = res?.data?.data ?? res?.data ?? null;
+      const normalized =
+        raw && typeof raw === 'object'
+          ? {
+              ...raw,
+              // añade fallbacks típicos de insertId/id_insertado
+              id_productor:
+                raw.id_productor ?? raw.id ?? raw.insertId ?? raw.id_insertado,
+              id_departamento:
+                raw.id_departamento ??
+                raw.id ??
+                raw.insertId ??
+                raw.id_insertado,
+              id_titular_faena:
+                raw.id_titular_faena ??
+                raw.id ??
+                raw.insertId ??
+                raw.id_insertado,
+            }
+          : null;
 
       if (
         res.status >= 200 &&
         res.status < 300 &&
-        data &&
-        (data.id_productor ||
-          data.id ||
-          data.id_departamento ||
-          data.id_titular_faena)
+        normalized &&
+        (normalized.id_productor ||
+          normalized.id ||
+          normalized.id_departamento ||
+          normalized.id_titular_faena)
       ) {
         if (onNotify)
           onNotify(
@@ -267,7 +376,7 @@ function InlineCreateModal({
               ? 'Departamento creado correctamente'
               : 'Titular creado correctamente'
           );
-        if (mounted.current && onCreated) await onCreated(data);
+        if (mounted.current && onCreated) await onCreated(normalized);
         setLoading(false);
         onCancel();
         return;
@@ -299,7 +408,7 @@ function InlineCreateModal({
       }
 
       const errMsg =
-        (data && (data.error || data.mensaje)) ||
+        (raw && (raw.error || raw.mensaje || raw.message)) ||
         'Respuesta inesperada del servidor';
       setError(errMsg);
       if (onNotify) onNotify('error', errMsg);
@@ -307,7 +416,11 @@ function InlineCreateModal({
     } catch (err) {
       console.error('POST modal error', err);
       const msg =
-        err?.response?.data?.error || err?.message || 'Error del servidor';
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        (typeof err?.response?.data === 'string' ? err.response.data : null) ||
+        err?.message ||
+        'Error del servidor';
       setError(msg);
       if (onNotify) onNotify('error', msg);
       setLoading(false);
@@ -326,25 +439,21 @@ function InlineCreateModal({
 
       {type === 'departamento' && (
         <>
-          <label className="block text-sm font-medium text-gray-700">
-            Provincia
-          </label>
-          <select
-            name="id_provincia"
-            value={values.id_provincia}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          >
-            <option value="">Seleccione provincia</option>
-            {provincias.map((p) => (
-              <option
-                key={String(p.id ?? p.id_provincia)}
-                value={String(p.id ?? p.id_provincia)}
-              >
-                {p.descripcion ?? p.nombre}
-              </option>
-            ))}
-          </select>
+          <SelectField
+            label="Provincia"
+            value={
+              provOptions.find(
+                (o) => o.value === String(values.id_provincia)
+              ) || null
+            }
+            onChange={(sel) =>
+              setValues((p) => ({ ...p, id_provincia: sel ? sel.value : '' }))
+            }
+            options={provOptions}
+            placeholder="Seleccione provincia"
+            className="mb-2"
+          />
+
           <label className="block text-sm font-medium text-gray-700">
             Nombre departamento
           </label>
@@ -352,7 +461,8 @@ function InlineCreateModal({
             name="nombre_departamento"
             value={values.nombre_departamento}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Ej. San Martín"
           />
         </>
       )}
@@ -366,7 +476,8 @@ function InlineCreateModal({
             name="nombre"
             value={values.nombre}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Ej. Establecimiento Pérez"
           />
           <label className="block text-sm font-medium text-gray-700">
             CUIT (opcional)
@@ -375,32 +486,33 @@ function InlineCreateModal({
             name="cuit"
             value={values.cuit}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            onKeyDown={onlyDigitsKeyDown}
+            onPaste={onlyDigitsPaste}
+            inputMode="numeric"
+            pattern="\d*"
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Solo números"
           />
         </>
       )}
 
       {type === 'titular' && (
         <>
-          <label className="block text-sm font-medium text-gray-700">
-            Provincia
-          </label>
-          <select
-            name="id_provincia"
-            value={values.id_provincia}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
-          >
-            <option value="">Seleccione provincia</option>
-            {provincias.map((p) => (
-              <option
-                key={String(p.id ?? p.id_provincia)}
-                value={String(p.id ?? p.id_provincia)}
-              >
-                {p.descripcion ?? p.nombre}
-              </option>
-            ))}
-          </select>
+          <SelectField
+            label="Provincia"
+            value={
+              provOptions.find(
+                (o) => o.value === String(values.id_provincia)
+              ) || null
+            }
+            onChange={(sel) =>
+              setValues((p) => ({ ...p, id_provincia: sel ? sel.value : '' }))
+            }
+            options={provOptions}
+            placeholder="Seleccione provincia"
+            className="mb-2"
+          />
+
           <label className="block text-sm font-medium text-gray-700">
             Nombre titular
           </label>
@@ -408,8 +520,10 @@ function InlineCreateModal({
             name="nombre"
             value={values.nombre}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Ej. Juan López"
           />
+
           <label className="block text-sm font-medium text-gray-700">
             Localidad
           </label>
@@ -417,8 +531,10 @@ function InlineCreateModal({
             name="localidad"
             value={values.localidad}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Ej. Corrientes"
           />
+
           <label className="block text-sm font-medium text-gray-700">
             Dirección (opcional)
           </label>
@@ -426,8 +542,10 @@ function InlineCreateModal({
             name="direccion"
             value={values.direccion}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Calle 123"
           />
+
           <label className="block text-sm font-medium text-gray-700">
             Documento (opcional)
           </label>
@@ -435,7 +553,12 @@ function InlineCreateModal({
             name="documento"
             value={values.documento}
             onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-2"
+            onKeyDown={onlyDigitsKeyDown}
+            onPaste={onlyDigitsPaste}
+            inputMode="numeric"
+            pattern="\d*"
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Solo números"
           />
         </>
       )}
@@ -463,8 +586,6 @@ function InlineCreateModal({
     </div>
   );
 }
-
-/* ---------- TropaForm (completo) ---------- */
 export default function TropaForm({ onCreated }) {
   const [form, setForm] = useState({
     fecha: '',
@@ -518,7 +639,6 @@ export default function TropaForm({ onCreated }) {
     }, ms);
   }
 
-  // intenta varias rutas habituales para productores
   async function tryFetchProductoresList() {
     const candidates = [
       '/productores',
@@ -645,7 +765,6 @@ export default function TropaForm({ onCreated }) {
       return null;
     }
   }
-
   const deptOptions = useMemo(
     () =>
       departamentos.map((d) => ({
@@ -698,7 +817,7 @@ export default function TropaForm({ onCreated }) {
   const handleSelectChange = (name) => (selected) =>
     setForm((prev) => ({ ...prev, [name]: selected ? selected.value : '' }));
 
-  // bloquear planta si rol es supervisor (2) o usuario (3) — acepta texto o número devuelto por backend
+  // bloquear planta si rol es supervisor (2) o usuario (3)
   const isPlantaLocked = (() => {
     if (!usuario) return false;
     const rol = usuario.rol;
@@ -712,6 +831,63 @@ export default function TropaForm({ onCreated }) {
     );
   })();
 
+  // --- agregar esta helper arriba de handleSubmit ---
+  async function isTropaTaken(n_tropa, year, plantaId) {
+    if (!n_tropa) return false;
+    try {
+      // intenta consultar /tropas con query params n_tropa y year; ajustá la URL si tu API usa otro formato
+      // incluimos planta si está disponible para hacer la comprobación por planta
+      const q = new URLSearchParams();
+      q.set('n_tropa', String(n_tropa));
+      if (year) q.set('year', String(year));
+      if (plantaId) q.set('planta', String(plantaId));
+
+      const res = await api.get(`/tropas?${q.toString()}`);
+
+      // soporta varias formas de respuesta: array directo o {data: [...]}
+      const list =
+        (res && Array.isArray(res.data) && res.data) ||
+        (res && res.data && Array.isArray(res.data.data) && res.data.data) ||
+        [];
+
+      if (!Array.isArray(list)) return false;
+
+      // si vienen objetos, comprobamos coincidencias por campos comunes
+      const normalized = list.map((t) => ({
+        id_tropa: t.id_tropa ?? t.id ?? null,
+        n_tropa: t.n_tropa ?? t.numero_tropa ?? t.numero ?? null,
+        fecha: t.fecha ?? t.created_at ?? null,
+        id_planta:
+          t.id_planta ??
+          t.planta_id ??
+          t.planta?.id_planta ??
+          t.planta?.id ??
+          null,
+      }));
+
+      // comparador: mismo n_tropa estrictamente y mismo año (si year dado)
+      return normalized.some((t) => {
+        if (!t.n_tropa) return false;
+        if (String(t.n_tropa) !== String(n_tropa)) return false;
+        if (
+          plantaId &&
+          t.id_planta != null &&
+          String(t.id_planta) !== String(plantaId)
+        )
+          return false;
+        if (!year) return true;
+        const d = t.fecha ? new Date(t.fecha) : null;
+        const tYear = d && !isNaN(d) ? d.getFullYear() : null;
+        return tYear === Number(year);
+      });
+    } catch (err) {
+      // en caso de error de red dejamos pasar (no bloquear) pero logueamos
+      console.error('[isTropaTaken] error checking tropa uniqueness', err);
+      return false;
+    }
+  }
+
+  // --- reemplazar tu handleSubmit por esto ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     const required = [
@@ -723,7 +899,6 @@ export default function TropaForm({ onCreated }) {
       'id_productor',
       'id_titular_faena',
     ];
-    // if planta locked, force id_planta to usuario.id_planta
     if (isPlantaLocked && usuario?.id_planta) {
       setForm((prev) => ({ ...prev, id_planta: String(usuario.id_planta) }));
     }
@@ -736,8 +911,27 @@ export default function TropaForm({ onCreated }) {
       return;
     }
 
+    // --- Validación de unicidad: nro de tropa por año ---
+    // obtenemos año desde form.fecha; si no existe usamos el año actual
+    const fecha = form.fecha ? new Date(form.fecha) : null;
+    const year =
+      fecha && !isNaN(fecha) ? fecha.getFullYear() : new Date().getFullYear();
+    const plantaIdForCheck =
+      isPlantaLocked && usuario?.id_planta
+        ? usuario.id_planta
+        : form.id_planta || null;
+
+    // chequeo asíncrono
+    const taken = await isTropaTaken(form.n_tropa, year, plantaIdForCheck);
+    if (taken) {
+      showToast(
+        'error',
+        `El número de tropa ${form.n_tropa} ya existe en el año ${year}.`
+      );
+      return;
+    }
+
     try {
-      // ensure payload uses locked planta if needed
       const payload = { ...form };
       if (isPlantaLocked && usuario?.id_planta)
         payload.id_planta = String(usuario.id_planta);
@@ -916,7 +1110,11 @@ export default function TropaForm({ onCreated }) {
               onChange={handleChange}
               required
               placeholder="Ej. 123456"
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50"
+              onKeyDown={onlyDigitsKeyDown}
+              onPaste={onlyDigitsPaste}
+              inputMode="numeric"
+              pattern="\d*"
+              className={INPUT_BASE_CLASS}
             />
           </div>
 
@@ -930,34 +1128,42 @@ export default function TropaForm({ onCreated }) {
               onChange={handleChange}
               required
               placeholder="Ej. 789456"
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50"
+              onKeyDown={onlyDigitsKeyDown}
+              onPaste={onlyDigitsPaste}
+              inputMode="numeric"
+              pattern="\d*"
+              className={INPUT_BASE_CLASS}
             />
           </div>
 
           <div className="flex flex-col">
-            <label className="mb-3.5 font-semibold text-gray-700 text-sm">
+            <label className="mb-1 font-semibold text-gray-700 text-sm">
               Nº Tropa
             </label>
             <input
               name="n_tropa"
-              type="number"
+              type="text"
               value={form.n_tropa}
               onChange={handleChange}
               required
               placeholder="Ej. 1001"
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50"
+              onKeyDown={onlyDigitsKeyDown}
+              onPaste={onlyDigitsPaste}
+              inputMode="numeric"
+              pattern="\d*"
+              className={INPUT_BASE_CLASS}
             />
           </div>
 
           <div className="flex flex-col">
-            <div className="flex justify-between items-center mb-0">
+            <div className="flex justify-between items-center mb-0.5">
               <label className="font-semibold text-gray-700 text-sm">
                 Departamento
               </label>
               <button
                 type="button"
                 onClick={(e) => openModal('departamento', e.currentTarget)}
-                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium"
+                className="text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-md text-xs font-medium"
               >
                 Agregar +
               </button>
@@ -975,14 +1181,14 @@ export default function TropaForm({ onCreated }) {
           </div>
 
           <div className="flex flex-col">
-            <div className="flex justify-between items-center mb-0">
+            <div className="flex justify-between items-center mb-0.5">
               <label className="font-semibold text-gray-700 text-sm">
                 Productor
               </label>
               <button
                 type="button"
                 onClick={(e) => openModal('productor', e.currentTarget)}
-                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium"
+                className="text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-md text-xs font-medium"
               >
                 Agregar +
               </button>
@@ -999,14 +1205,14 @@ export default function TropaForm({ onCreated }) {
           </div>
 
           <div className="sm:col-span-1">
-            <div className="flex justify-between items-center mb-0">
+            <div className="flex justify-between items-center mb-0.5">
               <label className="font-semibold text-gray-700 text-sm">
                 Titular Faena
               </label>
               <button
                 type="button"
                 onClick={(e) => openModal('titular', e.currentTarget)}
-                className="text-green-700 bg-green-100 border border-green-200 px-2 py-1 rounded-md text-xs font-medium"
+                className="text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-md text-xs font-medium"
               >
                 Agregar +
               </button>

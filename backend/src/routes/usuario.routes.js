@@ -35,6 +35,7 @@ const {
   getPerfil,
   updatePerfil,
   usuarioActual,
+  cambiarEstadoUsuario,
 } = require('../controllers/usuario.controller');
 
 const { verificarToken } = require('../middleware/auth');
@@ -50,5 +51,7 @@ router.get('/', obtenerUsuarios);
 router.post('/', crearUsuario);
 router.put('/:id', actualizarUsuario); // ✅ ahora no intercepta /perfil
 router.delete('/:id', eliminarUsuario);
+// Cambiar estado (PATCH)
+router.patch('/:id/estado', cambiarEstadoUsuario);
 
 module.exports = router;

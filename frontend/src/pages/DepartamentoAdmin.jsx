@@ -1,9 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Select from 'react-select';
 
-/* ------------------------------------------------------------------ */
-/*  SelectField estilizado como en AgregarUsuarioPage                 */
-/* ------------------------------------------------------------------ */
+/* ---------- SelectField (estilos consistentes) ---------- */
 function SelectField({
   label,
   value,
@@ -11,10 +9,9 @@ function SelectField({
   options,
   placeholder,
   maxMenuHeight = 200,
-  required = false,
+  isDisabled = false,
 }) {
   const [isFocusing, setIsFocusing] = useState(false);
-
   const customStyles = {
     control: (base, state) => ({
       ...base,
@@ -22,7 +19,7 @@ function SelectField({
       minHeight: '48px',
       paddingLeft: '16px',
       paddingRight: '16px',
-      backgroundColor: '#f9fafb',
+      backgroundColor: isDisabled ? '#f3f4f6' : '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
       boxShadow: isFocusing
@@ -37,29 +34,24 @@ function SelectField({
       '&:focus-within': {
         borderColor: '#22c55e',
       },
+      display: 'flex',
+      alignItems: 'center',
+      cursor: isDisabled ? 'not-allowed' : 'default',
+      opacity: isDisabled ? 0.85 : 1,
+      fontSize: '14px',
     }),
     valueContainer: (base) => ({
       ...base,
-      padding: '0 0 0 2px',
       height: '48px',
+      padding: '0 8px',
       display: 'flex',
       alignItems: 'center',
-    }),
-    input: (base) => ({
-      ...base,
-      margin: 0,
-      padding: 0,
-      fontSize: '14px',
-      fontFamily: 'inherit',
-      color: '#111827',
     }),
     singleValue: (base) => ({
       ...base,
       fontSize: '14px',
       color: '#111827',
       margin: 0,
-      top: 'initial',
-      transform: 'none',
     }),
     placeholder: (base) => ({
       ...base,
@@ -67,51 +59,69 @@ function SelectField({
       color: '#6b7280',
       margin: 0,
     }),
-    indicatorsContainer: (base) => ({
-      ...base,
-      height: '48px',
-    }),
-    menu: (base) => ({
-      ...base,
-      borderRadius: '0.5rem',
-      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-    }),
     option: (base, { isFocused }) => ({
       ...base,
       fontSize: '14px',
-      padding: '10px 16px',
+      padding: '8px 12px',
       backgroundColor: isFocused ? '#d1fae5' : '#fff',
       color: isFocused ? '#065f46' : '#111827',
+    }),
+    indicatorSeparator: () => ({ display: 'none' }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.08)',
     }),
   };
 
   return (
     <div className="flex flex-col">
-      <label className="mb-2 font-semibold text-gray-700 text-sm">
-        {label}
-      </label>
+      {label && (
+        <label className="mb-2 font-semibold text-gray-700 text-sm">
+          {label}
+        </label>
+      )}
       <Select
-        value={value}
-        onChange={onChange}
+        value={value ?? null}
+        onChange={(sel) => onChange(sel ?? null)}
         options={options}
         placeholder={placeholder}
         maxMenuHeight={maxMenuHeight}
-        required={required}
         styles={customStyles}
         noOptionsMessage={() => 'Sin opciones'}
         components={{ IndicatorSeparator: () => null }}
+        isDisabled={isDisabled}
         onFocus={() => {
-          setIsFocusing(true);
-          setTimeout(() => setIsFocusing(false), 50);
+          if (!isDisabled) {
+            setIsFocusing(true);
+            setTimeout(() => setIsFocusing(false), 50);
+          }
         }}
       />
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Paginación estilizada como en AgregarUsuarioPage                  */
-/* ------------------------------------------------------------------ */
+/* ---------- Modal simple ---------- */
+function Modal({ title, children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black opacity-30" onClick={onClose} />
+      <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-lg z-10">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+        >
+          ✖
+        </button>
+        {title && <h3 className="text-lg font-semibold mb-4">{title}</h3>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Paginación compacta ---------- */
 const Paginacion = ({ currentPage, totalPages, onPageChange }) => {
   const goPrev = () => currentPage > 1 && onPageChange(currentPage - 1);
   const goNext = () =>
@@ -121,7 +131,6 @@ const Paginacion = ({ currentPage, totalPages, onPageChange }) => {
     const pages = [];
     const start = Math.max(1, currentPage - 1);
     const end = Math.min(totalPages, currentPage + 1);
-
     for (let i = start; i <= end; i++) {
       pages.push(
         <button
@@ -153,9 +162,7 @@ const Paginacion = ({ currentPage, totalPages, onPageChange }) => {
       >
         ← Anterior
       </button>
-
       {renderPages()}
-
       <button
         onClick={goNext}
         disabled={currentPage === totalPages}
@@ -170,6 +177,8 @@ const Paginacion = ({ currentPage, totalPages, onPageChange }) => {
     </div>
   );
 };
+
+/* ---------- Componente principal ---------- */
 export default function DepartamentoAdmin() {
   const [registros, setRegistros] = useState([]);
   const [provinciasDB, setProvinciasDB] = useState([]);
@@ -179,6 +188,17 @@ export default function DepartamentoAdmin() {
   const [mensajeFeedback, setMensajeFeedback] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [deviceType, setDeviceType] = useState('desktop');
+
+  // edición (modal)
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editing, setEditing] = useState({
+    id_departamento: null,
+    id_provincia: null,
+    provinciaLabel: '',
+    departamento: '',
+  });
+  const [editError, setEditError] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const itemsPerPage =
     deviceType === 'mobile' ? 5 : deviceType === 'tablet' ? 8 : 12;
@@ -204,8 +224,12 @@ export default function DepartamentoAdmin() {
         ]);
         const departamentos = await resDeptos.json();
         const provincias = await resProvincias.json();
-        setRegistros(departamentos.filter((d) => d.activo !== false));
-        setProvinciasDB(provincias);
+        setRegistros(
+          Array.isArray(departamentos)
+            ? departamentos.filter((d) => d.activo !== false)
+            : []
+        );
+        setProvinciasDB(Array.isArray(provincias) ? provincias : []);
       } catch (error) {
         setMensajeFeedback('❌ Error al conectar con el servidor.');
         setTimeout(() => setMensajeFeedback(''), 4000);
@@ -216,8 +240,11 @@ export default function DepartamentoAdmin() {
 
   const provinciasOptions = useMemo(() => {
     return provinciasDB
-      .filter((p) => p && p.id != null)
-      .map((p) => ({ value: p.id, label: p.descripcion }));
+      .filter((p) => p && (p.id != null || p.id_provincia != null))
+      .map((p) => ({
+        value: p.id ?? p.id_provincia,
+        label: p.descripcion ?? p.nombre,
+      }));
   }, [provinciasDB]);
 
   const paginatedRegistros = useMemo(() => {
@@ -225,8 +252,15 @@ export default function DepartamentoAdmin() {
     return registros.slice(start, start + itemsPerPage);
   }, [registros, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil(registros.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(registros.length / itemsPerPage));
 
+  // normalizador (trim, lower)
+  const norm = (s) =>
+    String(s || '')
+      .trim()
+      .toLowerCase();
+
+  /* ---------- Agregar departamento ---------- */
   const agregarDepartamento = async () => {
     const nombre = departamentoInput.trim();
     if (
@@ -239,12 +273,14 @@ export default function DepartamentoAdmin() {
       return;
     }
 
-    const yaExiste = registros.some(
+    // validación cliente: no duplicados en misma provincia
+    const exists = registros.some(
       (r) =>
-        r.provincia?.toLowerCase() === provinciaSeleccionada.toLowerCase() &&
-        r.departamento?.toLowerCase() === nombre.toLowerCase()
+        String(r.id_provincia ?? r.provincia_id ?? '') ===
+          String(provinciaIdSeleccionada) &&
+        norm(r.departamento) === norm(nombre)
     );
-    if (yaExiste) {
+    if (exists) {
       setMensajeFeedback('❌ El departamento ya existe en esa provincia.');
       setTimeout(() => setMensajeFeedback(''), 4000);
       return;
@@ -259,7 +295,7 @@ export default function DepartamentoAdmin() {
           id_provincia: parseInt(provinciaIdSeleccionada, 10),
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setRegistros((prev) => [...prev, data]);
         setProvinciaSeleccionada('');
@@ -267,7 +303,7 @@ export default function DepartamentoAdmin() {
         setDepartamentoInput('');
         setMensajeFeedback('✅ Departamento agregado correctamente.');
       } else {
-        setMensajeFeedback(`❌ ${data.error}`);
+        setMensajeFeedback(`❌ ${data.error || 'Error al guardar.'}`);
       }
     } catch (error) {
       setMensajeFeedback('❌ Error de conexión con el servidor.');
@@ -275,27 +311,168 @@ export default function DepartamentoAdmin() {
     setTimeout(() => setMensajeFeedback(''), 4000);
   };
 
-  const modificarDepartamento = async (id, nuevoNombre) => {
-    if (!nuevoNombre.trim()) return;
+  /* ---------- Abrir modal de edición (pre-cargar provincia y nombre) ---------- */
+  // helper: intenta pedir la provincia por id si no la tenemos en memoria
+  async function fetchProvinciaById(id) {
+    if (!id) return null;
+    try {
+      const res = await fetch(`http://localhost:3000/api/provincias/${id}`);
+      if (!res.ok) return null;
+      const p = await res.json();
+      // si el endpoint devuelve { data: {...} } o la entidad directa, adaptamos:
+      return (
+        p?.descripcion ||
+        p?.nombre ||
+        p?.data?.descripcion ||
+        p?.data?.nombre ||
+        null
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /* Abrir modal de edición (resuelve siempre la provinciaLabel a partir del id) */
+  const openEdit = async (r) => {
+    setEditError('');
+
+    // normalizamos posibles nombres del id de provincia
+    const posibleId =
+      r.id_provincia ?? r.provincia_id ?? r.id_provincia ?? r.id ?? null;
+
+    // si viene label en el registro, la usamos; si no, intentamos resolver por id en provinciasOptions
+    let posibleLabel =
+      r.provincia ?? r.provincia_nombre ?? r.provinciaLabel ?? '';
+
+    if ((!posibleLabel || posibleLabel === '') && posibleId != null) {
+      // buscar en las opciones ya cargadas
+      const found = provinciasOptions.find(
+        (o) => String(o.value) === String(posibleId)
+      );
+      if (found) {
+        posibleLabel = found.label;
+      } else {
+        // fallback: pedir la provincia al backend por id (por si no estaba en el listado)
+        const fetchedLabel = await fetchProvinciaById(posibleId).catch(
+          () => null
+        );
+        if (fetchedLabel) posibleLabel = fetchedLabel;
+      }
+    }
+
+    setEditing({
+      id_departamento: r.id_departamento ?? r.id ?? null,
+      id_provincia: posibleId != null ? String(posibleId) : null,
+      provinciaLabel: posibleLabel || '',
+      departamento: r.departamento ?? r.nombre_departamento ?? r.nombre ?? '',
+    });
+
+    setEditModalOpen(true);
+  };
+
+  /* ---------- Guardar edición: valida unicidad excluyendo el propio registro ---------- */
+  /* ---------- Guardar edición: valida unicidad excluyendo el propio registro ---------- */
+  const saveEdit = async () => {
+    setEditError('');
+
+    const id = editing.id_departamento;
+    const nombre = String(editing.departamento || '').trim();
+    let idProv = editing.id_provincia;
+
+    // si id_provincia no está presente, intentar resolverlo por provinciaLabel
+    if (
+      (!idProv || idProv === 'null' || idProv === '') &&
+      editing.provinciaLabel
+    ) {
+      const found = provinciasOptions.find(
+        (o) =>
+          String(o.label).trim().toLowerCase() ===
+          String(editing.provinciaLabel).trim().toLowerCase()
+      );
+      if (found) idProv = found.value;
+      else {
+        // como último recurso, consultar al backend por label (si tu API soporta)
+        // omitimos ese paso por ahora y forzamos error si no se puede resolver
+      }
+    }
+
+    if (!id || !idProv || !nombre) {
+      setEditError('Completá provincia y nombre correctamente.');
+      return;
+    }
+
+    // normalizador
+    const norm = (s) =>
+      String(s || '')
+        .trim()
+        .toLowerCase();
+
+    // validar duplicado (excluye propio registro)
+    const dup = registros.some(
+      (r) =>
+        String(r.id_departamento ?? r.id) !== String(id) &&
+        String(r.id_provincia ?? r.provincia_id ?? '') === String(idProv) &&
+        norm(r.departamento ?? r.nombre_departamento ?? '') === norm(nombre)
+    );
+    if (dup) {
+      setEditError(
+        'Ya existe un departamento con ese nombre en la misma provincia.'
+      );
+      return;
+    }
+
+    setSavingEdit(true);
     try {
       const res = await fetch(`http://localhost:3000/api/departamentos/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre_departamento: nuevoNombre.trim() }),
+        body: JSON.stringify({
+          nombre_departamento: nombre,
+          id_provincia: parseInt(idProv, 10),
+        }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        // resolver label (por si vino solo idProv)
+        const provinciaLabel =
+          provinciasOptions.find((o) => String(o.value) === String(idProv))
+            ?.label ?? editing.provinciaLabel;
+
         setRegistros((prev) =>
           prev.map((r) =>
-            r.id_departamento === id ? { ...r, departamento: nuevoNombre } : r
+            String(r.id_departamento ?? r.id) === String(id)
+              ? {
+                  ...r,
+                  departamento: nombre,
+                  id_provincia: parseInt(idProv, 10),
+                  provincia: provinciaLabel,
+                }
+              : r
           )
         );
+
+        // actualizar editing para que la próxima vez que abras tenga la label
+        setEditing((p) => ({
+          ...p,
+          provinciaLabel: provinciaLabel || p.provinciaLabel,
+          id_provincia: String(idProv),
+        }));
+
         setMensajeFeedback('✅ Departamento modificado.');
+        setEditModalOpen(false);
+      } else {
+        setEditError(data.error || 'Error al modificar el departamento.');
       }
     } catch (error) {
       console.error('Error al modificar:', error);
+      setEditError('Error de conexión con el servidor.');
+    } finally {
+      setSavingEdit(false);
+      setTimeout(() => setMensajeFeedback(''), 3500);
     }
   };
 
+  /* ---------- Eliminar ---------- */
   const eliminarDepartamento = async (id) => {
     if (!window.confirm('¿Está seguro de eliminar este departamento?')) return;
     try {
@@ -303,23 +480,28 @@ export default function DepartamentoAdmin() {
         method: 'DELETE',
       });
       if (res.ok) {
-        setRegistros((prev) => prev.filter((r) => r.id_departamento !== id));
+        setRegistros((prev) =>
+          prev.filter((r) => String(r.id_departamento ?? r.id) !== String(id))
+        );
         setMensajeFeedback('✅ Departamento eliminado.');
+      } else {
+        setMensajeFeedback('❌ Error al eliminar.');
       }
     } catch (error) {
       console.error('Error al eliminar:', error);
+      setMensajeFeedback('❌ Error de conexión con el servidor.');
     }
+    setTimeout(() => setMensajeFeedback(''), 3500);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
       <div className="max-w-6xl mx-auto space-y-10">
-        {/* Encabezado */}
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
           🗂️ Administración de Departamentos
         </h1>
 
-        {/* Formulario separado con sombra */}
+        {/* Formulario agregar */}
         <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <SelectField
@@ -388,7 +570,7 @@ export default function DepartamentoAdmin() {
           )}
         </div>
 
-        {/* Listado y paginación */}
+        {/* Listado */}
         {deviceType === 'mobile' ? (
           <div className="space-y-4">
             {paginatedRegistros.length === 0 ? (
@@ -398,7 +580,7 @@ export default function DepartamentoAdmin() {
             ) : (
               paginatedRegistros.map((r) => (
                 <div
-                  key={r.id_departamento}
+                  key={r.id_departamento ?? r.id}
                   className="bg-white p-4 rounded-xl shadow border border-gray-200"
                 >
                   <div className="flex justify-between items-start">
@@ -410,17 +592,15 @@ export default function DepartamentoAdmin() {
                     </div>
                     <div className="flex gap-2 ml-2">
                       <button
-                        onClick={() => {
-                          const nuevo = prompt('Nuevo nombre:', r.departamento);
-                          if (nuevo?.trim())
-                            modificarDepartamento(r.id_departamento, nuevo);
-                        }}
+                        onClick={() => openEdit(r)}
                         className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
                       >
                         ✏️
                       </button>
                       <button
-                        onClick={() => eliminarDepartamento(r.id_departamento)}
+                        onClick={() =>
+                          eliminarDepartamento(r.id_departamento ?? r.id)
+                        }
                         className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
                       >
                         🗑️
@@ -457,7 +637,7 @@ export default function DepartamentoAdmin() {
                 ) : (
                   paginatedRegistros.map((r) => (
                     <tr
-                      key={r.id_departamento}
+                      key={r.id_departamento ?? r.id}
                       className="hover:bg-gray-50 transition"
                     >
                       <td className="px-4 py-3">{r.provincia}</td>
@@ -465,21 +645,14 @@ export default function DepartamentoAdmin() {
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center gap-2">
                           <button
-                            onClick={() => {
-                              const nuevo = prompt(
-                                'Nuevo nombre:',
-                                r.departamento
-                              );
-                              if (nuevo?.trim())
-                                modificarDepartamento(r.id_departamento, nuevo);
-                            }}
+                            onClick={() => openEdit(r)}
                             className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
                           >
                             ✏️ Editar
                           </button>
                           <button
                             onClick={() =>
-                              eliminarDepartamento(r.id_departamento)
+                              eliminarDepartamento(r.id_departamento ?? r.id)
                             }
                             className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
                           >
@@ -495,7 +668,7 @@ export default function DepartamentoAdmin() {
           </div>
         )}
 
-        {/* Paginación externa */}
+        {/* Paginación */}
         {totalPages > 1 && (
           <Paginacion
             currentPage={currentPage}
@@ -504,6 +677,75 @@ export default function DepartamentoAdmin() {
           />
         )}
       </div>
+
+      {/* Modal edición */}
+      {editModalOpen && (
+        <Modal
+          title="Editar Departamento"
+          onClose={() => {
+            if (!savingEdit) setEditModalOpen(false);
+          }}
+        >
+          <div className="space-y-4">
+            {/* Provincia: mostrada pero deshabilitada */}
+            <SelectField
+              label="Provincia"
+              value={
+                editing.id_provincia
+                  ? {
+                      value: editing.id_provincia,
+                      label: editing.provinciaLabel,
+                    }
+                  : null
+              }
+              onChange={() => {}}
+              options={provinciasOptions}
+              placeholder="Seleccione..."
+              maxMenuHeight={200}
+              isDisabled={true}
+            />
+
+            {/* Departamento (editable) */}
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                Departamento
+              </label>
+              <input
+                type="text"
+                value={editing.departamento}
+                onChange={(e) =>
+                  setEditing((p) => ({ ...p, departamento: e.target.value }))
+                }
+                placeholder="Ej. Capital, Goya, San Martín..."
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              />
+            </div>
+
+            {editError && (
+              <div className="text-sm text-red-600">{editError}</div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                disabled={savingEdit}
+                className="px-4 py-2 border rounded"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveEdit}
+                disabled={savingEdit}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                {savingEdit ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

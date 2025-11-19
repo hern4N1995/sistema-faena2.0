@@ -53,7 +53,7 @@ export default function Sidebar() {
     {
       prefix: '/decomiso',
       title: 'Gestión de Decomisos',
-      roles: ['1'],
+      roles: ['1', '2', '3'],
       menu: [
         { to: '/decomisos', label: 'Faenas a Decomisar', end: true },
         { to: '/decomisos/cargados', label: 'Decomisos Cargados' },

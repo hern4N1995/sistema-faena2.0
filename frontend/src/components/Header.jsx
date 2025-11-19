@@ -52,7 +52,7 @@ export default function Header() {
     { to: '/inicio', label: 'Inicio', show: true },
     { to: '/tropa', label: 'Tropa', show: isAdmin || isUsuario },
     { to: '/faena', label: 'Faena', show: isAdmin || isUsuario },
-    { to: '/decomisos', label: 'Decomisos', show: rol === 1 },
+    { to: '/decomisos', label: 'Decomisos', show: isAdmin || isUsuario },
     { to: '/admin/usuarios', label: 'Admin', show: isAdmin },
   ];
 

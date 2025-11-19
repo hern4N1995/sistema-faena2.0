@@ -79,20 +79,70 @@ const crearDepartamento = async (req, res) => {
 };
 
 // Editar nombre del departamento
+// editarDepartamento (reemplazar en departamento.controller.js)
 const editarDepartamento = async (req, res) => {
   const { id } = req.params;
-  const { nombre_departamento } = req.body;
+  const { nombre_departamento, id_provincia: bodyIdProvincia } = req.body;
 
   if (!nombre_departamento || typeof nombre_departamento !== 'string') {
     return res.status(400).json({ error: 'Nombre de departamento inválido' });
   }
 
   try {
-    await pool.query(
-      'UPDATE departamento SET nombre_departamento = $1 WHERE id_departamento = $2',
-      [nombre_departamento.trim(), id],
+    // 1) Obtener registro actual para conocer su id_provincia si el cliente no lo pasó
+    const cur = await pool.query(
+      'SELECT id_departamento, id_provincia FROM departamento WHERE id_departamento = $1',
+      [id],
     );
-    res.status(200).json({ mensaje: 'Departamento actualizado' });
+    if (cur.rowCount === 0) {
+      return res.status(404).json({ error: 'Departamento no encontrado' });
+    }
+    const current = cur.rows[0];
+    const idProvincia = bodyIdProvincia ?? current.id_provincia;
+
+    // 2) validar que la provincia exista
+    const prov = await pool.query(
+      'SELECT 1 FROM provincia WHERE id_provincia = $1',
+      [idProvincia],
+    );
+    if (prov.rowCount === 0) {
+      return res.status(400).json({ error: 'Provincia inexistente' });
+    }
+
+    // 3) comprobar duplicado (excluir el propio id)
+    const exists = await pool.query(
+      `SELECT 1 FROM departamento
+       WHERE LOWER(nombre_departamento) = LOWER($1)
+         AND id_provincia = $2
+         AND id_departamento <> $3
+       LIMIT 1`,
+      [nombre_departamento.trim(), idProvincia, id],
+    );
+    if (exists.rowCount > 0) {
+      return res
+        .status(409)
+        .json({
+          error: 'Ya existe un departamento con ese nombre en la provincia',
+        });
+    }
+
+    // 4) actualizar
+    await pool.query(
+      'UPDATE departamento SET nombre_departamento = $1, id_provincia = $2 WHERE id_departamento = $3',
+      [nombre_departamento.trim(), idProvincia, id],
+    );
+
+    // 5) devolver fila actualizada con provincia (para que frontend muestre label)
+    const updated = await pool.query(
+      `SELECT d.id_departamento, d.nombre_departamento AS departamento, d.id_provincia,
+              p.descripcion AS provincia
+       FROM departamento d
+       JOIN provincia p ON d.id_provincia = p.id_provincia
+       WHERE d.id_departamento = $1`,
+      [id],
+    );
+
+    res.status(200).json(updated.rows[0]);
   } catch (error) {
     console.error('Error al editar departamento:', error.message);
     res.status(500).json({ error: 'Error al editar departamento' });

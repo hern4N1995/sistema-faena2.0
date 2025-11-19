@@ -20,6 +20,8 @@ const veterinarioRoutes = require('./routes/veterinario.routes');
 const tipoParteDecoRoutes = require('./routes/tipoParteDeco.routes');
 const partesDecomisadasRoutes = require('./routes/partesDecomisadas.routes');
 const decomisoDetalleRoutes = require('./routes/decomisoDetalle.routes');
+const tropaDetalleRoutes = require('./routes/tropaDetalle.routes'); // <-- nueva línea de import
+
 const app = express();
 
 app.use(
@@ -56,6 +58,8 @@ app.use('/api/tipos-parte-deco', tipoParteDecoRoutes);
 app.use('/api/partes-decomisadas', partesDecomisadasRoutes);
 app.use('/api/decomiso-detalle', decomisoDetalleRoutes);
 app.use('/api/decomisos', decomisoRoutes);
+// montar rutas de detalle de tropa (soportan /api/tropas/:tropaId/detalle/:detalleId y /api/tropa-detalle/:detalleId)
+app.use('/api', tropaDetalleRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

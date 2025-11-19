@@ -6,15 +6,14 @@ import Select from 'react-select';
 const INPUT_BASE_CLASS =
   'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
 
-/* SelectField replicando estilo de TropaForm */
 function SelectField({
   label,
   value,
   onChange,
-  options = [],
-  placeholder = '',
-  disabled = false,
+  options,
+  placeholder,
   maxMenuHeight = 200,
+  required = false,
 }) {
   const [isFocusing, setIsFocusing] = useState(false);
 
@@ -34,8 +33,12 @@ function SelectField({
         ? '0 0 0 4px #d1fae5'
         : 'none',
       transition: 'all 50ms ease',
-      display: 'flex',
-      alignItems: 'center',
+      '&:hover': {
+        borderColor: '#96f1b7',
+      },
+      '&:focus-within': {
+        borderColor: '#22c55e',
+      },
     }),
     valueContainer: (base) => ({
       ...base,
@@ -57,9 +60,19 @@ function SelectField({
       fontSize: '14px',
       color: '#111827',
       margin: 0,
+      top: 'initial',
+      transform: 'none',
     }),
-    placeholder: (base) => ({ ...base, fontSize: '14px', color: '#6b7280' }),
-    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#6b7280',
+      margin: 0,
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '48px',
+    }),
     menu: (base) => ({
       ...base,
       borderRadius: '0.5rem',
@@ -72,26 +85,23 @@ function SelectField({
       backgroundColor: isFocused ? '#d1fae5' : '#fff',
       color: isFocused ? '#065f46' : '#111827',
     }),
-    indicatorSeparator: () => ({ display: 'none' }),
   };
 
   return (
     <div className="flex flex-col">
-      {label && (
-        <label className="mb-2 font-semibold text-gray-700 text-sm">
-          {label}
-        </label>
-      )}
+      <label className="mb-2 font-semibold text-gray-700 text-sm">
+        {label}
+      </label>
       <Select
         value={value}
         onChange={onChange}
         options={options}
         placeholder={placeholder}
+        maxMenuHeight={maxMenuHeight}
+        required={required}
         styles={customStyles}
-        isDisabled={disabled}
         noOptionsMessage={() => 'Sin opciones'}
         components={{ IndicatorSeparator: () => null }}
-        maxMenuHeight={maxMenuHeight}
         onFocus={() => {
           setIsFocusing(true);
           setTimeout(() => setIsFocusing(false), 50);
@@ -315,7 +325,7 @@ function ReviewModal({
   );
 }
 
-/* DecomisoPage */
+/* DecomisoPage (rest of the file kept exactly as in your original) */
 export default function DecomisoPage() {
   const { id_faena } = useParams();
   const navigate = useNavigate();

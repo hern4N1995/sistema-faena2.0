@@ -1,8 +1,52 @@
-import React, { useState, useEffect, useMemo } from 'react';
+// AgregarUsuarioPage.jsx
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Select from 'react-select';
 
 /* ------------------------------------------------------------------ */
-/*  SelectField (igual que TropaForm / DecomisoPage)                  */
+/*  UI helpers: Modal + Toast                                         */
+/* ------------------------------------------------------------------ */
+function Modal({ open, title, children, onClose, actions }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">{title}</h3>
+        <div className="text-sm text-gray-700">{children}</div>
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded border text-sm"
+          >
+            Cerrar
+          </button>
+          {actions}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Toast({ show, type = 'success', text }) {
+  if (!show) return null;
+  const base =
+    type === 'success'
+      ? 'bg-green-700 text-white'
+      : type === 'warning'
+      ? 'bg-amber-600 text-white'
+      : 'bg-red-600 text-white';
+  return (
+    <div
+      className={`fixed bottom-6 right-6 px-4 py-2 rounded shadow ${base} z-50`}
+    >
+      {text}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  SelectField                                                       */
 /* ------------------------------------------------------------------ */
 function SelectField({
   label,
@@ -31,12 +75,8 @@ function SelectField({
         ? '0 0 0 4px #d1fae5'
         : 'none',
       transition: 'all 100ms ease',
-      '&:hover': {
-        borderColor: '#6ee7b7',
-      },
-      '&:focus-within': {
-        borderColor: '#10b981',
-      },
+      '&:hover': { borderColor: '#6ee7b7' },
+      '&:focus-within': { borderColor: '#10b981' },
     }),
     valueContainer: (base) => ({
       ...base,
@@ -67,10 +107,7 @@ function SelectField({
       color: '#6b7280',
       margin: 0,
     }),
-    indicatorsContainer: (base) => ({
-      ...base,
-      height: '48px',
-    }),
+    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
     menu: (base) => ({
       ...base,
       borderRadius: '0.5rem',
@@ -109,7 +146,7 @@ function SelectField({
 }
 
 /* ------------------------------------------------------------------ */
-/*  InputField (igual que TropaForm)                                  */
+/*  InputField                                                        */
 /* ------------------------------------------------------------------ */
 const InputField = ({
   label,
@@ -120,10 +157,12 @@ const InputField = ({
   type = 'text',
   className = '',
   placeholder = '',
+  inputRef = null,
 }) => (
   <div className={`flex flex-col ${className}`}>
     <label className="mb-2 font-semibold text-gray-700 text-sm">{label}</label>
     <input
+      ref={inputRef}
       type={type}
       name={name}
       value={value}
@@ -162,28 +201,77 @@ const AgregarUsuarioPage = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [plantas, setPlantas] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
-  const [mensaje, setMensaje] = useState('');
-  const [error, setError] = useState('');
+
+  // UI feedback
+  const [toast, setToast] = useState({
+    show: false,
+    type: 'success',
+    text: '',
+  });
+  const showToast = (type, text, ms = 2500) => {
+    setToast({ show: true, type, text });
+    setTimeout(() => setToast({ show: false, type: 'success', text: '' }), ms);
+  };
+
+  const [modalError, setModalError] = useState({
+    open: false,
+    title: '',
+    text: '',
+  });
+  const openErrorModal = (title, text) =>
+    setModalError({ open: true, title, text });
+  const closeErrorModal = () =>
+    setModalError({ open: false, title: '', text: '' });
+
+  const [modalSuccess, setModalSuccess] = useState({
+    open: false,
+    title: '',
+    text: '',
+  });
+  const openSuccessModal = (title, text) =>
+    setModalSuccess({ open: true, title, text });
+  const closeSuccessModal = () =>
+    setModalSuccess({ open: false, title: '', text: '' });
+
+  const [confirmDelete, setConfirmDelete] = useState({
+    open: false,
+    id: null,
+    nombre: '',
+  });
+
   const [filtro, setFiltro] = useState('');
   const [loading, setLoading] = useState(true);
+  const [mostrarEstadoFilter, setMostrarEstadoFilter] = useState('Todos');
+
+  // refs para scroll y foco
+  const formRef = useRef(null);
+  const nombreInputRef = useRef(null);
 
   /* ---------- Paginación ---------- */
   const [paginaActual, setPaginaActual] = useState(1);
-  const itemsPorPagina = window.innerWidth < 768 ? 2 : 4; // 2 móvil / 4 desktop
+  const itemsPorPagina =
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 2 : 4;
 
   useEffect(() => {
     Promise.all([fetchUsuarios(), fetchPlantas()])
-      .catch(() => setError('Error al cargar datos iniciales'))
+      .catch(() =>
+        openErrorModal('Error inicial', 'No se pudieron cargar datos')
+      )
       .finally(() => setLoading(false));
   }, []);
 
   const fetchUsuarios = async () => {
     try {
-      const res = await fetch('/api/usuarios');
+      const res = await fetch('/api/usuarios?estado=all');
+      if (!res.ok) throw new Error('No se pudieron cargar los usuarios');
       const data = await res.json();
       setUsuarios(Array.isArray(data) ? data : []);
-    } catch {
-      setError('No se pudieron cargar los usuarios');
+    } catch (e) {
+      setUsuarios([]);
+      openErrorModal(
+        'Error al listar usuarios',
+        e.message || 'Intenta nuevamente'
+      );
     }
   };
 
@@ -193,7 +281,7 @@ const AgregarUsuarioPage = () => {
       const data = await res.json();
       setPlantas(Array.isArray(data) ? data : []);
     } catch {
-      setError('No se pudieron cargar las plantas');
+      openErrorModal('Error al listar plantas', 'Intenta nuevamente');
     }
   };
 
@@ -202,10 +290,51 @@ const AgregarUsuarioPage = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Validación antes de enviar: chequea campos requeridos y muestra modal si faltan
+  const validateFormBeforeSubmit = () => {
+    const missing = [];
+    if (!form.nombre || String(form.nombre).trim() === '')
+      missing.push('Nombre');
+    if (!form.apellido || String(form.apellido).trim() === '')
+      missing.push('Apellido');
+    if (!form.dni || String(form.dni).trim() === '') missing.push('DNI');
+    if (!form.email || String(form.email).trim() === '') missing.push('Email');
+    // En tu caso comentaste que teléfono es obligatorio en el backend: validar aquí también
+    if (!form.n_telefono || String(form.n_telefono).trim() === '')
+      missing.push('Teléfono');
+    if (!form.id_planta || String(form.id_planta).trim() === '')
+      missing.push('Planta');
+    if (!form.id_rol || String(form.id_rol).trim() === '') missing.push('Rol');
+
+    if (missing.length > 0) {
+      const human = missing.join(', ');
+      openErrorModal(
+        'Faltan datos obligatorios',
+        `Completa los siguientes campos: ${human}.`
+      );
+      return false;
+    }
+
+    // validación simple de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(String(form.email))) {
+      openErrorModal('Email inválido', 'Ingresa un correo electrónico válido.');
+      return false;
+    }
+
+    // validación simple DNI numérico
+    if (isNaN(Number(String(form.dni)))) {
+      openErrorModal('DNI inválido', 'DNI debe ser numérico.');
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMensaje('');
-    setError('');
+    if (!validateFormBeforeSubmit()) return;
+
     const url = editandoId ? `/api/usuarios/${editandoId}` : '/api/usuarios';
     const method = editandoId ? 'PUT' : 'POST';
     try {
@@ -214,8 +343,12 @@ const AgregarUsuarioPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error('Error al guardar usuario');
-      setMensaje(editandoId ? 'Usuario modificado ✅' : 'Usuario creado ✅');
+      if (!res.ok) {
+        const body = await tryReadJson(res);
+        throw new Error(
+          body?.error || body?.message || 'Error al guardar usuario'
+        );
+      }
       setForm({
         nombre: '',
         apellido: '',
@@ -230,8 +363,23 @@ const AgregarUsuarioPage = () => {
       setEditandoId(null);
       setPaginaActual(1);
       await fetchUsuarios();
+      openSuccessModal(
+        'Cambios realizados',
+        editandoId
+          ? 'Usuario modificado correctamente.'
+          : 'Usuario creado correctamente.'
+      );
+      showToast('success', 'Guardado');
     } catch (err) {
-      setError(err.message);
+      openErrorModal('No se pudo guardar', err.message || 'Revisa los datos.');
+    }
+  };
+
+  const tryReadJson = async (res) => {
+    try {
+      return await res.json();
+    } catch {
+      return null;
     }
   };
 
@@ -242,40 +390,217 @@ const AgregarUsuarioPage = () => {
       dni: u.dni,
       email: u.email,
       password: '',
-      estado: u.estado,
+      estado: normalizeLabel(u.estado),
       id_rol: u.id_rol,
-      id_planta: parseInt(u.id_planta, 10),
+      id_planta: parseInt(u.id_planta, 10) || '',
       n_telefono: u.n_telefono || '',
     });
     setEditandoId(u.id_usuario);
-    setMensaje('');
-    setError('');
+
+    // scroll suave con offset y foco
+    try {
+      if (formRef.current) {
+        const OFFSET = window.innerWidth < 640 ? 72 : 112;
+        const rect = formRef.current.getBoundingClientRect();
+        const targetTop = rect.top + window.scrollY - OFFSET;
+        window.scrollTo({ top: targetTop, behavior: 'smooth' });
+      }
+      setTimeout(() => {
+        nombreInputRef.current?.focus();
+      }, 300);
+    } catch {}
   };
 
   const handleEliminar = async (id) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este usuario?')) return;
+    setConfirmDelete({
+      open: true,
+      id,
+      nombre:
+        (usuarios.find((u) => u.id_usuario === id)?.nombre ?? '') +
+        ' ' +
+        (usuarios.find((u) => u.id_usuario === id)?.apellido ?? ''),
+    });
+  };
+
+  const confirmEliminarNow = async () => {
+    const id = confirmDelete.id;
+    setConfirmDelete({ open: false, id: null, nombre: '' });
+    if (!id) return;
     try {
       const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Error al eliminar usuario');
-      setPaginaActual(1);
+      if (!res.ok) {
+        const body = await tryReadJson(res);
+        throw new Error(
+          body?.error || body?.message || 'Error al eliminar usuario'
+        );
+      }
       await fetchUsuarios();
+      openSuccessModal(
+        'Perfil desactivado',
+        'El usuario fue desactivado correctamente.'
+      );
+      showToast('success', 'Usuario desactivado');
+      setMostrarEstadoFilter('Inactivos');
+      setPaginaActual(1);
     } catch (err) {
-      setError(err.message);
+      openErrorModal(
+        'No se pudo desactivar el usuario',
+        err.message || 'Intenta de nuevo.'
+      );
+    }
+  };
+
+  // utils: normalizar estado
+  const isActivo = (raw) => {
+    const v = raw;
+    if (v === true) return true;
+    if (v === false) return false;
+    if (typeof v === 'number') return v === 1;
+    const s = String(v ?? '')
+      .trim()
+      .toLowerCase();
+    if (s === 'activo' || s === 'true' || s === '1') return true;
+    if (s === 'inactivo' || s === 'false' || s === '0') return false;
+    return false;
+  };
+  const estadoLabel = (raw) => (isActivo(raw) ? 'Activo' : 'Inactivo');
+  const normalizeLabel = (raw) => (isActivo(raw) ? 'Activo' : 'Inactivo');
+
+  // Toggle estado con fallback PUT y modales de feedback
+  const handleToggleEstado = async (usuario) => {
+    const nuevoEstado = isActivo(usuario.estado) ? 'Inactivo' : 'Activo';
+
+    const normalizePlantaId = (raw) => {
+      if (raw === null || raw === undefined) return null;
+      if (typeof raw === 'number')
+        return Number.isFinite(raw) && raw > 0 ? raw : null;
+      const s = String(raw).trim();
+      if (s === '') return null;
+      const n = parseInt(s, 10);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+
+    try {
+      // 1) PATCH mínimo (si existe)
+      let res = await fetch(`/api/usuarios/${usuario.id_usuario}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+
+      if (!res.ok) {
+        // 2) Fallback PUT con objeto completo usando memoria y planta válida
+        const usuarioCompleto =
+          usuarios.find(
+            (u) => String(u.id_usuario) === String(usuario.id_usuario)
+          ) || usuario;
+
+        let idPlanta = normalizePlantaId(usuarioCompleto.id_planta);
+        if (
+          idPlanta == null &&
+          usuarioCompleto.planta_nombre &&
+          Array.isArray(plantas) &&
+          plantas.length > 0
+        ) {
+          const match = plantas.find(
+            (p) =>
+              String(p.nombre || '')
+                .trim()
+                .toLowerCase() ===
+              String(usuarioCompleto.planta_nombre || '')
+                .trim()
+                .toLowerCase()
+          );
+          idPlanta = normalizePlantaId(match?.id_planta);
+        }
+        if (idPlanta == null) idPlanta = normalizePlantaId(form.id_planta);
+        if (idPlanta == null) {
+          openErrorModal(
+            'Planta inválida',
+            'Asigna una planta válida (>0) al usuario antes de activar/inactivar.'
+          );
+          return;
+        }
+
+        const payloadPut = {
+          ...usuarioCompleto,
+          estado: nuevoEstado,
+          id_planta: idPlanta,
+        };
+        delete payloadPut.planta_nombre;
+
+        const putRes = await fetch(`/api/usuarios/${usuario.id_usuario}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payloadPut),
+        });
+        if (!putRes.ok) {
+          const putBody = await tryReadJson(putRes);
+          throw new Error(
+            putBody?.error ||
+              putBody?.message ||
+              `PUT failed (${putRes.status})`
+          );
+        }
+      }
+
+      // Actualización optimista + refresh
+      setUsuarios((prev) =>
+        prev.map((u) =>
+          String(u.id_usuario) === String(usuario.id_usuario)
+            ? { ...u, estado: nuevoEstado }
+            : u
+        )
+      );
+
+      await fetchUsuarios();
+      setMostrarEstadoFilter(
+        nuevoEstado === 'Activo' ? 'Activos' : 'Inactivos'
+      );
+      setPaginaActual(1);
+
+      openSuccessModal(
+        nuevoEstado === 'Activo' ? 'Perfil activado' : 'Perfil desactivado',
+        `Usuario ${usuario.nombre} ${
+          usuario.apellido
+        } ${nuevoEstado.toLowerCase()} correctamente.`
+      );
+      showToast(
+        'success',
+        nuevoEstado === 'Activo' ? 'Activado' : 'Inactivado'
+      );
+    } catch (err) {
+      openErrorModal(
+        'No se pudo actualizar el estado',
+        (err && err.message) || 'Intenta nuevamente.'
+      );
     }
   };
 
   /* ---------- Filtro + paginación ---------- */
   const usuariosFiltrados = useMemo(() => {
     const texto = filtro.toLowerCase();
-    return usuarios.filter(
-      (u) =>
-        u.dni.toString().includes(texto) ||
-        u.nombre.toLowerCase().includes(texto) ||
-        u.apellido.toLowerCase().includes(texto)
-    );
-  }, [usuarios, filtro]);
 
-  const totalPaginas = Math.ceil(usuariosFiltrados.length / itemsPorPagina);
+    return usuarios
+      .filter((u) => {
+        if (mostrarEstadoFilter === 'Activos') return isActivo(u.estado);
+        if (mostrarEstadoFilter === 'Inactivos') return !isActivo(u.estado);
+        return true;
+      })
+      .filter(
+        (u) =>
+          String(u.dni ?? '')
+            .toLowerCase()
+            .includes(texto) ||
+          (u.nombre || '').toLowerCase().includes(texto) ||
+          (u.apellido || '').toLowerCase().includes(texto)
+      );
+  }, [usuarios, filtro, mostrarEstadoFilter]);
+
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(usuariosFiltrados.length / itemsPorPagina)
+  );
   const visibles = usuariosFiltrados.slice(
     (paginaActual - 1) * itemsPorPagina,
     paginaActual * itemsPorPagina
@@ -284,10 +609,8 @@ const AgregarUsuarioPage = () => {
   /* ---------- Navegación ---------- */
   const irPagina = (n) =>
     setPaginaActual(Math.min(Math.max(n, 1), totalPaginas));
-  const paginaAnterior = () => irPagina(paginaActual - 1);
-  const paginaSiguiente = () => irPagina(paginaActual + 1);
 
-  /* ---------- Paginación (igual a TropaForm / DecomisoPage) ---------- */
+  /* ---------- Paginación ---------- */
   const renderPaginacion = () => {
     if (totalPaginas <= 1) return null;
 
@@ -353,36 +676,38 @@ const AgregarUsuarioPage = () => {
     );
   };
 
-  if (loading)
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500">
         Cargando datos...
       </div>
     );
+  }
 
-  /* ---------- Opciones para react-select ---------- */
+  /* ---------- Opciones Select ---------- */
   const plantaOptions = plantas
     .filter((p) => typeof p.id_planta !== 'undefined' && p.nombre)
     .map((p) => ({ value: String(p.id_planta), label: p.nombre }));
-
   const rolOptions = roles.map((r) => ({ value: r.id_rol, label: r.nombre }));
   const estadoOptions = estados.map((e) => ({ value: e, label: e }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
       <div className="max-w-6xl mx-auto space-y-10">
-        {/* Encabezado */}
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
           {editandoId ? '👤 Modificar Usuario' : '👤 Agregar Usuario'}
         </h1>
 
         {/* Formulario */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
+        <div
+          ref={formRef}
+          className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6"
+          style={{ scrollMarginTop: '112px' }}
+        >
           <form
             onSubmit={handleSubmit}
             className="grid grid-cols-1 sm:grid-cols-3 gap-4"
           >
-            {/* Fila 1 */}
             <InputField
               label="Nombre"
               name="nombre"
@@ -390,6 +715,7 @@ const AgregarUsuarioPage = () => {
               onChange={handleChange}
               required
               placeholder="Ej. Juan, María, etc."
+              inputRef={nombreInputRef}
             />
             <InputField
               label="Apellido"
@@ -409,7 +735,6 @@ const AgregarUsuarioPage = () => {
               placeholder="Sin puntos ni espacios"
             />
 
-            {/* Fila 2 */}
             <InputField
               label="Teléfono"
               name="n_telefono"
@@ -440,7 +765,6 @@ const AgregarUsuarioPage = () => {
               }
             />
 
-            {/* Fila 3 */}
             <SelectField
               label="Planta"
               value={
@@ -483,7 +807,6 @@ const AgregarUsuarioPage = () => {
               placeholder="Seleccione el estado"
             />
 
-            {/* Botón */}
             <div className="sm:col-span-3 flex justify-end">
               <button
                 type="submit"
@@ -493,36 +816,72 @@ const AgregarUsuarioPage = () => {
               </button>
             </div>
           </form>
-
-          {mensaje && (
-            <div className="mt-4 flex items-center gap-2 text-green-700">
-              <span className="text-lg">✅</span>
-              <span>{mensaje}</span>
-            </div>
-          )}
-          {error && (
-            <div className="mt-4 flex items-center gap-2 text-red-700">
-              <span className="text-lg">❌</span>
-              <span>{error}</span>
-            </div>
-          )}
         </div>
 
-        {/* Listado + Paginación */}
+        {/* Listado + Filtros + Paginación */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
             <span className="text-green-600 text-xl">📋</span>
             Usuarios Registrados
           </h2>
 
-          <div className="mb-4">
-            <InputField
-              label="Buscar por DNI, nombre o apellido"
-              name="filtro"
-              value={filtro}
-              onChange={(e) => setFiltro(e.target.value)}
-              placeholder="Escriba para filtrar..."
-            />
+          <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+            <div>
+              <InputField
+                label="Buscar por DNI, nombre o apellido"
+                name="filtro"
+                value={filtro}
+                onChange={(e) => setFiltro(e.target.value)}
+                placeholder="Escriba para filtrar..."
+              />
+            </div>
+
+            <div className="sm:col-span-2 flex items-center gap-2">
+              <label className="font-semibold text-sm text-gray-700 mr-2">
+                Mostrar:
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setMostrarEstadoFilter('Todos');
+                    setPaginaActual(1);
+                  }}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                    mostrarEstadoFilter === 'Todos'
+                      ? 'bg-green-700 text-white shadow'
+                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  }`}
+                >
+                  Todos
+                </button>
+                <button
+                  onClick={() => {
+                    setMostrarEstadoFilter('Activos');
+                    setPaginaActual(1);
+                  }}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                    mostrarEstadoFilter === 'Activos'
+                      ? 'bg-green-700 text-white shadow'
+                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  }`}
+                >
+                  Activos
+                </button>
+                <button
+                  onClick={() => {
+                    setMostrarEstadoFilter('Inactivos');
+                    setPaginaActual(1);
+                  }}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                    mostrarEstadoFilter === 'Inactivos'
+                      ? 'bg-green-700 text-white shadow'
+                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  }`}
+                >
+                  Inactivos
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="rounded-xl ring-1 ring-gray-200">
@@ -557,18 +916,18 @@ const AgregarUsuarioPage = () => {
                         — Estado:{' '}
                         <span
                           className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            u.estado === true || u.estado === 'Activo'
+                            isActivo(u.estado)
                               ? 'bg-green-100 text-green-700'
                               : 'bg-red-100 text-red-700'
                           }`}
                         >
-                          {u.estado === true || u.estado === 'Activo'
-                            ? 'Activo'
-                            : 'Inactivo'}
+                          {estadoLabel(u.estado)}
                         </span>{' '}
                         — Creado:{' '}
                         <span className="text-gray-600">
-                          {new Date(u.creado_en).toLocaleDateString()}
+                          {u.creado_en
+                            ? new Date(u.creado_en).toLocaleDateString()
+                            : '—'}
                         </span>
                       </p>
                     </div>
@@ -580,11 +939,16 @@ const AgregarUsuarioPage = () => {
                       >
                         ✏️ Editar
                       </button>
+
                       <button
-                        onClick={() => handleEliminar(u.id_usuario)}
-                        className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition flex items-center gap-1"
+                        onClick={() => handleToggleEstado(u)}
+                        className={`px-3 py-2 rounded-lg text-sm transition flex items-center gap-1 ${
+                          isActivo(u.estado)
+                            ? 'bg-red-600 text-white hover:bg-red-700'
+                            : 'bg-green-600 text-white hover:bg-green-700'
+                        }`}
                       >
-                        🗑️ Eliminar
+                        {isActivo(u.estado) ? '🚫 Desactivar' : '✅ Activar'}
                       </button>
                     </div>
                   </li>
@@ -598,13 +962,54 @@ const AgregarUsuarioPage = () => {
           </div>
         </div>
 
-        {/* Paginación externa pero visualmente conectada */}
         {totalPaginas > 1 && (
           <div className="mt-[-8px] sm:mt-[-4px] flex justify-center items-center gap-2 flex-wrap">
             {renderPaginacion()}
           </div>
         )}
       </div>
+
+      {/* Modales */}
+      <Modal
+        open={confirmDelete.open}
+        title="Confirmar desactivación"
+        onClose={() => setConfirmDelete({ open: false, id: null, nombre: '' })}
+        actions={
+          <button
+            type="button"
+            onClick={confirmEliminarNow}
+            className="px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+          >
+            Desactivar
+          </button>
+        }
+      >
+        <p>
+          ¿Desactivar el perfil de “{confirmDelete.nombre}”? Podrás reactivarlo
+          luego desde la lista de inactivos.
+        </p>
+      </Modal>
+
+      <Modal
+        open={modalError.open}
+        title={modalError.title || 'Error'}
+        onClose={closeErrorModal}
+        actions={null}
+      >
+        <p>{modalError.text}</p>
+      </Modal>
+
+      <Modal
+        open={modalSuccess.open}
+        title={modalSuccess.title || 'Operación exitosa'}
+        onClose={closeSuccessModal}
+        actions={null}
+      >
+        <p>{modalSuccess.text}</p>
+      </Modal>
+
+      {/* Toast */}
+      <Toast show={toast.show} type={toast.type} text={toast.text} />
     </div>
   );
 };

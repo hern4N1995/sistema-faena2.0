@@ -1,37 +1,29 @@
 // src/components/LoginModal.jsx
-import axios from 'axios';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from 'src/services/api';
 
 export default function LoginModal({ isOpen, onClose }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(''); // ✅ Limpiar error antes de intentar
-
-    if (!email || !password) {
+    setError('');
+    if (!email.trim() || !password) {
       setError('Por favor completa los campos');
       return;
     }
 
+    setLoading(true);
     try {
-      const response = await axios.post(
-        'http://localhost:3000/api/auth/login',
-        {
-          email,
-          password,
-        }
-      );
-
-      const data = response.data;
-
-      if (!data?.user?.email || !data?.user?.rol || !data?.token) {
+      const { data } = await api.post('/api/auth/login', { email, password });
+      if (!data?.user || !data?.token) {
         throw new Error('Respuesta inválida del servidor');
       }
 
@@ -40,6 +32,7 @@ export default function LoginModal({ isOpen, onClose }) {
 
       onClose();
 
+      // redirigir según rol (ajustá los casos si es necesario)
       switch (data.user.rol) {
         case 1:
         case 2:
@@ -51,8 +44,13 @@ export default function LoginModal({ isOpen, onClose }) {
       if (err.response?.status === 401) {
         setError('Credenciales inválidas o usuario no registrado');
       } else {
-        setError(err.message || 'Error desconocido');
+        setError(
+          err.response?.data?.message || err.message || 'Error desconocido'
+        );
       }
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -83,6 +81,7 @@ export default function LoginModal({ isOpen, onClose }) {
               setError('');
             }}
             className="w-full mb-3 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
           />
           <input
             type="password"
@@ -93,12 +92,14 @@ export default function LoginModal({ isOpen, onClose }) {
               setError('');
             }}
             className="w-full mb-4 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
           />
           <button
             type="submit"
-            className="w-full bg-green-700 text-white py-2 rounded hover:bg-green-800 transition"
+            className="w-full bg-green-700 text-white py-2 rounded hover:bg-green-800 transition disabled:opacity-60"
+            disabled={loading}
           >
-            Entrar
+            {loading ? 'Ingresando...' : 'Entrar'}
           </button>
         </form>
       </div>

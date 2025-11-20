@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Select from 'react-select';
+import api from 'src/services/api';
 
 /* ---------- SelectField (estilos consistentes) ---------- */
 function SelectField({
@@ -381,21 +382,36 @@ export default function DepartamentoAdmin() {
 
   /* ---------- Abrir modal de edición (pre-cargar provincia y nombre) ---------- */
   // helper: intenta pedir la provincia por id si no la tenemos en memoria
+
   async function fetchProvinciaById(id) {
     if (!id) return null;
+
     try {
-      const res = await fetch(`http://localhost:3000/api/provincias/${id}`);
-      if (!res.ok) return null;
-      const p = await res.json();
-      // si el endpoint devuelve { data: {...} } o la entidad directa, adaptamos:
-      return (
-        p?.descripcion ||
-        p?.nombre ||
-        p?.data?.descripcion ||
-        p?.data?.nombre ||
-        null
-      );
-    } catch (e) {
+      const { data } = await api.get(`/api/provincias/${id}`);
+      // Normalizar distintos formatos que pueda devolver la API
+      // Puede ser: { descripcion, nombre, id_provincia } o { data: { ... } } o directamente entidad
+      const payload = data?.data ?? data;
+
+      if (!payload) return null;
+
+      const descripcion =
+        payload.descripcion ??
+        payload.nombre ??
+        payload.descripcion_provincia ??
+        null;
+
+      const idProv =
+        payload.id_provincia ?? payload.id ?? payload.provinciaId ?? null;
+
+      if (!descripcion && !idProv) return null;
+
+      return {
+        id: idProv,
+        descripcion,
+        raw: payload,
+      };
+    } catch (err) {
+      // console.error('fetchProvinciaById error:', err); // opcional: habilitar para debugging
       return null;
     }
   }
@@ -489,22 +505,25 @@ export default function DepartamentoAdmin() {
       return;
     }
 
-    setSavingEdit(true);
-    try {
-      const res = await fetch(`http://localhost:3000/api/departamentos/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    const handleSaveEdit = async ({ id, nombre, idProv }) => {
+      setSavingEdit(true);
+      try {
+        const idProvNum = Number(idProv);
+        const { data } = await api.put(`/api/departamentos/${id}`, {
           nombre_departamento: nombre,
-          id_provincia: parseInt(idProv, 10),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
+          id_provincia: Number.isNaN(idProvNum) ? null : idProvNum,
+        });
+
+        // Asumimos que la API devuelve el recurso actualizado en `data`
+        const result = data ?? {};
+
         // resolver label (por si vino solo idProv)
         const provinciaLabel =
           provinciasOptions.find((o) => String(o.value) === String(idProv))
-            ?.label ?? editing.provinciaLabel;
+            ?.label ??
+          editing.provinciaLabel ??
+          result.provincia ??
+          '';
 
         setRegistros((prev) =>
           prev.map((r) =>
@@ -512,7 +531,9 @@ export default function DepartamentoAdmin() {
               ? {
                   ...r,
                   departamento: nombre,
-                  id_provincia: parseInt(idProv, 10),
+                  id_provincia: Number.isNaN(idProvNum)
+                    ? r.id_provincia
+                    : idProvNum,
                   provincia: provinciaLabel,
                 }
               : r
@@ -523,297 +544,313 @@ export default function DepartamentoAdmin() {
         setEditing((p) => ({
           ...p,
           provinciaLabel: provinciaLabel || p.provinciaLabel,
-          id_provincia: String(idProv),
+          id_provincia: String(idProv ?? p.id_provincia ?? ''),
         }));
 
         setMensajeFeedback('✅ Departamento modificado.');
         setEditModalOpen(false);
-      } else {
-        setEditError(data.error || 'Error al modificar el departamento.');
+      } catch (err) {
+        console.error('Error al modificar departamento:', err);
+
+        const msg =
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          err.message ||
+          'Error de conexión con el servidor.';
+        setEditError(msg);
+      } finally {
+        setSavingEdit(false);
+        setTimeout(() => setMensajeFeedback(''), 3500);
       }
-    } catch (error) {
-      console.error('Error al modificar:', error);
-      setEditError('Error de conexión con el servidor.');
-    } finally {
-      setSavingEdit(false);
-      setTimeout(() => setMensajeFeedback(''), 3500);
-    }
-  };
+    };
 
-  /* ---------- Eliminar ---------- */
-  const eliminarDepartamento = async (id) => {
-    if (!window.confirm('¿Está seguro de eliminar este departamento?')) return;
-    try {
-      const res = await fetch(`http://localhost:3000/api/departamentos/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setRegistros((prev) =>
-          prev.filter((r) => String(r.id_departamento ?? r.id) !== String(id))
-        );
-        setMensajeFeedback('✅ Departamento eliminado.');
-      } else {
-        setMensajeFeedback('❌ Error al eliminar.');
+    const eliminarDepartamento = async (id) => {
+      if (!window.confirm('¿Está seguro de eliminar este departamento?'))
+        return;
+
+      try {
+        const { status, data } = await api.delete(`/api/departamentos/${id}`);
+
+        if (status >= 200 && status < 300) {
+          setRegistros((prev) =>
+            prev.filter((r) => String(r.id_departamento ?? r.id) !== String(id))
+          );
+          setMensajeFeedback('✅ Departamento eliminado.');
+        } else {
+          const msg = data?.message || data?.error || 'Error al eliminar.';
+          setMensajeFeedback(`❌ ${msg}`);
+        }
+      } catch (err) {
+        console.error('Error al eliminar departamento:', err);
+        const msg =
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          err.message ||
+          'Error de conexión con el servidor.';
+        setMensajeFeedback(`❌ ${msg}`);
+      } finally {
+        setTimeout(() => setMensajeFeedback(''), 3500);
       }
-    } catch (error) {
-      console.error('Error al eliminar:', error);
-      setMensajeFeedback('❌ Error de conexión con el servidor.');
-    }
-    setTimeout(() => setMensajeFeedback(''), 3500);
-  };
+    };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
-      <div className="max-w-6xl mx-auto space-y-10">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
-          🗂️ Administración de Departamentos
-        </h1>
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
+        <div className="max-w-6xl mx-auto space-y-10">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
+            🗂️ Administración de Departamentos
+          </h1>
 
-        {/* Formulario agregar */}
-        <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <SelectField
-              label="Provincia"
-              value={
-                provinciaIdSeleccionada
-                  ? {
-                      value: provinciaIdSeleccionada,
-                      label: provinciaSeleccionada,
-                    }
-                  : null
-              }
-              onChange={(selected) => {
-                setProvinciaIdSeleccionada(selected?.value || '');
-                setProvinciaSeleccionada(selected?.label || '');
-              }}
-              options={provinciasOptions}
-              placeholder="Seleccione..."
-              maxMenuHeight={
-                deviceType === 'mobile'
-                  ? 150
-                  : deviceType === 'tablet'
-                  ? 180
-                  : 200
-              }
-            />
-
-            <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
-                Departamento
-              </label>
-              <input
-                type="text"
-                value={departamentoInput}
-                onChange={(e) => setDepartamentoInput(e.target.value)}
-                placeholder="Ej. Capital, Goya, San Martín..."
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+          {/* Formulario agregar */}
+          <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <SelectField
+                label="Provincia"
+                value={
+                  provinciaIdSeleccionada
+                    ? {
+                        value: provinciaIdSeleccionada,
+                        label: provinciaSeleccionada,
+                      }
+                    : null
+                }
+                onChange={(selected) => {
+                  setProvinciaIdSeleccionada(selected?.value || '');
+                  setProvinciaSeleccionada(selected?.label || '');
+                }}
+                options={provinciasOptions}
+                placeholder="Seleccione..."
+                maxMenuHeight={
+                  deviceType === 'mobile'
+                    ? 150
+                    : deviceType === 'tablet'
+                    ? 180
+                    : 200
+                }
               />
+
+              <div className="flex flex-col">
+                <label className="mb-2 font-semibold text-gray-700 text-sm">
+                  Departamento
+                </label>
+                <input
+                  type="text"
+                  value={departamentoInput}
+                  onChange={(e) => setDepartamentoInput(e.target.value)}
+                  placeholder="Ej. Capital, Goya, San Martín..."
+                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={agregarDepartamento}
+                  disabled={
+                    !provinciaIdSeleccionada || !departamentoInput.trim()
+                  }
+                  className={`w-full px-4 py-3 rounded-lg font-semibold transition shadow ${
+                    !provinciaIdSeleccionada || !departamentoInput.trim()
+                      ? 'bg-gray-300 text-white cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                >
+                  ➕ Agregar Departamento
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-end">
-              <button
-                onClick={agregarDepartamento}
-                disabled={!provinciaIdSeleccionada || !departamentoInput.trim()}
-                className={`w-full px-4 py-3 rounded-lg font-semibold transition shadow ${
-                  !provinciaIdSeleccionada || !departamentoInput.trim()
-                    ? 'bg-gray-300 text-white cursor-not-allowed'
-                    : 'bg-green-600 text-white hover:bg-green-700'
+            {mensajeFeedback && (
+              <p
+                className={`text-sm font-medium text-center ${
+                  mensajeFeedback.includes('✅')
+                    ? 'text-green-700'
+                    : 'text-red-700'
                 }`}
               >
-                ➕ Agregar Departamento
-              </button>
-            </div>
+                {mensajeFeedback}
+              </p>
+            )}
           </div>
 
-          {mensajeFeedback && (
-            <p
-              className={`text-sm font-medium text-center ${
-                mensajeFeedback.includes('✅')
-                  ? 'text-green-700'
-                  : 'text-red-700'
-              }`}
-            >
-              {mensajeFeedback}
-            </p>
+          {/* Listado */}
+          {deviceType === 'mobile' ? (
+            <div className="space-y-4">
+              {paginatedRegistros.length === 0 ? (
+                <p className="text-center text-gray-500 py-6">
+                  Sin datos disponibles
+                </p>
+              ) : (
+                paginatedRegistros.map((r) => (
+                  <div
+                    key={r.id_departamento ?? r.id}
+                    className="bg-white p-4 rounded-xl shadow border border-gray-200"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 space-y-1 text-sm text-gray-700">
+                        <p className="font-semibold text-gray-800">
+                          {r.provincia}
+                        </p>
+                        <p>{r.departamento}</p>
+                      </div>
+                      <div className="flex gap-2 ml-2">
+                        <button
+                          onClick={() => openEdit(r)}
+                          className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() =>
+                            eliminarDepartamento(r.id_departamento ?? r.id)
+                          }
+                          className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200 shadow-xl">
+              <table className="min-w-full text-sm text-gray-700">
+                <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      Provincia
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      Departamento
+                    </th>
+                    <th className="px-4 py-3 text-center font-semibold">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedRegistros.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan="3"
+                        className="text-center text-gray-500 py-6"
+                      >
+                        Sin datos disponibles
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedRegistros.map((r) => (
+                      <tr
+                        key={r.id_departamento ?? r.id}
+                        className="hover:bg-gray-50 transition"
+                      >
+                        <td className="px-4 py-3">{r.provincia}</td>
+                        <td className="px-4 py-3">{r.departamento}</td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              onClick={() => openEdit(r)}
+                              className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                            >
+                              ✏️ Editar
+                            </button>
+                            <button
+                              onClick={() =>
+                                eliminarDepartamento(r.id_departamento ?? r.id)
+                              }
+                              className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                            >
+                              🗑️ Eliminar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <Paginacion
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           )}
         </div>
 
-        {/* Listado */}
-        {deviceType === 'mobile' ? (
-          <div className="space-y-4">
-            {paginatedRegistros.length === 0 ? (
-              <p className="text-center text-gray-500 py-6">
-                Sin datos disponibles
-              </p>
-            ) : (
-              paginatedRegistros.map((r) => (
-                <div
-                  key={r.id_departamento ?? r.id}
-                  className="bg-white p-4 rounded-xl shadow border border-gray-200"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 space-y-1 text-sm text-gray-700">
-                      <p className="font-semibold text-gray-800">
-                        {r.provincia}
-                      </p>
-                      <p>{r.departamento}</p>
-                    </div>
-                    <div className="flex gap-2 ml-2">
-                      <button
-                        onClick={() => openEdit(r)}
-                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() =>
-                          eliminarDepartamento(r.id_departamento ?? r.id)
-                        }
-                        className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200 shadow-xl">
-            <table className="min-w-full text-sm text-gray-700">
-              <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    Provincia
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    Departamento
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedRegistros.length === 0 ? (
-                  <tr>
-                    <td colSpan="3" className="text-center text-gray-500 py-6">
-                      Sin datos disponibles
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedRegistros.map((r) => (
-                    <tr
-                      key={r.id_departamento ?? r.id}
-                      className="hover:bg-gray-50 transition"
-                    >
-                      <td className="px-4 py-3">{r.provincia}</td>
-                      <td className="px-4 py-3">{r.departamento}</td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => openEdit(r)}
-                            className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                          >
-                            ✏️ Editar
-                          </button>
-                          <button
-                            onClick={() =>
-                              eliminarDepartamento(r.id_departamento ?? r.id)
-                            }
-                            className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                          >
-                            🗑️ Eliminar
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {/* Modal edición */}
+        {editModalOpen && (
+          <Modal
+            title="Editar Departamento"
+            onClose={() => {
+              if (!savingEdit) setEditModalOpen(false);
+            }}
+          >
+            <div className="space-y-4">
+              {/* Provincia: mostrada pero deshabilitada */}
+              <SelectField
+                label="Provincia"
+                value={
+                  editing.id_provincia
+                    ? {
+                        value: editing.id_provincia,
+                        label: editing.provinciaLabel,
+                      }
+                    : null
+                }
+                onChange={() => {}}
+                options={provinciasOptions}
+                placeholder="Seleccione..."
+                maxMenuHeight={200}
+                isDisabled={true}
+              />
 
-        {/* Paginación */}
-        {totalPages > 1 && (
-          <Paginacion
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+              {/* Departamento (editable) */}
+              <div className="flex flex-col">
+                <label className="mb-2 font-semibold text-gray-700 text-sm">
+                  Departamento
+                </label>
+                <input
+                  type="text"
+                  value={editing.departamento}
+                  onChange={(e) =>
+                    setEditing((p) => ({ ...p, departamento: e.target.value }))
+                  }
+                  placeholder="Ej. Capital, Goya, San Martín..."
+                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                />
+              </div>
+
+              {editError && (
+                <div className="text-sm text-red-600">{editError}</div>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  disabled={savingEdit}
+                  className="px-4 py-2 border rounded"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={saveEdit}
+                  disabled={savingEdit}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  {savingEdit ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </div>
+          </Modal>
         )}
       </div>
-
-      {/* Modal edición */}
-      {editModalOpen && (
-        <Modal
-          title="Editar Departamento"
-          onClose={() => {
-            if (!savingEdit) setEditModalOpen(false);
-          }}
-        >
-          <div className="space-y-4">
-            {/* Provincia: mostrada pero deshabilitada */}
-            <SelectField
-              label="Provincia"
-              value={
-                editing.id_provincia
-                  ? {
-                      value: editing.id_provincia,
-                      label: editing.provinciaLabel,
-                    }
-                  : null
-              }
-              onChange={() => {}}
-              options={provinciasOptions}
-              placeholder="Seleccione..."
-              maxMenuHeight={200}
-              isDisabled={true}
-            />
-
-            {/* Departamento (editable) */}
-            <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
-                Departamento
-              </label>
-              <input
-                type="text"
-                value={editing.departamento}
-                onChange={(e) =>
-                  setEditing((p) => ({ ...p, departamento: e.target.value }))
-                }
-                placeholder="Ej. Capital, Goya, San Martín..."
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
-              />
-            </div>
-
-            {editError && (
-              <div className="text-sm text-red-600">{editError}</div>
-            )}
-
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setEditModalOpen(false)}
-                disabled={savingEdit}
-                className="px-4 py-2 border rounded"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={saveEdit}
-                disabled={savingEdit}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                {savingEdit ? 'Guardando...' : 'Guardar cambios'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
+    );
+  };
 }

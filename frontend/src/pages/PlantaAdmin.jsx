@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
-
+import api from 'src/services/api';
 /* ------------------------------------------------------------------ */
 /*  SelectField con estilos visuales unificados                      */
 /* ------------------------------------------------------------------ */
@@ -291,44 +291,77 @@ export default function PlantaAdmin() {
   const guardarEdicion = async () => {
     const payload = {
       ...editado,
-      estado: !!editado.estado,
-      id_provincia: editado.provincia?.value || editado.id_provincia,
+      estado: Boolean(editado.estado),
+      id_provincia: editado?.provincia?.value ?? editado?.id_provincia ?? null,
     };
+
     try {
-      const res = await fetch(
-        `http://localhost:3000/api/plantas/${editandoId}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }
+      const { data, status } = await api.put(
+        `/api/plantas/${editandoId}`,
+        payload
       );
-      const data = await res.json();
-      if (res.ok && data?.id === editandoId) {
+
+      // Asegurarse que la API devolvió la entidad actualizada (o al menos el id)
+      const returnedId = data?.id ?? data?.id_planta ?? editandoId;
+      if (
+        status >= 200 &&
+        status < 300 &&
+        String(returnedId) === String(editandoId)
+      ) {
         setPlantas((prev) =>
-          prev.map((p) => (p.id === editandoId ? { ...p, ...data } : p))
+          prev.map((p) =>
+            String(p.id) === String(editandoId) ? { ...p, ...data } : p
+          )
         );
         setEditandoId(null);
         setEditado({});
+        // opcional: setMensajeFeedback('✅ Cambios guardados.');
+      } else {
+        // Si la API no devolvió la entidad esperada, manejarlo explícitamente
+        console.warn('Respuesta inesperada al guardar edición', {
+          status,
+          data,
+        });
+        // opcional: setMensajeFeedback('❌ No se pudo guardar la edición.');
       }
-    } catch (error) {
-      console.error('Error al guardar edición:', error);
+    } catch (err) {
+      console.error('Error al guardar edición:', err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Error de conexión con el servidor.';
+      // opcional: setMensajeFeedback(`❌ ${msg}`);
     }
   };
 
   const deshabilitarPlanta = async (id) => {
     if (!window.confirm('¿Está seguro de deshabilitar esta planta?')) return;
+
     try {
-      const res = await fetch(`http://localhost:3000/api/plantas/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
+      const { status, data } = await api.delete(`/api/plantas/${id}`);
+
+      if (status >= 200 && status < 300) {
         setPlantas((prev) =>
-          prev.map((p) => (p.id === id ? { ...p, estado: false } : p))
+          prev.map((p) =>
+            String(p.id) === String(id) ? { ...p, estado: false } : p
+          )
         );
+        // opcional: setMensajeFeedback('✅ Planta deshabilitada.');
+      } else {
+        const msg =
+          data?.message || data?.error || 'Error al deshabilitar la planta.';
+        console.warn('Delete responded with non-2xx:', status, msg);
+        // opcional: setMensajeFeedback(`❌ ${msg}`);
       }
-    } catch (error) {
-      console.error('Error al deshabilitar planta:', error);
+    } catch (err) {
+      console.error('Error al deshabilitar planta:', err);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Error de conexión con el servidor.';
+      // opcional: setMensajeFeedback(`❌ ${msg}`);
     }
   };
 

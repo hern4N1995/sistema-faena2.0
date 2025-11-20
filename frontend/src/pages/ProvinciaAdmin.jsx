@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 
+import api from 'src/services/api';
+
 const InputField = ({
   label,
   name,
@@ -199,51 +201,82 @@ export default function ProvinciaAdmin() {
       '¿Seguro que querés eliminar esta provincia?'
     );
     if (!confirmar) return;
+
     try {
-      await fetch(`http://localhost:3000/api/provincias/${id}`, {
-        method: 'DELETE',
-      });
-      setProvincias(provincias.filter((p) => p.id !== id));
-      setMensajeFeedback('✅ Provincia eliminada correctamente.');
-      setTimeout(() => setMensajeFeedback(''), 4000);
+      const { status, data } = await api.delete(`/api/provincias/${id}`);
+
+      if (status >= 200 && status < 300) {
+        setProvincias((prev) =>
+          prev.filter((p) => String(p.id) !== String(id))
+        );
+        setMensajeFeedback('✅ Provincia eliminada correctamente.');
+      } else {
+        const msg =
+          data?.message || data?.error || 'Error al eliminar provincia.';
+        setMensajeFeedback(`❌ ${msg}`);
+        console.warn('Eliminar provincia no 2xx:', status, msg);
+      }
     } catch (err) {
       console.error('Error al eliminar provincia:', err);
-      setMensajeFeedback('❌ Error al eliminar provincia.');
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Error de conexión con el servidor.';
+      setMensajeFeedback(`❌ ${msg}`);
+    } finally {
       setTimeout(() => setMensajeFeedback(''), 4000);
     }
   };
 
   const iniciarEdicion = (id, descripcionActual) => {
     setEditandoId(id);
-    setDescripcionEditada(descripcionActual);
+    setDescripcionEditada(descripcionActual ?? '');
     setMensajeFeedback('');
   };
 
   const guardarEdicion = async () => {
-    if (!descripcionEditada.trim()) return;
+    const nuevaDesc = (descripcionEditada || '').trim();
+    if (!nuevaDesc) return;
+
     const confirmar = window.confirm(
-      `¿Estás seguro de que querés guardar los cambios en la provincia "${descripcionEditada}"?`
+      `¿Estás seguro de que querés guardar los cambios en la provincia "${nuevaDesc}"?`
     );
     if (!confirmar) return;
+
     try {
-      await fetch(`http://localhost:3000/api/provincias/${editandoId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ descripcion: descripcionEditada.trim() }),
-      });
-      const actualizadas = provincias.map((p) =>
-        p.id === editandoId
-          ? { ...p, descripcion: descripcionEditada.trim() }
-          : p
+      const payload = { descripcion: nuevaDesc };
+      const { status, data } = await api.put(
+        `/api/provincias/${editandoId}`,
+        payload
       );
-      setProvincias(actualizadas);
-      setEditandoId(null);
-      setDescripcionEditada('');
-      setMensajeFeedback('✅ Provincia modificada correctamente.');
-      setTimeout(() => setMensajeFeedback(''), 4000);
+
+      if (status >= 200 && status < 300) {
+        setProvincias((prev) =>
+          prev.map((p) =>
+            String(p.id) === String(editandoId)
+              ? { ...p, descripcion: nuevaDesc }
+              : p
+          )
+        );
+        setEditandoId(null);
+        setDescripcionEditada('');
+        setMensajeFeedback('✅ Provincia modificada correctamente.');
+      } else {
+        const msg =
+          data?.message || data?.error || 'Error al editar provincia.';
+        setMensajeFeedback(`❌ ${msg}`);
+        console.warn('Editar provincia no 2xx:', status, msg);
+      }
     } catch (err) {
       console.error('Error al editar provincia:', err);
-      setMensajeFeedback('❌ Error al editar provincia.');
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Error de conexión con el servidor.';
+      setMensajeFeedback(`❌ ${msg}`);
+    } finally {
       setTimeout(() => setMensajeFeedback(''), 4000);
     }
   };

@@ -79,12 +79,40 @@ export default function ProvinciaAdmin() {
   }, []);
 
   const fetchProvincias = async () => {
+    const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+    const fetchWithTimeout = (url, options = {}, timeout = 10000) =>
+      Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timed out')), timeout)
+        ),
+      ]);
+
     try {
-      const res = await fetch('http://localhost:3000/api/provincias');
+      const res = await fetchWithTimeout(
+        `${API}/api/provincias`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          // credentials: 'include' // descomentar si se usan cookies/sesiones
+        },
+        10000
+      );
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`API error ${res.status}: ${txt}`);
+      }
+
       const data = await res.json();
       setProvincias(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error al cargar provincias:', err);
+      setProvincias([]); // fallback seguro
+      // opcional: mostrar feedback al usuario
+      setMensajeFeedback?.('❌ Error al cargar provincias.');
+      setTimeout(() => setMensajeFeedback?.(''), 4000);
     }
   };
 
@@ -118,11 +146,40 @@ export default function ProvinciaAdmin() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:3000/api/provincias', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ descripcion: nuevaDescripcion.trim() }),
-      });
+      const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+      const fetchWithTimeout = (url, options = {}, timeout = 10000) =>
+        Promise.race([
+          fetch(url, options),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timed out')), timeout)
+          ),
+        ]);
+
+      try {
+        const res = await fetchWithTimeout(
+          `${API}/api/provincias`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ descripcion: nuevaDescripcion.trim() }),
+            // credentials: 'include' // descomentar si usás cookies/sesiones
+          },
+          10000
+        );
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`API error ${res.status}: ${text}`);
+        }
+
+        const data = await res.json();
+        // manejar data (p. ej. agregar a estado, mostrar feedback)
+      } catch (err) {
+        console.error('Error creando provincia:', err);
+        // mostrar feedback al usuario si corresponde
+      }
+
       const nueva = await res.json();
       setProvincias([...provincias, nueva]);
       setNuevaDescripcion('');

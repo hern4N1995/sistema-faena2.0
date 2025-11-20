@@ -216,26 +216,65 @@ export default function DepartamentoAdmin() {
   }, []);
 
   useEffect(() => {
-    const cargarDatos = async () => {
+    const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    async function cargarDatos() {
       try {
-        const [resDeptos, resProvincias] = await Promise.all([
-          fetch('http://localhost:3000/api/departamentos'),
-          fetch('http://localhost:3000/api/provincias'),
-        ]);
+        const timeout = (ms, promise) =>
+          Promise.race([
+            promise,
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('timeout')), ms)
+            ),
+          ]);
+
+        const reqDeptos = fetch(`${API}/api/departamentos`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal,
+        });
+        const reqProvincias = fetch(`${API}/api/provincias`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal,
+        });
+
+        const [resDeptos, resProvincias] = await timeout(
+          10000,
+          Promise.all([reqDeptos, reqProvincias])
+        );
+
+        if (!resDeptos.ok) {
+          const text = await resDeptos.text();
+          throw new Error(`Departamentos API ${resDeptos.status}: ${text}`);
+        }
+        if (!resProvincias.ok) {
+          const text = await resProvincias.text();
+          throw new Error(`Provincias API ${resProvincias.status}: ${text}`);
+        }
+
         const departamentos = await resDeptos.json();
         const provincias = await resProvincias.json();
+
         setRegistros(
           Array.isArray(departamentos)
             ? departamentos.filter((d) => d.activo !== false)
             : []
         );
         setProvinciasDB(Array.isArray(provincias) ? provincias : []);
-      } catch (error) {
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('Carga de datos falló:', err);
         setMensajeFeedback('❌ Error al conectar con el servidor.');
         setTimeout(() => setMensajeFeedback(''), 4000);
       }
-    };
+    }
+
     cargarDatos();
+
+    return () => controller.abort();
   }, []);
 
   const provinciasOptions = useMemo(() => {
@@ -287,14 +326,43 @@ export default function DepartamentoAdmin() {
     }
 
     try {
-      const res = await fetch('http://localhost:3000/api/departamentos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre_departamento: nombre,
-          id_provincia: parseInt(provinciaIdSeleccionada, 10),
-        }),
-      });
+      const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+      const fetchWithTimeout = (url, options = {}, timeout = 10000) =>
+        Promise.race([
+          fetch(url, options),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timed out')), timeout)
+          ),
+        ]);
+
+      try {
+        const res = await fetchWithTimeout(
+          `${API}/api/departamentos`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nombre_departamento: nombre,
+              id_provincia: Number(provinciaIdSeleccionada),
+            }),
+            // credentials: 'include' // descomentar si usás cookies/sesiones
+          },
+          10000
+        );
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`API error ${res.status}: ${text}`);
+        }
+
+        const data = await res.json();
+        // manejar data (p. ej. actualizar estado)
+      } catch (err) {
+        console.error('Error al crear departamento:', err);
+        // mostrar feedback al usuario si corresponde
+      }
+
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setRegistros((prev) => [...prev, data]);

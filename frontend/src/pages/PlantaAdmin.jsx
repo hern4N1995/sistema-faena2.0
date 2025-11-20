@@ -130,29 +130,90 @@ export default function PlantaAdmin() {
   }, []);
 
   useEffect(() => {
-    const cargarPlantas = async () => {
+    const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    async function cargarPlantas() {
       try {
-        const res = await fetch('http://localhost:3000/api/plantas');
+        const timeout = (ms, promise) =>
+          Promise.race([
+            promise,
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Request timed out')), ms)
+            ),
+          ]);
+
+        const res = await timeout(
+          10000,
+          fetch(`${API}/api/plantas`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            signal,
+            // credentials: 'include' // descomentar si usás cookies/sesiones
+          })
+        );
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`API plantas ${res.status}: ${text}`);
+        }
+
         const data = await res.json();
-        setPlantas(data);
-      } catch (error) {
-        console.error('Error al cargar plantas:', error);
+        setPlantas(Array.isArray(data) ? data : []);
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('Error al cargar plantas:', err);
+        setMensajeFeedback?.('❌ Error al cargar plantas.'); // opcional: mostrar feedback si existe
+        setTimeout(() => setMensajeFeedback?.(''), 4000);
       }
-    };
+    }
+
     cargarPlantas();
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    const cargarProvincias = async () => {
+    const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const timeout = (ms, promise) =>
+      Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timed out')), ms)
+        ),
+      ]);
+
+    async function cargarProvincias() {
       try {
-        const res = await fetch('http://localhost:3000/api/provincias');
+        const res = await timeout(
+          10000,
+          fetch(`${API}/api/provincias`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            signal,
+          })
+        );
+
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`Provincias API ${res.status}: ${txt}`);
+        }
+
         const data = await res.json();
-        setProvincias(data);
-      } catch (error) {
-        console.error('Error al cargar provincias:', error);
+        setProvincias(Array.isArray(data) ? data : []);
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('Error al cargar provincias:', err);
+        setMensajeFeedback?.('❌ Error al cargar provincias.');
+        setTimeout(() => setMensajeFeedback?.(''), 4000);
       }
-    };
+    }
+
     cargarProvincias();
+    return () => controller.abort();
   }, []);
 
   const handleChange = (e) => {
@@ -166,30 +227,59 @@ export default function PlantaAdmin() {
   };
 
   const agregarPlanta = async () => {
-    if (!nuevaPlanta.nombre.trim()) return;
+    if (!nuevaPlanta.nombre?.trim()) return;
+
+    const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+    // Timeout helper
+    const fetchWithTimeout = (url, options = {}, timeout = 10000) =>
+      Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timed out')), timeout)
+        ),
+      ]);
+
     try {
-      const res = await fetch('http://localhost:3000/api/plantas', {
+      const payload = {
+        ...nuevaPlanta,
+        id_provincia: nuevaPlanta.provincia?.value ?? null,
+      };
+
+      const res = await fetchWithTimeout(`${API}/api/plantas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...nuevaPlanta,
-          id_provincia: nuevaPlanta.provincia?.value || '',
-        }),
+        body: JSON.stringify(payload),
+        // credentials: 'include' // descomentar si tu backend usa cookies/sesiones
       });
-      const data = await res.json();
-      if (res.ok) {
-        setPlantas([...plantas, data]);
-        setNuevaPlanta({
-          nombre: '',
-          provincia: null,
-          direccion: '',
-          fecha_habilitacion: '',
-          norma_legal: '',
-          estado: true,
-        });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`API error ${res.status}: ${text}`);
       }
-    } catch (error) {
-      console.error('Error al agregar planta:', error);
+
+      const data = await res.json();
+
+      // Actualización segura del estado (no mutar el array original)
+      setPlantas((prev) => (Array.isArray(prev) ? [...prev, data] : [data]));
+
+      // Reset del formulario de manera explícita
+      setNuevaPlanta({
+        nombre: '',
+        provincia: null,
+        direccion: '',
+        fecha_habilitacion: '',
+        norma_legal: '',
+        estado: true,
+      });
+
+      // Opcional: feedback de éxito
+      setMensajeFeedback?.('✅ Planta creada correctamente.');
+      setTimeout(() => setMensajeFeedback?.(''), 3000);
+    } catch (err) {
+      console.error('Error al agregar planta:', err);
+      setMensajeFeedback?.('❌ Error al crear la planta.');
+      setTimeout(() => setMensajeFeedback?.(''), 4000);
     }
   };
 

@@ -23,14 +23,52 @@ export default function AltaDepartamento({
     }
 
     try {
-      const res = await fetch('http://localhost:3000/api/departamentos', {
+      /*  const res = await fetch('http://localhost:3000/api/departamentos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nombre_departamento: nombre,
           id_provincia: parseInt(provinciaIdSeleccionada, 10), // conversión segura
         }),
-      });
+      }); */
+
+      const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+      function fetchWithTimeout(url, options = {}, timeout = 10000) {
+        return Promise.race([
+          fetch(url, options),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timed out')), timeout)
+          ),
+        ]);
+      }
+
+      try {
+        const res = await fetchWithTimeout(
+          `${API}/api/departamentos`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nombre_departamento: nombre,
+              id_provincia: Number(provinciaIdSeleccionada),
+            }),
+            // credentials: 'include'
+          },
+          10000
+        );
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`API error ${res.status}: ${errText}`);
+        }
+
+        const data = await res.json();
+        // manejar data
+      } catch (err) {
+        // manejar error (mostrar popup, console, etc.)
+        console.error('Error creando departamento:', err);
+      }
 
       const data = await res.json();
       if (res.ok) {

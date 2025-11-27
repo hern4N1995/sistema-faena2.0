@@ -8,27 +8,16 @@ const {
 } = require('../controllers/tropaDetalle.controller');
 const { verificarToken } = require('../middleware/auth');
 
-// Rutas:
-// PUT  /tropas/:tropaId/detalle/:detalleId
-// PATCH /tropas/:tropaId/detalle/:detalleId
-// DELETE /tropas/:tropaId/detalle/:detalleId
+// Rutas relativas: se espera que este router se monte en /api/tropas
+// PUT  /:tropaId/detalle/:detalleId
+// PATCH /:tropaId/detalle/:detalleId
+// DELETE /:tropaId/detalle/:detalleId
 
-router.put(
-  '/tropas/:tropaId/detalle/:detalleId',
-  verificarToken,
-  updateDetalle,
-);
-router.patch(
-  '/tropas/:tropaId/detalle/:detalleId',
-  verificarToken,
-  patchDetalle,
-);
-router.delete(
-  '/tropas/:tropaId/detalle/:detalleId',
-  verificarToken,
-  deleteDetalle,
-);
+router.put('/:tropaId/detalle/:detalleId', verificarToken, updateDetalle);
+router.patch('/:tropaId/detalle/:detalleId', verificarToken, patchDetalle);
+router.delete('/:tropaId/detalle/:detalleId', verificarToken, deleteDetalle);
 
+// Rutas alternativas planas (montadas en /api/tropas/tropa-detalle/:detalleId)
 router.put('/tropa-detalle/:detalleId', verificarToken, updateDetalle);
 router.patch('/tropa-detalle/:detalleId', verificarToken, patchDetalle);
 router.delete('/tropa-detalle/:detalleId', verificarToken, deleteDetalle);

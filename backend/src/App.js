@@ -208,6 +208,11 @@ const envOrigins = envOriginsRaw
       .filter(Boolean)
   : [];
 
+// Si tu frontend en Vercel usa este dominio, asegúrate de incluirlo en FRONTEND_ORIGINS o lo añadimos aquí
+if (!envOrigins.includes('https://sistema-faena2-0.vercel.app')) {
+  envOrigins.push('https://sistema-faena2-0.vercel.app');
+}
+
 // Sanitizar entradas: convertir a origin (scheme + host + port) y eliminar path si existe
 const allowedOrigins = envOrigins
   .map((o) => {
@@ -237,23 +242,16 @@ app.use((req, res, next) => {
     if (allowedOrigins.includes(origin)) {
       // Origen permitido: setear headers CORS
       res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      // Opcionales: exponer headers si los necesitas
-      // res.setHeader('Access-Control-Expose-Headers', 'Content-Length, X-Kuma-Revision');
-
-      if (req.method === 'OPTIONS') {
-        // Preflight: responder con los headers esperados
-        res.setHeader(
-          'Access-Control-Allow-Methods',
-          'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-        );
-        res.setHeader(
-          'Access-Control-Allow-Headers',
-          'Content-Type, Authorization, X-Requested-With',
-        );
-        return res.sendStatus(204);
-      }
-
+      res.setHeader('Access-Control-Allow-Credentials', 'true'); // si usas cookies / credentials
+      res.setHeader(
+        'Access-Control-Allow-Methods',
+        'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+      );
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization, X-Requested-With',
+      );
+      if (req.method === 'OPTIONS') return res.sendStatus(204);
       return next();
     } else {
       // Origen no permitido: registrar y continuar (no lanzar)

@@ -22,7 +22,7 @@ export default function LoginModal({ isOpen, onClose }) {
 
     setLoading(true);
     try {
-      const { data } = await api.post('/api/auth/login', { email, password });
+      const { data } = await api.post('/auth/login', { email, password });
       if (!data?.user || !data?.token) {
         throw new Error('Respuesta inválida del servidor');
       }

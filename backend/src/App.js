@@ -25,12 +25,14 @@ function safeRequire(p) {
 
 function toRouter(moduleExport) {
   if (!moduleExport) return null;
+  // Si ya es un router de express
   if (
     (typeof moduleExport === 'object' || typeof moduleExport === 'function') &&
     typeof moduleExport.use === 'function'
   ) {
     return moduleExport;
   }
+  // Si exporta una función que recibe router (pattern)
   if (typeof moduleExport === 'function') {
     try {
       const tmp = require('express').Router();
@@ -165,29 +167,45 @@ function safeMount(appInstance, mountPath, moduleExport, originalPath) {
 }
 
 /* ---------------------------
-   Cargar rutas
+   Cargar rutas (intento seguro)
    --------------------------- */
 
-const authRoutes = safeRequire('./routes/auth.routes');
-const usuarioRoutes = safeRequire('./routes/usuario.routes');
-const tropaRoutes = safeRequire('./routes/tropa.routes');
-const faenaRoutes = safeRequire('./routes/faena.routes');
-const plantaRoutes = safeRequire('./routes/planta.routes');
-const especieRoutes = safeRequire('./routes/especie.routes');
-const categoriaEspecieRoutes = safeRequire('./routes/categoriaEspecie.routes');
-const provinciaRoutes = safeRequire('./routes/provincia.routes');
-const departamentoRoutes = safeRequire('./routes/departamento.routes');
-const titularFaenaRoutes = safeRequire('./routes/titularFaena.routes');
-const productorRoutes = safeRequire('./routes/productor.routes');
-const decomisoRoutes = safeRequire('./routes/decomisos.routes');
-const afeccionRoutes = safeRequire('./routes/afeccion.routes');
-const veterinarioRoutes = safeRequire('./routes/veterinario.routes');
-const tipoParteDecoRoutes = safeRequire('./routes/tipoParteDeco.routes');
-const partesDecomisadasRoutes = safeRequire(
-  './routes/partesDecomisadas.routes',
-);
-const decomisoDetalleRoutes = safeRequire('./routes/decomisoDetalle.routes');
-const tropaDetalleRoutes = safeRequire('./routes/tropaDetalle.routes');
+// Intentamos cargar con safeRequire; si devuelve null, intentamos require directo para que el error sea visible
+function loadRoute(p) {
+  const r = safeRequire(p);
+  if (r) return r;
+  try {
+    const direct = require(p);
+    console.log('Direct require OK:', p);
+    return direct;
+  } catch (err) {
+    console.error(
+      'Direct require ERROR:',
+      p,
+      err && err.stack ? err.stack : err,
+    );
+    return null;
+  }
+}
+
+const authRoutes = loadRoute('./routes/auth.routes');
+const usuarioRoutes = loadRoute('./routes/usuario.routes');
+const tropaRoutes = loadRoute('./routes/tropa.routes');
+const faenaRoutes = loadRoute('./routes/faena.routes');
+const plantaRoutes = loadRoute('./routes/planta.routes');
+const especieRoutes = loadRoute('./routes/especie.routes');
+const categoriaEspecieRoutes = loadRoute('./routes/categoriaEspecie.routes');
+const provinciaRoutes = loadRoute('./routes/provincia.routes');
+const departamentoRoutes = loadRoute('./routes/departamento.routes');
+const titularFaenaRoutes = loadRoute('./routes/titularFaena.routes');
+const productorRoutes = loadRoute('./routes/productor.routes');
+const decomisoRoutes = loadRoute('./routes/decomisos.routes');
+const afeccionRoutes = loadRoute('./routes/afeccion.routes');
+const veterinarioRoutes = loadRoute('./routes/veterinario.routes');
+const tipoParteDecoRoutes = loadRoute('./routes/tipoParteDeco.routes');
+const partesDecomisadasRoutes = loadRoute('./routes/partesDecomisadas.routes');
+const decomisoDetalleRoutes = loadRoute('./routes/decomisoDetalle.routes');
+const tropaDetalleRoutes = loadRoute('./routes/tropaDetalle.routes');
 
 /* ---------------------------
    App y CORS manual
@@ -208,7 +226,7 @@ const envOrigins = envOriginsRaw
       .filter(Boolean)
   : [];
 
-// Si tu frontend en Vercel usa este dominio, asegúrate de incluirlo en FRONTEND_ORIGINS o lo añadimos aquí
+// Añadir dominio del frontend en Vercel si no está presente
 if (!envOrigins.includes('https://sistema-faena2-0.vercel.app')) {
   envOrigins.push('https://sistema-faena2-0.vercel.app');
 }
@@ -225,7 +243,7 @@ const allowedOrigins = envOrigins
   })
   .filter(Boolean);
 
-// Asegurar localhost por defecto
+// Asegurar localhost por defecto (dev)
 if (!allowedOrigins.includes('http://localhost:5173')) {
   allowedOrigins.unshift('http://localhost:5173');
 }
@@ -272,6 +290,7 @@ app.use((req, res, next) => {
    --------------------------- */
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
   res.json({
@@ -279,7 +298,7 @@ app.get('/', (req, res) => {
   });
 });
 
-/* Montar rutas con paths explícitos */
+/* Montar rutas con paths explícitos (usamos /api como prefijo) */
 safeMount(app, '/api/auth', authRoutes, './routes/auth.routes');
 safeMount(app, '/api/usuarios', usuarioRoutes, './routes/usuario.routes');
 safeMount(app, '/api/tropas', tropaRoutes, './routes/tropa.routes');
@@ -344,6 +363,77 @@ safeMount(
   tropaDetalleRoutes,
   './routes/tropaDetalle.routes',
 );
+
+/* ---------------------------
+   Endpoint de diagnóstico: listar rutas registradas
+   (se deja aquí, después de montar routers)
+   --------------------------- */
+app.get('/__routes', (req, res) => {
+  const routes = [];
+  if (!app._router) return res.json(routes);
+  app._router.stack.forEach((m) => {
+    if (m.route && m.route.path) {
+      routes.push({
+        path: m.route.path,
+        methods: Object.keys(m.route.methods),
+      });
+    } else if (m.name === 'router' && m.handle && m.handle.stack) {
+      m.handle.stack.forEach((r) => {
+        if (r.route) {
+          routes.push({
+            path: r.route.path,
+            methods: Object.keys(r.route.methods),
+          });
+        }
+      });
+    }
+  });
+  res.json(routes);
+});
+
+/* ---------------------------
+   Servir frontend estático (si existe)
+   Asegurate que la ruta apunte a la carpeta correcta del build del cliente.
+   --------------------------- */
+const clientDist = path.join(__dirname, '..', 'client', 'dist'); // ajustar si tu build está en otro lugar
+try {
+  // solo servir si la carpeta existe
+  const fs = require('fs');
+  if (fs.existsSync(clientDist)) {
+    app.use(express.static(clientDist));
+    // SPA fallback: servir index.html para rutas no API
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
+      res.sendFile(path.join(clientDist, 'index.html'));
+    });
+    console.log('Static client served from', clientDist);
+  } else {
+    console.log(
+      'No se encontró client dist en',
+      clientDist,
+      '- no se sirve frontend estático',
+    );
+  }
+} catch (e) {
+  console.error('Error comprobando client dist:', e && e.stack ? e.stack : e);
+}
+
+/* ---------------------------
+   Manejo de errores y 404 (al final)
+   --------------------------- */
+app.use((req, res, next) => {
+  // Si la ruta empieza con /api devolvemos JSON 404
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
+  // Para otras rutas, dejar que el static o SPA fallback las maneje; si no, 404 simple
+  res.status(404).send('Not Found');
+});
+
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err && err.stack ? err.stack : err);
+  res.status(500).json({ error: 'Internal server error' });
+});
 
 /* ---------------------------
    Arranque

@@ -146,7 +146,7 @@ export default function PlantaAdmin() {
 
         const res = await timeout(
           10000,
-          fetch(`${API}/api/plantas`, {
+          fetch(`${API}/plantas`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
             signal,
@@ -190,7 +190,7 @@ export default function PlantaAdmin() {
       try {
         const res = await timeout(
           10000,
-          fetch(`${API}/api/provincias`, {
+          fetch(`${API}/provincias`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
             signal,
@@ -246,7 +246,7 @@ export default function PlantaAdmin() {
         id_provincia: nuevaPlanta.provincia?.value ?? null,
       };
 
-      const res = await fetchWithTimeout(`${API}/api/plantas`, {
+      const res = await fetchWithTimeout(`${API}/plantas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -296,10 +296,7 @@ export default function PlantaAdmin() {
     };
 
     try {
-      const { data, status } = await api.put(
-        `/api/plantas/${editandoId}`,
-        payload
-      );
+      const { data, status } = await api.put(`/plantas/${editandoId}`, payload);
 
       // Asegurarse que la API devolvió la entidad actualizada (o al menos el id)
       const returnedId = data?.id ?? data?.id_planta ?? editandoId;
@@ -339,7 +336,7 @@ export default function PlantaAdmin() {
     if (!window.confirm('¿Está seguro de deshabilitar esta planta?')) return;
 
     try {
-      const { status, data } = await api.delete(`/api/plantas/${id}`);
+      const { status, data } = await api.delete(`/plantas/${id}`);
 
       if (status >= 200 && status < 300) {
         setPlantas((prev) =>

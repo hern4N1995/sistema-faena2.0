@@ -18,39 +18,41 @@ export default api;
 // src/services/api.js
 import axios from 'axios';
 
+// Base tomada de la variable de entorno inyectada por Vite en build time.
+// Fallback seguro para desarrollo local si la variable no fue inyectada.
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+// Log temporal para verificar en la consola del navegador qué base se usó en el build.
+// Elimina este console.log cuando confirmes que todo funciona.
+console.log('API base (build):', API_BASE);
 
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: 10000,
+  timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
-  // Habilitar solo si tu backend usa cookies/sesiones con credenciales CORS
+  // Cambia a true si tu backend usa cookies/sesiones y FRONTEND_ORIGINS está configurado correctamente
   withCredentials: false,
 });
 
-// Añade token Authorization si existe
+// Interceptor para añadir token Authorization si existe
 api.interceptors.request.use(
   (config) => {
     try {
       const token = localStorage.getItem('token');
-      // Asegurarse de que headers exista
       config.headers = config.headers || {};
       if (token) config.headers.Authorization = `Bearer ${token}`;
     } catch (e) {
-      // Ignorar si localStorage no está disponible (SSR, tests, etc.)
+      // noop en entornos donde localStorage no esté disponible
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Manejo central de errores (log + rethrow)
-// Nota: no transformamos la respuesta para mantener compatibilidad con código
-// que espera response.data en los consumidores.
+// Interceptor centralizado de respuestas para logging y rethrow
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Logueo útil para debugging en desarrollo; remover o ajustar en producción
     try {
       console.error(
         '[API error]',

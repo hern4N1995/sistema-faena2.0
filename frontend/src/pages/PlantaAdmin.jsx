@@ -1,6 +1,8 @@
+// src/components/PlantaAdmin.jsx
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import api from 'src/services/api';
+
 /* ------------------------------------------------------------------ */
 /*  SelectField con estilos visuales unificados                      */
 /* ------------------------------------------------------------------ */
@@ -104,6 +106,9 @@ function SelectField({
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Componente principal PlantaAdmin                                  */
+/* ------------------------------------------------------------------ */
 export default function PlantaAdmin() {
   const [plantas, setPlantas] = useState([]);
   const [provincias, setProvincias] = useState([]);
@@ -117,11 +122,16 @@ export default function PlantaAdmin() {
   });
   const [editandoId, setEditandoId] = useState(null);
   const [editado, setEditado] = useState({});
-  const [esMovil, setEsMovil] = useState(window.innerWidth < 768);
+  const [esMovil, setEsMovil] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
 
   const [filtroNombre, setFiltroNombre] = useState('');
   const [filtroProvincia, setFiltroProvincia] = useState('');
   const [filtroFecha, setFiltroFecha] = useState('');
+
+  // Mensajes de feedback
+  const [mensajeFeedback, setMensajeFeedback] = useState('');
 
   useEffect(() => {
     const handleResize = () => setEsMovil(window.innerWidth < 768);
@@ -129,116 +139,71 @@ export default function PlantaAdmin() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  /* ---------------------------
+     Cargar plantas (usa instancia axios central)
+     --------------------------- */
   useEffect(() => {
-    const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-    const controller = new AbortController();
-    const signal = controller.signal;
+    let mounted = true;
 
     async function cargarPlantas() {
       try {
-        const timeout = (ms, promise) =>
-          Promise.race([
-            promise,
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Request timed out')), ms)
-            ),
-          ]);
-
-        const res = await timeout(
-          10000,
-          fetch(`${API}/plantas`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            signal,
-            // credentials: 'include' // descomentar si usás cookies/sesiones
-          })
-        );
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`API plantas ${res.status}: ${text}`);
-        }
-
-        const data = await res.json();
+        const { data } = await api.get('/plantas'); // baseURL ya incluye /api si está configurado
+        if (!mounted) return;
         setPlantas(Array.isArray(data) ? data : []);
       } catch (err) {
-        if (err.name === 'AbortError') return;
+        if (!mounted) return;
         console.error('Error al cargar plantas:', err);
-        setMensajeFeedback?.('❌ Error al cargar plantas.'); // opcional: mostrar feedback si existe
-        setTimeout(() => setMensajeFeedback?.(''), 4000);
+        setMensajeFeedback('❌ Error al cargar plantas.');
+        setTimeout(() => setMensajeFeedback(''), 4000);
       }
     }
 
     cargarPlantas();
-    return () => controller.abort();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
+  /* ---------------------------
+     Cargar provincias
+     --------------------------- */
   useEffect(() => {
-    const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-    const controller = new AbortController();
-    const signal = controller.signal;
-
-    const timeout = (ms, promise) =>
-      Promise.race([
-        promise,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Request timed out')), ms)
-        ),
-      ]);
+    let mounted = true;
 
     async function cargarProvincias() {
       try {
-        const res = await timeout(
-          10000,
-          fetch(`${API}/provincias`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            signal,
-          })
-        );
-
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(`Provincias API ${res.status}: ${txt}`);
-        }
-
-        const data = await res.json();
+        const { data } = await api.get('/provincias');
+        if (!mounted) return;
         setProvincias(Array.isArray(data) ? data : []);
       } catch (err) {
-        if (err.name === 'AbortError') return;
+        if (!mounted) return;
         console.error('Error al cargar provincias:', err);
-        setMensajeFeedback?.('❌ Error al cargar provincias.');
-        setTimeout(() => setMensajeFeedback?.(''), 4000);
+        setMensajeFeedback('❌ Error al cargar provincias.');
+        setTimeout(() => setMensajeFeedback(''), 4000);
       }
     }
 
     cargarProvincias();
-    return () => controller.abort();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const val = type === 'checkbox' ? checked : value;
-    setNuevaPlanta({ ...nuevaPlanta, [name]: val });
+    setNuevaPlanta((prev) => ({ ...prev, [name]: val }));
   };
 
   const handleProvinciaChange = (selected) => {
-    setNuevaPlanta({ ...nuevaPlanta, provincia: selected });
+    setNuevaPlanta((prev) => ({ ...prev, provincia: selected }));
   };
 
+  /* ---------------------------
+     Agregar planta (usa api.post)
+     --------------------------- */
   const agregarPlanta = async () => {
     if (!nuevaPlanta.nombre?.trim()) return;
-
-    const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-
-    // Timeout helper
-    const fetchWithTimeout = (url, options = {}, timeout = 10000) =>
-      Promise.race([
-        fetch(url, options),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Request timed out')), timeout)
-        ),
-      ]);
 
     try {
       const payload = {
@@ -246,19 +211,7 @@ export default function PlantaAdmin() {
         id_provincia: nuevaPlanta.provincia?.value ?? null,
       };
 
-      const res = await fetchWithTimeout(`${API}/plantas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        // credentials: 'include' // descomentar si tu backend usa cookies/sesiones
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`API error ${res.status}: ${text}`);
-      }
-
-      const data = await res.json();
+      const { data } = await api.post('/plantas', payload);
 
       // Actualización segura del estado (no mutar el array original)
       setPlantas((prev) => (Array.isArray(prev) ? [...prev, data] : [data]));
@@ -273,19 +226,41 @@ export default function PlantaAdmin() {
         estado: true,
       });
 
-      // Opcional: feedback de éxito
-      setMensajeFeedback?.('✅ Planta creada correctamente.');
-      setTimeout(() => setMensajeFeedback?.(''), 3000);
+      // Feedback de éxito
+      setMensajeFeedback('✅ Planta creada correctamente.');
+      setTimeout(() => setMensajeFeedback(''), 3000);
     } catch (err) {
       console.error('Error al agregar planta:', err);
-      setMensajeFeedback?.('❌ Error al crear la planta.');
-      setTimeout(() => setMensajeFeedback?.(''), 4000);
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Error de conexión con el servidor.';
+      setMensajeFeedback(`❌ Error al crear la planta. ${msg}`);
+      setTimeout(() => setMensajeFeedback(''), 4000);
     }
   };
 
   const iniciarEdicion = (planta) => {
     setEditandoId(planta.id);
-    setEditado({ ...planta });
+    // Normalizar estructura de provincia para el editor si viene como objeto o string
+    const provinciaValue =
+      planta.provincia?.id ??
+      planta.id_provincia ??
+      planta.provincia?.value ??
+      null;
+    const provinciaLabel =
+      planta.provincia?.nombre ??
+      planta.provincia?.label ??
+      planta.nombre_provincia ??
+      null;
+    setEditado({
+      ...planta,
+      provincia:
+        provinciaValue !== null
+          ? { value: provinciaValue, label: provinciaLabel }
+          : null,
+    });
   };
 
   const guardarEdicion = async () => {
@@ -298,7 +273,6 @@ export default function PlantaAdmin() {
     try {
       const { data, status } = await api.put(`/plantas/${editandoId}`, payload);
 
-      // Asegurarse que la API devolvió la entidad actualizada (o al menos el id)
       const returnedId = data?.id ?? data?.id_planta ?? editandoId;
       if (
         status >= 200 &&
@@ -312,14 +286,15 @@ export default function PlantaAdmin() {
         );
         setEditandoId(null);
         setEditado({});
-        // opcional: setMensajeFeedback('✅ Cambios guardados.');
+        setMensajeFeedback('✅ Cambios guardados.');
+        setTimeout(() => setMensajeFeedback(''), 3000);
       } else {
-        // Si la API no devolvió la entidad esperada, manejarlo explícitamente
         console.warn('Respuesta inesperada al guardar edición', {
           status,
           data,
         });
-        // opcional: setMensajeFeedback('❌ No se pudo guardar la edición.');
+        setMensajeFeedback('❌ No se pudo guardar la edición.');
+        setTimeout(() => setMensajeFeedback(''), 3000);
       }
     } catch (err) {
       console.error('Error al guardar edición:', err);
@@ -328,7 +303,8 @@ export default function PlantaAdmin() {
         err.response?.data?.error ||
         err.message ||
         'Error de conexión con el servidor.';
-      // opcional: setMensajeFeedback(`❌ ${msg}`);
+      setMensajeFeedback(`❌ ${msg}`);
+      setTimeout(() => setMensajeFeedback(''), 4000);
     }
   };
 
@@ -344,12 +320,14 @@ export default function PlantaAdmin() {
             String(p.id) === String(id) ? { ...p, estado: false } : p
           )
         );
-        // opcional: setMensajeFeedback('✅ Planta deshabilitada.');
+        setMensajeFeedback('✅ Planta deshabilitada.');
+        setTimeout(() => setMensajeFeedback(''), 3000);
       } else {
         const msg =
           data?.message || data?.error || 'Error al deshabilitar la planta.';
         console.warn('Delete responded with non-2xx:', status, msg);
-        // opcional: setMensajeFeedback(`❌ ${msg}`);
+        setMensajeFeedback(`❌ ${msg}`);
+        setTimeout(() => setMensajeFeedback(''), 3000);
       }
     } catch (err) {
       console.error('Error al deshabilitar planta:', err);
@@ -358,22 +336,35 @@ export default function PlantaAdmin() {
         err.response?.data?.error ||
         err.message ||
         'Error de conexión con el servidor.';
-      // opcional: setMensajeFeedback(`❌ ${msg}`);
+      setMensajeFeedback(`❌ ${msg}`);
+      setTimeout(() => setMensajeFeedback(''), 4000);
     }
   };
 
+  /* ---------------------------
+     Filtrado seguro de plantas
+     --------------------------- */
   const plantasFiltradas = plantas.filter((p) => {
-    const coincideNombre = p.nombre
-      ?.toLowerCase()
-      .includes(filtroNombre.toLowerCase());
-    const coincideProvincia = p.provincia
-      ?.toLowerCase()
-      .includes(filtroProvincia.toLowerCase());
+    const nombre = (p.nombre || '').toString().toLowerCase();
+    const provinciaNombre =
+      (p.provincia && (p.provincia.nombre || p.provincia.label)) ||
+      p.nombre_provincia ||
+      '';
+    const provinciaStr = provinciaNombre.toString().toLowerCase();
+
+    const coincideNombre = nombre.includes(filtroNombre.toLowerCase());
+    const coincideProvincia = provinciaStr.includes(
+      filtroProvincia.toLowerCase()
+    );
     const coincideFecha = filtroFecha
-      ? p.fecha_habilitacion?.startsWith(filtroFecha)
+      ? (p.fecha_habilitacion || '').startsWith(filtroFecha)
       : true;
     return coincideNombre && coincideProvincia && coincideFecha;
   });
+
+  /* ---------------------------
+     Render (UI)
+     --------------------------- */
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -381,6 +372,13 @@ export default function PlantaAdmin() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-2 mb-4">
             🏭 Administración de Plantas
           </h1>
+
+          {/* Feedback */}
+          {mensajeFeedback && (
+            <div className="mb-4 text-sm">
+              <strong>{mensajeFeedback}</strong>
+            </div>
+          )}
 
           {/* Formulario */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -410,7 +408,7 @@ export default function PlantaAdmin() {
               onChange={handleProvinciaChange}
               options={provincias.map((p) => ({
                 value: p.id,
-                label: p.descripcion,
+                label: p.descripcion ?? p.nombre ?? String(p.id),
               }))}
               placeholder="Seleccionar provincia"
             />
@@ -459,7 +457,7 @@ export default function PlantaAdmin() {
                 <input
                   type="checkbox"
                   name="estado"
-                  checked={nuevaPlanta.estado}
+                  checked={Boolean(nuevaPlanta.estado)}
                   onChange={handleChange}
                 />
                 <span className="text-sm text-gray-700">Habilitada</span>
@@ -499,6 +497,7 @@ export default function PlantaAdmin() {
               className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
             />
           </div>
+
           {/* Lista de plantas */}
           {esMovil ? (
             <div className="space-y-4">
@@ -600,7 +599,7 @@ export default function PlantaAdmin() {
                             <option value="">Seleccionar provincia</option>
                             {provincias.map((prov) => (
                               <option key={prov.id} value={prov.id}>
-                                {prov.descripcion}
+                                {prov.descripcion ?? prov.nombre}
                               </option>
                             ))}
                           </select>

@@ -261,28 +261,33 @@ const AgregarUsuarioPage = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  // Obtener usuarios
   const fetchUsuarios = async () => {
     try {
-      const res = await fetch('/usuarios?estado=all');
-      if (!res.ok) throw new Error('No se pudieron cargar los usuarios');
-      const data = await res.json();
+      const res = await api.get('/usuarios', { params: { estado: 'all' } });
+      const data = res.data;
       setUsuarios(Array.isArray(data) ? data : []);
     } catch (e) {
       setUsuarios([]);
       openErrorModal(
         'Error al listar usuarios',
-        e.message || 'Intenta nuevamente'
+        e?.response?.data?.error || e?.message || 'Intenta nuevamente'
       );
     }
   };
 
+  // Obtener plantas
   const fetchPlantas = async () => {
     try {
-      const res = await fetch('/plantas');
-      const data = await res.json();
+      const res = await api.get('/plantas');
+      const data = res.data;
       setPlantas(Array.isArray(data) ? data : []);
-    } catch {
-      openErrorModal('Error al listar plantas', 'Intenta nuevamente');
+    } catch (e) {
+      setPlantas([]);
+      openErrorModal(
+        'Error al listar plantas',
+        e?.response?.data?.error || e?.message || 'Intenta nuevamente'
+      );
     }
   };
 
@@ -332,24 +337,25 @@ const AgregarUsuarioPage = () => {
     return true;
   };
 
+  // Envío del formulario (crear / editar)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateFormBeforeSubmit()) return;
 
     const url = editandoId ? `/usuarios/${editandoId}` : '/usuarios';
-    const method = editandoId ? 'PUT' : 'POST';
+    const method = editandoId ? 'put' : 'post';
+
     try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const body = await tryReadJson(res);
-        throw new Error(
-          body?.error || body?.message || 'Error al guardar usuario'
-        );
+      // Normalizar id_planta si viene como objeto Select
+      const payload = { ...form };
+      if (payload.id_planta && typeof payload.id_planta === 'object') {
+        payload.id_planta =
+          payload.id_planta.value ?? payload.id_planta.id_planta;
       }
+
+      const res = await api[method](url, payload);
+      // si necesitás leer res.data lo podés usar: const body = res.data;
+
       setForm({
         nombre: '',
         apellido: '',
@@ -372,7 +378,10 @@ const AgregarUsuarioPage = () => {
       );
       showToast('success', 'Guardado');
     } catch (err) {
-      openErrorModal('No se pudo guardar', err.message || 'Revisa los datos.');
+      openErrorModal(
+        'No se pudo guardar',
+        err?.response?.data?.error || err?.message || 'Revisa los datos.'
+      );
     }
   };
 
@@ -423,18 +432,13 @@ const AgregarUsuarioPage = () => {
     });
   };
 
+  // Eliminar / desactivar usuario
   const confirmEliminarNow = async () => {
     const id = confirmDelete.id;
     setConfirmDelete({ open: false, id: null, nombre: '' });
     if (!id) return;
     try {
-      const res = await fetch(`/usuarios/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const body = await tryReadJson(res);
-        throw new Error(
-          body?.error || body?.message || 'Error al eliminar usuario'
-        );
-      }
+      await api.delete(`/usuarios/${id}`);
       await fetchUsuarios();
       openSuccessModal(
         'Perfil desactivado',
@@ -446,7 +450,7 @@ const AgregarUsuarioPage = () => {
     } catch (err) {
       openErrorModal(
         'No se pudo desactivar el usuario',
-        err.message || 'Intenta de nuevo.'
+        err?.response?.data?.error || err?.message || 'Intenta de nuevo.'
       );
     }
   };

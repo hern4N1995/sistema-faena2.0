@@ -2,6 +2,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 
 /* ---------------------------
    Helpers seguros
@@ -170,7 +171,6 @@ function safeMount(appInstance, mountPath, moduleExport, originalPath) {
    Cargar rutas (intento seguro)
    --------------------------- */
 
-// Intentamos cargar con safeRequire; si devuelve null, intentamos require directo para que el error sea visible
 function loadRoute(p) {
   const r = safeRequire(p);
   if (r) return r;
@@ -370,24 +370,41 @@ safeMount(
    --------------------------- */
 app.get('/__routes', (req, res) => {
   const routes = [];
-  if (!app._router) return res.json(routes);
-  app._router.stack.forEach((m) => {
-    if (m.route && m.route.path) {
-      routes.push({
-        path: m.route.path,
-        methods: Object.keys(m.route.methods),
-      });
-    } else if (m.name === 'router' && m.handle && m.handle.stack) {
-      m.handle.stack.forEach((r) => {
-        if (r.route) {
-          routes.push({
-            path: r.route.path,
-            methods: Object.keys(r.route.methods),
-          });
+
+  function walk(stack, prefix = '') {
+    stack.forEach((layer) => {
+      if (!layer) return;
+      // rutas directas (layer.route)
+      if (layer.route && layer.route.path) {
+        const path =
+          prefix + (layer.route.path === '/' ? '' : layer.route.path);
+        routes.push({
+          path: path || '/',
+          methods: Object.keys(layer.route.methods || {}),
+        });
+      } else if (
+        layer.name === 'router' &&
+        layer.handle &&
+        layer.handle.stack
+      ) {
+        // intentar extraer el path del layer.regexp de forma segura
+        let layerPath = '';
+        try {
+          const re = String(layer.regexp || '');
+          // buscar el primer segmento entre barras, por ejemplo "/api" en "/^\/api\/.../"
+          const m = re.match(/\/([^\\\/]+)\//);
+          if (m && m[1]) {
+            layerPath = '/' + m[1];
+          }
+        } catch (e) {
+          // ignore extraction errors, no queremos romper el endpoint de diagnóstico
         }
-      });
-    }
-  });
+        walk(layer.handle.stack, prefix + layerPath);
+      }
+    });
+  }
+
+  if (app._router && app._router.stack) walk(app._router.stack, '');
   res.json(routes);
 });
 
@@ -397,8 +414,6 @@ app.get('/__routes', (req, res) => {
    --------------------------- */
 const clientDist = path.join(__dirname, '..', 'client', 'dist'); // ajustar si tu build está en otro lugar
 try {
-  // solo servir si la carpeta existe
-  const fs = require('fs');
   if (fs.existsSync(clientDist)) {
     app.use(express.static(clientDist));
     // SPA fallback: servir index.html para rutas no API

@@ -7,9 +7,9 @@ const {
   eliminarProvincia,
 } = require('../controllers/provincia.controller');
 
-router.get('/provincias', obtenerProvincias);
-router.post('/provincias', agregarProvincia);
-router.put('/provincias/:id', editarProvincia);
-router.delete('/provincias/:id', eliminarProvincia);
+router.get('/', obtenerProvincias);
+router.post('/', agregarProvincia);
+router.put('/:id', editarProvincia);
+router.delete('/:id', eliminarProvincia);
 
 module.exports = router;

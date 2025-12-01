@@ -11,21 +11,11 @@ const { verificarToken } = require('../middleware/auth');
 const { permitirRoles } = require('../middleware/roles');
 
 // Listado general (solo especies activas)
-router.get('/especies', verificarToken, getEspecies);
+router.get('/', verificarToken, getEspecies);
 
 // Administración (solo roles 1 y 2)
-router.post('/especies', verificarToken, permitirRoles(1, 2), registrarEspecie);
-router.put(
-  '/especies/:id',
-  verificarToken,
-  permitirRoles(1, 2),
-  actualizarEspecie,
-);
-router.delete(
-  '/especies/:id',
-  verificarToken,
-  permitirRoles(1, 2),
-  eliminarEspecie,
-);
+router.post('/', verificarToken, permitirRoles(1, 2), registrarEspecie);
+router.put('/:id', verificarToken, permitirRoles(1, 2), actualizarEspecie);
+router.delete('/:id', verificarToken, permitirRoles(1, 2), eliminarEspecie);
 
 module.exports = router;

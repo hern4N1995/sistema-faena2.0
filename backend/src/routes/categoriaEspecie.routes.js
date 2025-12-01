@@ -38,6 +38,6 @@ router.delete(
 );
 
 // Público: categorías por especie
-router.get('/especies/:id/categorias', verificarToken, getCategoriasPorEspecie);
+router.get('/:id/categorias', verificarToken, getCategoriasPorEspecie);
 
 module.exports = router;

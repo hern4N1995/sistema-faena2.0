@@ -12,16 +12,11 @@ const {
 } = require('../controllers/decomisos.controller');
 
 // 🔍 Combinaciones ya registradas en parte_deco_afeccion
-router.get(
-  '/combinaciones',
-  verificarToken,
-  permitirRoles(1),
-  obtenerCombinaciones,
-);
+router.get('/', verificarToken, permitirRoles(1), obtenerCombinaciones);
 
 // 📄 Info de faena por decomiso
 router.get(
-  '/decomiso/:id_decomiso/info-faena',
+  '/:id_decomiso/info-faena',
   verificarToken,
   permitirRoles(1),
   obtenerInfoFaenaPorDecomiso,

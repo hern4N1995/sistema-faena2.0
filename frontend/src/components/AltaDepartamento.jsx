@@ -45,7 +45,7 @@ export default function AltaDepartamento({
 
       try {
         const res = await fetchWithTimeout(
-          `${API}/api/departamentos`,
+          `${API}/departamentos`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

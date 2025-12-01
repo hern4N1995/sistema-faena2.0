@@ -93,7 +93,7 @@ export default function ProvinciaAdmin() {
 
     try {
       const res = await fetchWithTimeout(
-        `${API}/api/provincias`,
+        `${API}/provincias`,
         {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -160,7 +160,7 @@ export default function ProvinciaAdmin() {
 
       try {
         const res = await fetchWithTimeout(
-          `${API}/api/provincias`,
+          `${API}/provincias`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -203,7 +203,7 @@ export default function ProvinciaAdmin() {
     if (!confirmar) return;
 
     try {
-      const { status, data } = await api.delete(`/api/provincias/${id}`);
+      const { status, data } = await api.delete(`/provincias/${id}`);
 
       if (status >= 200 && status < 300) {
         setProvincias((prev) =>
@@ -247,7 +247,7 @@ export default function ProvinciaAdmin() {
     try {
       const payload = { descripcion: nuevaDesc };
       const { status, data } = await api.put(
-        `/api/provincias/${editandoId}`,
+        `/provincias/${editandoId}`,
         payload
       );
 

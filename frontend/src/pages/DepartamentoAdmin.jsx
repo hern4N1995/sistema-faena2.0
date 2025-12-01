@@ -231,12 +231,12 @@ export default function DepartamentoAdmin() {
             ),
           ]);
 
-        const reqDeptos = fetch(`${API}/api/departamentos`, {
+        const reqDeptos = fetch(`${API}/departamentos`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           signal,
         });
-        const reqProvincias = fetch(`${API}/api/provincias`, {
+        const reqProvincias = fetch(`${API}/provincias`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           signal,
@@ -339,7 +339,7 @@ export default function DepartamentoAdmin() {
 
       try {
         const res = await fetchWithTimeout(
-          `${API}/api/departamentos`,
+          `${API}/departamentos`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -387,7 +387,7 @@ export default function DepartamentoAdmin() {
     if (!id) return null;
 
     try {
-      const { data } = await api.get(`/api/provincias/${id}`);
+      const { data } = await api.get(`/provincias/${id}`);
       // Normalizar distintos formatos que pueda devolver la API
       // Puede ser: { descripcion, nombre, id_provincia } o { data: { ... } } o directamente entidad
       const payload = data?.data ?? data;
@@ -509,7 +509,7 @@ export default function DepartamentoAdmin() {
       setSavingEdit(true);
       try {
         const idProvNum = Number(idProv);
-        const { data } = await api.put(`/api/departamentos/${id}`, {
+        const { data } = await api.put(`/departamentos/${id}`, {
           nombre_departamento: nombre,
           id_provincia: Number.isNaN(idProvNum) ? null : idProvNum,
         });
@@ -569,7 +569,7 @@ export default function DepartamentoAdmin() {
         return;
 
       try {
-        const { status, data } = await api.delete(`/api/departamentos/${id}`);
+        const { status, data } = await api.delete(`/departamentos/${id}`);
 
         if (status >= 200 && status < 300) {
           setRegistros((prev) =>

@@ -48,7 +48,7 @@ export default function ProductorAdmin() {
 
   const fetchProductores = async () => {
     try {
-      const res = await fetch('/api/productores');
+      const res = await fetch('/productores');
       const data = await res.json();
       setProductores(Array.isArray(data) ? data : []);
     } catch {
@@ -65,9 +65,7 @@ export default function ProductorAdmin() {
     e.preventDefault();
     setMensaje('');
     setError('');
-    const url = editandoId
-      ? `/api/productores/${editandoId}`
-      : '/api/productores';
+    const url = editandoId ? `/productores/${editandoId}` : '/productores';
     const method = editandoId ? 'PUT' : 'POST';
     try {
       const res = await fetch(url, {
@@ -98,7 +96,7 @@ export default function ProductorAdmin() {
   const handleEliminar = async (id) => {
     if (!window.confirm('¿Seguro que deseas eliminar este productor?')) return;
     try {
-      const res = await fetch(`/api/productores/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/productores/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Error al eliminar productor');
       setPaginaActual(1);
       await fetchProductores();

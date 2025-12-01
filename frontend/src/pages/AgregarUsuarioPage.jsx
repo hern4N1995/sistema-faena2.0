@@ -1,6 +1,7 @@
 // AgregarUsuarioPage.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Select from 'react-select';
+import api from '../services/api.js';
 
 /* ------------------------------------------------------------------ */
 /*  UI helpers: Modal + Toast                                         */

@@ -18,23 +18,28 @@ export default api;
 // src/services/api.js
 import axios from 'axios';
 
-// Base tomada de la variable de entorno inyectada por Vite en build time.
-// Fallback seguro para desarrollo local si la variable no fue inyectada.
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+/**
+ * Base URL para el API:
+ * - Primero intenta VITE_API_BASE (recomendado).
+ * - Luego VITE_API_BASE_URL (compatibilidad con builds previos).
+ * - Fallback seguro a '/api' para entornos donde el backend se sirve bajo ese prefijo.
+ */
+const API_BASE =
+  import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || '/api';
 
-// Log temporal para verificar en la consola del navegador qué base se usó en el build.
-// Elimina este console.log cuando confirmes que todo funciona.
+// Log temporal para verificar en consola qué base se usó en el build.
+// Puedes eliminarlo cuando confirmes que todo funciona en producción.
 console.log('API base (build):', API_BASE);
 
 const api = axios.create({
   baseURL: API_BASE,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
-  // Cambia a true si tu backend usa cookies/sesiones y FRONTEND_ORIGINS está configurado correctamente
+  // Cambiar a true si el backend usa cookies/sesiones y CORS está configurado para permitir credentials
   withCredentials: false,
 });
 
-// Interceptor para añadir token Authorization si existe
+// Añadir token Authorization si existe en localStorage
 api.interceptors.request.use(
   (config) => {
     try {

@@ -28,8 +28,8 @@ router.patch('/:tropaId/detalle/:detalleId', verificarToken, patchDetalle);
 router.delete('/:tropaId/detalle/:detalleId', verificarToken, deleteDetalle);
 
 /* Rutas alternativas planas (útiles para llamadas directas sin tropaId) */
-router.put('/:detalleId', verificarToken, updateDetalle);
-router.patch('/:detalleId', verificarToken, patchDetalle);
-router.delete('/:detalleId', verificarToken, deleteDetalle);
+router.put('/tropa-detalle/:detalleId', verificarToken, updateDetalle);
+router.patch('/tropa-detalle/:detalleId', verificarToken, patchDetalle);
+router.delete('/tropa-detalle/:detalleId', verificarToken, deleteDetalle);
 
 module.exports = router;

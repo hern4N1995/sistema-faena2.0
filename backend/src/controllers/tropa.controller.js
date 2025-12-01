@@ -190,10 +190,28 @@ exports.getDetalle = async (req, res) => {
 };
 
 /* Obtener detalle agrupado (ej. sumar cantidades por especie/categoría) */
+// controllers/tropa.controller.js (reemplazar getDetalleAgrupado)
 exports.getDetalleAgrupado = async (req, res) => {
-  const { tropaId } = req.params;
+  // Aceptar varios nombres de parámetro y loguear para debugging
+  const rawId =
+    req.params.tropaId ?? req.params.id ?? req.params.tropa_id ?? null;
+  console.log(
+    '[getDetalleAgrupado] originalUrl=',
+    req.originalUrl,
+    'method=',
+    req.method,
+  );
+  console.log(
+    '[getDetalleAgrupado] params=',
+    req.params,
+    'rawId=',
+    rawId,
+    'query=',
+    req.query,
+  );
 
-  if (!/^\d+$/.test(tropaId)) {
+  const tropaId = Number(rawId);
+  if (!Number.isInteger(tropaId) || tropaId <= 0) {
     return res.status(400).json({ error: 'ID de tropa inválido' });
   }
 
@@ -209,7 +227,7 @@ exports.getDetalleAgrupado = async (req, res) => {
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
       WHERE t.id_tropa = $1
       `,
-      [parseInt(tropaId, 10)],
+      [tropaId],
     );
 
     if (tropaRes.rows.length === 0) {
@@ -234,7 +252,7 @@ exports.getDetalleAgrupado = async (req, res) => {
       GROUP BY td.id_especie, e.descripcion, td.id_cat_especie, ce.descripcion
       ORDER BY e.descripcion, ce.descripcion
       `,
-      [parseInt(tropaId, 10)],
+      [tropaId],
     );
 
     const categorias = detalleRes.rows.map((row) => ({
@@ -246,8 +264,8 @@ exports.getDetalleAgrupado = async (req, res) => {
       filas: parseInt(row.filas, 10) || 0,
     }));
 
-    res.status(200).json({
-      tropaId: parseInt(tropaId, 10),
+    return res.status(200).json({
+      tropaId,
       n_tropa,
       dte_dtu,
       fecha,
@@ -256,8 +274,8 @@ exports.getDetalleAgrupado = async (req, res) => {
       categorias,
     });
   } catch (err) {
-    console.error('Error en getDetalleAgrupado:', err);
-    res
+    console.error('Error en getDetalleAgrupado:', err && (err.stack || err));
+    return res
       .status(500)
       .json({ error: 'Error interno al obtener detalle agrupado' });
   }

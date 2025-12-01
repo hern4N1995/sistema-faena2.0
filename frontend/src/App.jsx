@@ -48,8 +48,9 @@ function App() {
             path="tropas-cargadas/modificar/:id"
             element={<DetalleTropa />}
           />
+          {/* Normalizado: usar :tropaId para que coincida con los controladores y rutas del backend */}
           <Route
-            path="/tropas-cargadas/resumen/:id"
+            path="tropas-cargadas/resumen/:tropaId"
             element={<InformeTropa />}
           />
 
@@ -57,8 +58,6 @@ function App() {
           <Route path="decomisos">
             <Route index element={<FaenasADecomisar />} />
             <Route path="nuevo/:id_faena" element={<DecomisoPage />} />
-            {/* <Route path="detalle/:idFaena" element={<DetalleDecomisoPage />} /> */}
-
             <Route path="detalle/:id" element={<DecomisoResumenPage />} />
             <Route path="cargados" element={<DecomisosCargadosPage />} />
           </Route>
@@ -71,7 +70,7 @@ function App() {
             <Route path=":idFaena" element={<DetalleFaenaPage />} />{' '}
             {/* modo edición */}
             <Route
-              path="/faena/faenas-realizadas"
+              path="faenas-realizadas"
               element={<FaenasRealizadasPage />}
             />
           </Route>
@@ -163,7 +162,7 @@ function App() {
           />
 
           <Route
-            path="/admin/especies"
+            path="admin/especies"
             element={
               <PrivateRoute allowedRoles={[1, 2]}>
                 <EspecieAdmin />
@@ -172,7 +171,7 @@ function App() {
           />
 
           <Route
-            path="/admin/categorias-especie"
+            path="admin/categorias-especie"
             element={
               <PrivateRoute allowedRoles={[1, 2]}>
                 <CategoriaEspecieAdmin />

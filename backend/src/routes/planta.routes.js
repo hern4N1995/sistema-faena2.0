@@ -7,9 +7,9 @@ const {
   eliminarPlanta,
 } = require('../controllers/planta.controller');
 
-router.get('/plantas', obtenerPlantas);
-router.post('/plantas', crearPlanta);
-router.put('/plantas/:id', modificarPlanta);
-router.delete('/plantas/:id', eliminarPlanta);
+router.get('/', obtenerPlantas);
+router.post('/', crearPlanta);
+router.put('/:id', modificarPlanta);
+router.delete('/:id', eliminarPlanta);
 
 module.exports = router;

@@ -7,9 +7,9 @@ const {
   eliminarTitular,
 } = require('../controllers/titularFaena.controller');
 
-router.get('/titulares-faena', obtenerTitulares);
-router.post('/titulares-faena', crearTitular);
-router.put('/titulares-faena/:id', modificarTitular);
-router.delete('/titulares-faena/:id', eliminarTitular);
+router.get('/', obtenerTitulares);
+router.post('/', crearTitular);
+router.put('/:id', modificarTitular);
+router.delete('/:id', eliminarTitular);
 
 module.exports = router;

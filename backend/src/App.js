@@ -324,12 +324,7 @@ safeMount(
   categoriaEspecieRoutes,
   './routes/categoriaEspecie.routes',
 );
-safeMount(
-  app,
-  '/api/productores',
-  productorRoutes,
-  './routes/productor.routes',
-);
+safeMount(app, '/productores', productorRoutes, './routes/productor.routes');
 safeMount(app, '/api/afecciones', afeccionRoutes, './routes/afeccion.routes');
 safeMount(
   app,

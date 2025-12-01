@@ -31,7 +31,7 @@ const DecomisosCargadosPage = () => {
       return;
     }
 
-    fetch('/api/decomisos', {
+    fetch('/decomisos', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {

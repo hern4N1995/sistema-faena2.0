@@ -120,8 +120,8 @@ export default function TitularAdmin() {
     const cargarDatos = async () => {
       try {
         const [resProvincias, resTitulares] = await Promise.all([
-          fetch('/api/provincias'),
-          fetch('/api/titulares-faena'),
+          fetch('/provincias'),
+          fetch('/titulares-faena'),
         ]);
         setProvinciasDB(await resProvincias.json());
         setTitulares(await resTitulares.json());
@@ -151,7 +151,7 @@ export default function TitularAdmin() {
       return;
     }
     try {
-      const res = await fetch('/api/titulares-faena', {
+      const res = await fetch('/titulares-faena', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -186,7 +186,7 @@ export default function TitularAdmin() {
 
   const guardarEdicion = async () => {
     try {
-      const res = await fetch(`/api/titulares-faena/${editandoId}`, {
+      const res = await fetch(`/titulares-faena/${editandoId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editado),
@@ -207,7 +207,7 @@ export default function TitularAdmin() {
   const eliminarTitular = async (id) => {
     if (!window.confirm('¿Eliminar este titular?')) return;
     try {
-      const res = await fetch(`/api/titulares-faena/${id}`, {
+      const res = await fetch(`/titulares-faena/${id}`, {
         method: 'DELETE',
       });
       if (res.ok) {

@@ -28,7 +28,7 @@ export default function ParteDecomisadaAdmin() {
 
   const loadList = async () => {
     try {
-      const res = await fetch('/api/partes-decomisadas', {
+      const res = await fetch('/partes-decomisadas', {
         headers: authHeaders(),
       });
       if (!res.ok) throw new Error('No se cargaron partes');
@@ -43,7 +43,7 @@ export default function ParteDecomisadaAdmin() {
 
   const loadTipos = async () => {
     try {
-      const res = await fetch('/api/tipos-parte-deco', {
+      const res = await fetch('/tipos-parte-deco', {
         headers: authHeaders(),
       });
       if (!res.ok) throw new Error('No se cargaron tipos');
@@ -86,8 +86,8 @@ export default function ParteDecomisadaAdmin() {
     try {
       const method = form.id_parte_decomisada ? 'PUT' : 'POST';
       const url = form.id_parte_decomisada
-        ? `/api/partes-decomisadas/${form.id_parte_decomisada}`
-        : '/api/partes-decomisadas';
+        ? `/partes-decomisadas/${form.id_parte_decomisada}`
+        : '/partes-decomisadas';
 
       const res = await fetch(url, {
         method,
@@ -132,7 +132,7 @@ export default function ParteDecomisadaAdmin() {
     };
 
     try {
-      const res = await fetch(`/api/partes-decomisadas/${id}`, {
+      const res = await fetch(`/partes-decomisadas/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload),
@@ -153,7 +153,7 @@ export default function ParteDecomisadaAdmin() {
   const handleDelete = async (id) => {
     if (!window.confirm('Eliminar parte (eliminación lógica)?')) return;
     try {
-      const res = await fetch(`/api/partes-decomisadas/${id}`, {
+      const res = await fetch(`/partes-decomisadas/${id}`, {
         method: 'DELETE',
         headers: authHeaders(),
       });

@@ -262,7 +262,7 @@ const AgregarUsuarioPage = () => {
 
   const fetchUsuarios = async () => {
     try {
-      const res = await fetch('/api/usuarios?estado=all');
+      const res = await fetch('/usuarios?estado=all');
       if (!res.ok) throw new Error('No se pudieron cargar los usuarios');
       const data = await res.json();
       setUsuarios(Array.isArray(data) ? data : []);
@@ -277,7 +277,7 @@ const AgregarUsuarioPage = () => {
 
   const fetchPlantas = async () => {
     try {
-      const res = await fetch('/api/plantas');
+      const res = await fetch('/plantas');
       const data = await res.json();
       setPlantas(Array.isArray(data) ? data : []);
     } catch {
@@ -335,7 +335,7 @@ const AgregarUsuarioPage = () => {
     e.preventDefault();
     if (!validateFormBeforeSubmit()) return;
 
-    const url = editandoId ? `/api/usuarios/${editandoId}` : '/api/usuarios';
+    const url = editandoId ? `/usuarios/${editandoId}` : '/usuarios';
     const method = editandoId ? 'PUT' : 'POST';
     try {
       const res = await fetch(url, {
@@ -427,7 +427,7 @@ const AgregarUsuarioPage = () => {
     setConfirmDelete({ open: false, id: null, nombre: '' });
     if (!id) return;
     try {
-      const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/usuarios/${id}`, { method: 'DELETE' });
       if (!res.ok) {
         const body = await tryReadJson(res);
         throw new Error(
@@ -482,7 +482,7 @@ const AgregarUsuarioPage = () => {
 
     try {
       // 1) PATCH mínimo (si existe)
-      let res = await fetch(`/api/usuarios/${usuario.id_usuario}`, {
+      let res = await fetch(`/usuarios/${usuario.id_usuario}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: nuevoEstado }),
@@ -529,7 +529,7 @@ const AgregarUsuarioPage = () => {
         };
         delete payloadPut.planta_nombre;
 
-        const putRes = await fetch(`/api/usuarios/${usuario.id_usuario}`, {
+        const putRes = await fetch(`/usuarios/${usuario.id_usuario}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payloadPut),

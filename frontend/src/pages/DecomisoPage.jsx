@@ -366,7 +366,7 @@ export default function DecomisoPage() {
         const token = localStorage.getItem('token') || '';
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        const resFaena = await fetch(`/api/faena/${id_faena}/decomiso-datos`, {
+        const resFaena = await fetch(`/faena/${id_faena}/decomiso-datos`, {
           headers,
         });
         const faena = await resFaena.json();
@@ -386,7 +386,7 @@ export default function DecomisoPage() {
           setDatosFaena(faena);
         }
 
-        const resBase = await fetch('/api/decomisos/datos-base', { headers });
+        const resBase = await fetch('/decomisos/datos-base', { headers });
         const base = await resBase.json();
         setTiposParte(Array.isArray(base?.tiposParte) ? base.tiposParte : []);
         setPartes(Array.isArray(base?.partes) ? base.partes : []);
@@ -645,7 +645,7 @@ export default function DecomisoPage() {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
-      const res = await fetch('/api/decomisos', {
+      const res = await fetch('/decomisos', {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),

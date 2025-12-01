@@ -20,7 +20,7 @@ export default function CategoriaEspecieAdmin() {
 
   const fetchCategorias = async () => {
     try {
-      const res = await fetch('/api/categorias-especie', {
+      const res = await fetch('/categorias-especie', {
         headers: getTokenHeaders(),
       });
       const data = await res.json();
@@ -32,7 +32,7 @@ export default function CategoriaEspecieAdmin() {
 
   const fetchEspecies = async () => {
     try {
-      const res = await fetch('/api/especies', { headers: getTokenHeaders() });
+      const res = await fetch('/especies', { headers: getTokenHeaders() });
       const data = await res.json();
       setEspecies(data);
     } catch {
@@ -66,8 +66,8 @@ export default function CategoriaEspecieAdmin() {
     };
 
     const url = editandoId
-      ? `/api/categorias-especie/${editandoId}`
-      : '/api/categorias-especie';
+      ? `/categorias-especie/${editandoId}`
+      : '/categorias-especie';
     const method = editandoId ? 'PUT' : 'POST';
 
     try {
@@ -97,7 +97,7 @@ export default function CategoriaEspecieAdmin() {
     if (!window.confirm('¿Eliminar esta categoría de forma lógica?')) return;
 
     try {
-      const res = await fetch(`/api/categorias-especie/${id}`, {
+      const res = await fetch(`/categorias-especie/${id}`, {
         method: 'DELETE',
         headers: getTokenHeaders(),
       });

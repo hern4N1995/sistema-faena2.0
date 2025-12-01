@@ -145,9 +145,7 @@ export default function FaenasRealizadasPage() {
       if (filtro.n_tropa?.trim()) params.n_tropa = filtro.n_tropa;
 
       const query = new URLSearchParams(params).toString();
-      const url = query
-        ? `/api/faenas-realizadas?${query}`
-        : `/api/faenas-realizadas`;
+      const url = query ? `/faenas-realizadas?${query}` : `/faenas-realizadas`;
       const res = await fetch(url);
       const data = await res.json();
 

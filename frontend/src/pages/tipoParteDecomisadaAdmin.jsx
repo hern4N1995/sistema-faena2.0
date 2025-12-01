@@ -26,7 +26,7 @@ export default function TipoParteDecoAdmin() {
 
   const loadTipos = async () => {
     try {
-      const res = await fetch('/api/tipos-parte-deco', {
+      const res = await fetch('/tipos-parte-deco', {
         headers: authHeaders(),
       });
       if (!res.ok) throw new Error('No se cargaron tipos');
@@ -42,7 +42,7 @@ export default function TipoParteDecoAdmin() {
   const loadPartesIfNeeded = async () => {
     // Si en el futuro necesitás partes aquí, descomenta y usa fetchPartes
     try {
-      const res = await fetch('/api/partes-decomisadas', {
+      const res = await fetch('/partes-decomisadas', {
         headers: authHeaders(),
       });
       if (!res.ok) return setPartes([]);
@@ -82,8 +82,8 @@ export default function TipoParteDecoAdmin() {
     try {
       const method = form.id_tipo_parte_deco ? 'PUT' : 'POST';
       const url = form.id_tipo_parte_deco
-        ? `/api/tipos-parte-deco/${form.id_tipo_parte_deco}`
-        : '/api/tipos-parte-deco';
+        ? `/tipos-parte-deco/${form.id_tipo_parte_deco}`
+        : '/tipos-parte-deco';
 
       const res = await fetch(url, {
         method,
@@ -135,7 +135,7 @@ export default function TipoParteDecoAdmin() {
     };
 
     try {
-      const res = await fetch(`/api/tipos-parte-deco/${id}`, {
+      const res = await fetch(`/tipos-parte-deco/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload),
@@ -156,7 +156,7 @@ export default function TipoParteDecoAdmin() {
   const handleDelete = async (id) => {
     if (!window.confirm('Eliminar tipo (eliminación lógica)?')) return;
     try {
-      const res = await fetch(`/api/tipos-parte-deco/${id}`, {
+      const res = await fetch(`/tipos-parte-deco/${id}`, {
         method: 'DELETE',
         headers: authHeaders(),
       });

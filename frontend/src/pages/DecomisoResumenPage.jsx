@@ -30,7 +30,7 @@ const DecomisoResumenPage = () => {
 
     const token = localStorage.getItem('token');
 
-    fetch(`/api/decomisos/${id}/resumen`, {
+    fetch(`/decomisos/${id}/resumen`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {

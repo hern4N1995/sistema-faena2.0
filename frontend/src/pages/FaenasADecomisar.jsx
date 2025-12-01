@@ -31,7 +31,7 @@ export default function FaenasADecomisar() {
   const fetchFaenas = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/faenas-sin-decomiso', {
+      const res = await fetch('/faenas-sin-decomiso', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       const data = await res.json();

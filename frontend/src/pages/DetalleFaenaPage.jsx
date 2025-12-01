@@ -11,7 +11,7 @@ const DetalleFaenaPage = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    fetch(`/api/tropas/${idTropa}/detalle`, {
+    fetch(`/tropas/${idTropa}/detalle`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
@@ -44,7 +44,7 @@ const DetalleFaenaPage = () => {
     }
 
     try {
-      const res = await fetch('/api/faena/faena', {
+      const res = await fetch('/faena/faena', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

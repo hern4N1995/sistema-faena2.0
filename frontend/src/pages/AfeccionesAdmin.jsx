@@ -133,7 +133,7 @@ const AfeccionesAdmin = () => {
 
   const fetchAfecciones = async () => {
     try {
-      const res = await fetch('/api/afecciones', {
+      const res = await fetch('/afecciones', {
         headers: getTokenHeaders(),
       });
       const data = await res.json();
@@ -145,7 +145,7 @@ const AfeccionesAdmin = () => {
 
   const fetchEspecies = async () => {
     try {
-      const res = await fetch('/api/especies', { headers: getTokenHeaders() });
+      const res = await fetch('/especies', { headers: getTokenHeaders() });
       const data = await res.json();
       setEspecies(Array.isArray(data) ? data : []);
     } catch {
@@ -184,7 +184,7 @@ const AfeccionesAdmin = () => {
 
     try {
       const res = await fetch(
-        editandoId ? `/api/afecciones/${editandoId}` : '/api/afecciones',
+        editandoId ? `/afecciones/${editandoId}` : '/afecciones',
         {
           method: editandoId ? 'PUT' : 'POST',
           headers: {
@@ -206,7 +206,7 @@ const AfeccionesAdmin = () => {
   const handleEliminar = async (id) => {
     if (!window.confirm('¿Eliminar esta afección?')) return;
     try {
-      const res = await fetch(`/api/afecciones/${id}`, {
+      const res = await fetch(`/afecciones/${id}`, {
         method: 'DELETE',
         headers: getTokenHeaders(),
       });

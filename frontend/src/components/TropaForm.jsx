@@ -248,8 +248,8 @@ function InlineCreateModal({
       const candidates = [
         '/productores',
         '/productores/productores',
-        '/api/productores',
-        '/api/productores/productores',
+        '/productores',
+        '/productores/productores',
       ];
       let list = [];
       for (const p of candidates) {
@@ -643,8 +643,8 @@ export default function TropaForm({ onCreated }) {
     const candidates = [
       '/productores',
       '/productores/productores',
-      '/api/productores',
-      '/api/productores/productores',
+      '/productores',
+      '/productores/productores',
     ];
     for (const path of candidates) {
       try {

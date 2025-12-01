@@ -8,7 +8,7 @@ const EnfermedadesDecomisoPage = () => {
 
   useEffect(() => {
     const fetchEnfermedades = async () => {
-      const res = await fetch('/api/enfermedades-con-organos');
+      const res = await fetch('/enfermedades-con-organos');
       const data = await res.json();
       setEnfermedades(data);
     };
@@ -38,7 +38,7 @@ const EnfermedadesDecomisoPage = () => {
       };
     });
 
-    await fetch('/api/decomiso/enfermedades', {
+    await fetch('/decomiso/enfermedades', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

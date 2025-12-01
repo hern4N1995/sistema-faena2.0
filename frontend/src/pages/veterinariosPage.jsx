@@ -35,7 +35,7 @@ const VeterinariosPage = () => {
 
   const fetchVeterinarios = async () => {
     try {
-      const res = await fetch('/api/veterinarios', {
+      const res = await fetch('/veterinarios', {
         headers: { ...getAuthHeaders() },
       });
       if (!res.ok) throw new Error('Error al cargar veterinarios');
@@ -50,7 +50,7 @@ const VeterinariosPage = () => {
 
   const fetchPlantas = async () => {
     try {
-      const res = await fetch('/api/plantas', {
+      const res = await fetch('/plantas', {
         headers: { ...getAuthHeaders() },
       });
       if (!res.ok) throw new Error('Error al cargar plantas');
@@ -94,9 +94,7 @@ const VeterinariosPage = () => {
       return;
     }
 
-    const url = editandoId
-      ? `/api/veterinarios/${editandoId}`
-      : '/api/veterinarios';
+    const url = editandoId ? `/veterinarios/${editandoId}` : '/veterinarios';
     const method = editandoId ? 'PUT' : 'POST';
 
     try {
@@ -146,7 +144,7 @@ const VeterinariosPage = () => {
     if (!window.confirm('¿Seguro que deseas eliminar este veterinario?'))
       return;
     try {
-      const res = await fetch(`/api/veterinarios/${id}`, {
+      const res = await fetch(`/veterinarios/${id}`, {
         method: 'DELETE',
         headers: { ...getAuthHeaders() },
       });

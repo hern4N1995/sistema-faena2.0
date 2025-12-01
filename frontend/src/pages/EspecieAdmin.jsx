@@ -19,7 +19,7 @@ export default function EspecieAdmin() {
 
   const fetchEspecies = async () => {
     try {
-      const res = await fetch('/api/especies', { headers: getTokenHeaders() });
+      const res = await fetch('/especies', { headers: getTokenHeaders() });
       const data = await res.json();
       setEspecies(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -51,7 +51,7 @@ export default function EspecieAdmin() {
     }
 
     const payload = { descripcion: form.descripcion.trim() };
-    const url = editandoId ? `/api/especies/${editandoId}` : '/api/especies';
+    const url = editandoId ? `/especies/${editandoId}` : '/especies';
     const method = editandoId ? 'PUT' : 'POST';
 
     try {
@@ -82,7 +82,7 @@ export default function EspecieAdmin() {
     if (!window.confirm('¿Eliminar esta especie de forma lógica?')) return;
 
     try {
-      const res = await fetch(`/api/especies/${id}`, {
+      const res = await fetch(`/especies/${id}`, {
         method: 'DELETE',
         headers: getTokenHeaders(),
       });

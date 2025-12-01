@@ -248,8 +248,8 @@ function InlineCreateModal({
       const candidates = [
         '/productores',
         '/productores/productores',
-        '/productores',
-        '/productores/productores',
+        /* '/productores',
+        '/productores/productores', */
       ];
       let list = [];
       for (const p of candidates) {

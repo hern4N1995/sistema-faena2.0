@@ -26,23 +26,31 @@ function safeRequire(p) {
 
 function toRouter(moduleExport) {
   if (!moduleExport) return null;
+
+  // Soporte para exportaciones ES Module: moduleExport.default
+  const candidate =
+    moduleExport && moduleExport.default ? moduleExport.default : moduleExport;
+
   // Si ya es un router de express
   if (
-    (typeof moduleExport === 'object' || typeof moduleExport === 'function') &&
-    typeof moduleExport.use === 'function'
+    (typeof candidate === 'object' || typeof candidate === 'function') &&
+    typeof candidate.use === 'function'
   ) {
-    return moduleExport;
+    return candidate;
   }
+
   // Si exporta una función que recibe router (pattern)
-  if (typeof moduleExport === 'function') {
+  if (typeof candidate === 'function') {
     try {
       const tmp = require('express').Router();
-      moduleExport(tmp);
+      // Si la función espera (app) en lugar de (router), intentar pasar router igualmente.
+      candidate(tmp);
       if (typeof tmp.use === 'function') return tmp;
     } catch (e) {
       // no convertible
     }
   }
+
   return null;
 }
 
@@ -324,7 +332,13 @@ safeMount(
   categoriaEspecieRoutes,
   './routes/categoriaEspecie.routes',
 );
-safeMount(app, '/productores', productorRoutes, './routes/productor.routes');
+// CORRECCIÓN: montar productores bajo /api/productores para mantener consistencia
+safeMount(
+  app,
+  '/api/productores',
+  productorRoutes,
+  './routes/productor.routes',
+);
 safeMount(app, '/api/afecciones', afeccionRoutes, './routes/afeccion.routes');
 safeMount(
   app,

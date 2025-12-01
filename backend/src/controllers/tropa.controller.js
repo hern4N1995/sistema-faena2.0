@@ -1,25 +1,32 @@
+// controllers/tropa.controller.js
 const pool = require('../db');
 
-// Obtener todas las tropas
+/*
+  Controlador de Tropas - versión corregida y consistente:
+  - Usa `tropaId` como nombre de parámetro en las rutas que lo requieren.
+  - Devuelve `id` en las consultas principales para mantener consistencia con el frontend.
+  - Validaciones robustas de parámetros y manejo de errores claro.
+*/
+
+/* Obtener todas las tropas */
 exports.getAll = async (req, res) => {
   try {
-    // GET /tropas  -> controllers/tropa.controller.js (getAll)
     const result = await pool.query(`
-  SELECT
-    t.id_tropa,
-    t.n_tropa,
-    t.fecha,
-    t.dte_dtu,
-    tf.nombre AS titular,
-    pr.nombre AS productor_nombre,
-    p.id_planta,
-    p.nombre AS planta_nombre
-  FROM tropa t
-  LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
-  LEFT JOIN productor pr ON t.id_productor = pr.id_productor
-  LEFT JOIN planta p ON t.id_planta = p.id_planta
-  ORDER BY t.fecha DESC
-`);
+      SELECT
+        t.id_tropa AS id,
+        t.n_tropa,
+        t.fecha,
+        t.dte_dtu,
+        tf.nombre AS titular,
+        pr.nombre AS productor_nombre,
+        p.id_planta,
+        p.nombre AS planta_nombre
+      FROM tropa t
+      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      LEFT JOIN productor pr ON t.id_productor = pr.id_productor
+      LEFT JOIN planta p ON t.id_planta = p.id_planta
+      ORDER BY t.fecha DESC
+    `);
     res.json(result.rows);
   } catch (err) {
     console.error('Error al obtener tropas:', err);
@@ -27,12 +34,12 @@ exports.getAll = async (req, res) => {
   }
 };
 
-// Obtener todos los detalles de todas las tropas
+/* Obtener todos los detalles de todas las tropas */
 exports.getTodosLosDetalles = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        td.id_tropa_detalle,
+        td.id_tropa_detalle AS id,
         td.id_tropa,
         t.n_tropa,
         t.fecha,
@@ -55,7 +62,7 @@ exports.getTodosLosDetalles = async (req, res) => {
   }
 };
 
-// Crear una nueva tropa
+/* Crear una nueva tropa */
 exports.createTropa = async (req, res) => {
   const {
     dte_dtu,
@@ -76,7 +83,7 @@ exports.createTropa = async (req, res) => {
         id_departamento, id_productor, id_planta
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id_tropa`,
+      RETURNING id_tropa AS id`,
       [
         dte_dtu,
         guia_policial,
@@ -91,7 +98,7 @@ exports.createTropa = async (req, res) => {
 
     res.status(201).json({
       message: 'Tropa creada correctamente',
-      id_tropa: result.rows[0].id_tropa,
+      id: result.rows[0].id,
     });
   } catch (err) {
     console.error('Error al crear tropa:', err);
@@ -99,7 +106,7 @@ exports.createTropa = async (req, res) => {
   }
 };
 
-// Obtener tropa por ID
+/* Obtener tropa por ID */
 exports.getById = async (req, res) => {
   const { id } = req.params;
 
@@ -113,7 +120,7 @@ exports.getById = async (req, res) => {
     const result = await pool.query(
       `
       SELECT 
-        t.id_tropa,
+        t.id_tropa AS id,
         t.n_tropa,
         t.dte_dtu,
         t.fecha,
@@ -126,7 +133,7 @@ exports.getById = async (req, res) => {
       LEFT JOIN productor pr ON t.id_productor = pr.id_productor
       WHERE t.id_tropa = $1
     `,
-      [parseInt(id)],
+      [parseInt(id, 10)],
     );
 
     if (result.rows.length === 0) {
@@ -140,10 +147,130 @@ exports.getById = async (req, res) => {
   }
 };
 
-// Guardar detalle de tropa
+/* Obtener detalle simple de una tropa (lista de items) */
+exports.getDetalle = async (req, res) => {
+  const { tropaId } = req.params;
+
+  if (!/^\d+$/.test(tropaId)) {
+    return res.status(400).json({ error: 'ID de tropa inválido' });
+  }
+
+  try {
+    const q = `
+      SELECT
+        td.id_tropa_detalle AS id,
+        td.id_tropa,
+        td.id_especie,
+        e.descripcion AS especie,
+        td.id_cat_especie,
+        ce.descripcion AS categoria,
+        td.cantidad,
+        COALESCE((
+          SELECT SUM(fd.cantidad_faena)
+          FROM faena_detalle fd
+          WHERE fd.id_tropa_detalle = td.id_tropa_detalle
+        ), 0) AS faenados,
+        td.cantidad - COALESCE((
+          SELECT SUM(fd.cantidad_faena)
+          FROM faena_detalle fd
+          WHERE fd.id_tropa_detalle = td.id_tropa_detalle
+        ), 0) AS remanente
+      FROM tropa_detalle td
+      LEFT JOIN especie e ON td.id_especie = e.id_especie
+      LEFT JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
+      WHERE td.id_tropa = $1
+      ORDER BY e.descripcion, ce.descripcion
+    `;
+    const { rows } = await pool.query(q, [parseInt(tropaId, 10)]);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error al obtener detalle de tropa:', err);
+    res.status(500).json({ error: 'Error interno al obtener detalle' });
+  }
+};
+
+/* Obtener detalle agrupado (ej. sumar cantidades por especie/categoría) */
+exports.getDetalleAgrupado = async (req, res) => {
+  const { tropaId } = req.params;
+
+  if (!/^\d+$/.test(tropaId)) {
+    return res.status(400).json({ error: 'ID de tropa inválido' });
+  }
+
+  try {
+    const tropaRes = await pool.query(
+      `
+      SELECT 
+        t.n_tropa, 
+        t.dte_dtu, 
+        t.fecha, 
+        tf.nombre AS titular
+      FROM tropa t
+      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      WHERE t.id_tropa = $1
+      `,
+      [parseInt(tropaId, 10)],
+    );
+
+    if (tropaRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Tropa no encontrada' });
+    }
+
+    const { n_tropa, dte_dtu, fecha, titular } = tropaRes.rows[0];
+
+    const detalleRes = await pool.query(
+      `
+      SELECT
+        td.id_especie,
+        e.descripcion AS especie,
+        td.id_cat_especie,
+        ce.descripcion AS categoria,
+        SUM(td.cantidad) AS cantidad_total,
+        COUNT(td.*) AS filas
+      FROM tropa_detalle td
+      LEFT JOIN especie e ON td.id_especie = e.id_especie
+      LEFT JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
+      WHERE td.id_tropa = $1
+      GROUP BY td.id_especie, e.descripcion, td.id_cat_especie, ce.descripcion
+      ORDER BY e.descripcion, ce.descripcion
+      `,
+      [parseInt(tropaId, 10)],
+    );
+
+    const categorias = detalleRes.rows.map((row) => ({
+      id_especie: row.id_especie,
+      id_cat_especie: row.id_cat_especie,
+      especie: row.especie,
+      nombre: row.categoria,
+      remanente: parseInt(row.cantidad_total, 10) || 0,
+      filas: parseInt(row.filas, 10) || 0,
+    }));
+
+    res.status(200).json({
+      tropaId: parseInt(tropaId, 10),
+      n_tropa,
+      dte_dtu,
+      fecha,
+      titular,
+      especie: categorias[0]?.especie || '',
+      categorias,
+    });
+  } catch (err) {
+    console.error('Error en getDetalleAgrupado:', err);
+    res
+      .status(500)
+      .json({ error: 'Error interno al obtener detalle agrupado' });
+  }
+};
+
+/* Guardar detalle de tropa (array de detalles) */
 exports.saveDetalle = async (req, res) => {
   const { id } = req.params;
   const detalles = req.body;
+
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({ error: 'ID de tropa inválido' });
+  }
 
   if (!Array.isArray(detalles) || detalles.length === 0) {
     return res
@@ -160,9 +287,9 @@ exports.saveDetalle = async (req, res) => {
       if (
         !id_especie ||
         !id_cat_especie ||
-        !cantidad ||
+        cantidad == null ||
         isNaN(cantidad) ||
-        parseInt(cantidad) <= 0
+        parseInt(cantidad, 10) <= 0
       ) {
         console.warn('Detalle inválido omitido:', detalle);
         continue;
@@ -171,10 +298,14 @@ exports.saveDetalle = async (req, res) => {
       await pool.query(
         `INSERT INTO tropa_detalle (id_tropa, id_especie, id_cat_especie, cantidad)
          VALUES ($1, $2, $3, $4)`,
-        [parseInt(id), id_especie, id_cat_especie, parseInt(cantidad)],
+        [parseInt(id, 10), id_especie, id_cat_especie, parseInt(cantidad, 10)],
       );
 
-      detallesInsertados.push({ id_especie, id_cat_especie, cantidad });
+      detallesInsertados.push({
+        id_especie,
+        id_cat_especie,
+        cantidad: parseInt(cantidad, 10),
+      });
     }
 
     res.status(201).json({
@@ -188,14 +319,12 @@ exports.saveDetalle = async (req, res) => {
   }
 };
 
-// Obtener tropas de la planta del usuario logueado
+/* Obtener tropas de la planta del usuario logueado */
 exports.getByUsuarioPlanta = async (req, res) => {
   try {
     const id_usuario = req.user?.id_usuario;
     if (!id_usuario) return res.status(401).json({ error: 'No autenticado' });
 
-    // Obtener id_planta del usuario (puede venir ya en req.user si tu middleware lo setea)
-    // Si no está en req.user, obtenelo de la DB
     let id_planta = req.user.id_planta ?? null;
     if (!id_planta) {
       const uRes = await pool.query(
@@ -210,7 +339,7 @@ exports.getByUsuarioPlanta = async (req, res) => {
 
     const q = `
       SELECT
-        t.id_tropa,
+        t.id_tropa AS id,
         t.n_tropa,
         t.fecha,
         t.dte_dtu,
@@ -236,148 +365,11 @@ exports.getByUsuarioPlanta = async (req, res) => {
   }
 };
 
-// Obtener detalle agrupado (opcional)
-exports.getDetalleAgrupado = async (req, res) => {
-  const { id } = req.params;
-
-  if (!id || isNaN(id)) {
-    return res.status(400).json({ error: 'ID de tropa inválido' });
-  }
-
-  try {
-    const tropaRes = await pool.query(
-      `
-      SELECT 
-        t.n_tropa, 
-        t.dte_dtu, 
-        t.fecha, 
-        tf.nombre AS titular
-      FROM tropa t
-      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
-      WHERE t.id_tropa = $1
-      `,
-      [parseInt(id)],
-    );
-
-    if (tropaRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Tropa no encontrada' });
-    }
-
-    const { n_tropa, dte_dtu, fecha, titular } = tropaRes.rows[0];
-
-    const detalleRes = await pool.query(
-      `
-      SELECT 
-        td.id_tropa_detalle,
-        e.descripcion AS nombre_especie,
-        ce.descripcion AS nombre_categoria,
-        td.cantidad
-      FROM tropa_detalle td
-      JOIN especie e ON td.id_especie = e.id_especie
-      JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
-      WHERE td.id_tropa = $1
-      ORDER BY ce.descripcion
-      `,
-      [parseInt(id)],
-    );
-
-    const categorias = detalleRes.rows.map((row) => ({
-      id_tropa_detalle: row.id_tropa_detalle,
-      nombre: row.nombre_categoria,
-      remanente: row.cantidad,
-      especie: row.nombre_especie,
-    }));
-
-    res.status(200).json({
-      n_tropa,
-      dte_dtu,
-      fecha,
-      titular, // ✅ ahora sí se incluye correctamente
-      especie: categorias[0]?.especie || '',
-      categorias,
-    });
-  } catch (err) {
-    console.error('Error al obtener detalle agrupado:', err);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-};
-
-// Obtener detalle para DetalleFaenaPage
-exports.getDetalle = async (req, res) => {
-  const { id } = req.params;
-
-  if (!id || isNaN(id)) {
-    return res.status(400).json({ error: 'ID de tropa inválido' });
-  }
-
-  try {
-    const tropaRes = await pool.query(
-      `
-      SELECT id_tropa, n_tropa, dte_dtu, fecha
-      FROM tropa
-      WHERE id_tropa = $1
-    `,
-      [parseInt(id)],
-    );
-
-    if (tropaRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Tropa no encontrada' });
-    }
-
-    const { id_tropa, n_tropa, dte_dtu, fecha } = tropaRes.rows[0];
-
-    const detalleRes = await pool.query(
-      `
-  SELECT 
-    td.id_tropa_detalle,
-    e.descripcion AS nombre_especie,
-    ce.descripcion AS nombre_categoria,
-    td.cantidad,
-    COALESCE((
-      SELECT SUM(fd.cantidad_faena)
-      FROM faena_detalle fd
-      WHERE fd.id_tropa_detalle = td.id_tropa_detalle
-    ), 0) AS faenados,
-    td.cantidad - COALESCE((
-      SELECT SUM(fd.cantidad_faena)
-      FROM faena_detalle fd
-      WHERE fd.id_tropa_detalle = td.id_tropa_detalle
-    ), 0) AS remanente
-  FROM tropa_detalle td
-  JOIN especie e ON td.id_especie = e.id_especie
-  JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
-  WHERE td.id_tropa = $1
-  ORDER BY ce.descripcion
-  `,
-      [id_tropa],
-    );
-
-    const categorias = detalleRes.rows.map((row) => ({
-      id_tropa_detalle: row.id_tropa_detalle,
-      nombre: row.nombre_categoria,
-      remanente: row.remanente,
-      especie: row.nombre_especie,
-    }));
-
-    res.status(200).json({
-      id_tropa, // ✅ agregado
-      n_tropa,
-      dte_dtu,
-      fecha,
-      especie: categorias[0]?.especie || '',
-      categorias,
-    });
-  } catch (err) {
-    console.error('Error al obtener detalle de tropa:', err);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-};
-
-// Obtener titulares
+/* Obtener titulares */
 exports.getTitulares = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id_titular_faena, nombre FROM titular_faena ORDER BY nombre
+      SELECT id_titular_faena AS id, nombre FROM titular_faena ORDER BY nombre
     `);
     res.json(result.rows);
   } catch (err) {
@@ -386,11 +378,11 @@ exports.getTitulares = async (req, res) => {
   }
 };
 
-// Obtener departamentos
+/* Obtener departamentos */
 exports.getDepartamentos = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id_departamento, nombre_departamento FROM departamento
+      SELECT id_departamento AS id, nombre_departamento AS nombre FROM departamento
     `);
     res.json(result.rows);
   } catch (err) {
@@ -399,11 +391,11 @@ exports.getDepartamentos = async (req, res) => {
   }
 };
 
-// Obtener plantas
+/* Obtener plantas */
 exports.getPlantas = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id_planta, nombre FROM planta ORDER BY nombre
+      SELECT id_planta AS id, nombre FROM planta ORDER BY nombre
     `);
     res.json(result.rows);
   } catch (err) {
@@ -412,11 +404,11 @@ exports.getPlantas = async (req, res) => {
   }
 };
 
-// Obtener productores
+/* Obtener productores */
 exports.getProductores = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id_productor, nombre FROM productor ORDER BY nombre
+      SELECT id_productor AS id, nombre FROM productor ORDER BY nombre
     `);
     res.json(result.rows);
   } catch (err) {

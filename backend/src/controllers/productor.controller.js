@@ -1,10 +1,14 @@
+// controllers/productor.controller.js
 const pool = require('../db');
 
 // Obtener todos los productores activos
 const obtenerProductores = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id_productor, cuit, nombre
+      SELECT
+        id_productor AS id,
+        cuit,
+        nombre
       FROM productor
       WHERE estado = true
       ORDER BY nombre
@@ -33,13 +37,14 @@ const crearProductor = async (req, res) => {
       return res.status(409).json({ error: 'El productor ya está registrado' });
     }
 
-    await pool.query(
+    const insert = await pool.query(
       `INSERT INTO productor (cuit, nombre, estado, creado_en)
-       VALUES ($1, $2, true, NOW())`,
+       VALUES ($1, $2, true, NOW())
+       RETURNING id_productor AS id, cuit, nombre`,
       [cuit, nombre],
     );
 
-    res.status(201).json({ mensaje: 'Productor creado correctamente' });
+    res.status(201).json(insert.rows[0]);
   } catch (error) {
     console.error('Error al crear productor:', error);
     res.status(500).json({ error: 'Error al crear productor' });
@@ -56,13 +61,19 @@ const editarProductor = async (req, res) => {
   }
 
   try {
-    await pool.query(
-      `UPDATE productor SET cuit = $1, nombre = $2
-       WHERE id_productor = $3 AND estado = true`,
+    const update = await pool.query(
+      `UPDATE productor
+       SET cuit = $1, nombre = $2
+       WHERE id_productor = $3 AND estado = true
+       RETURNING id_productor AS id, cuit, nombre`,
       [cuit, nombre, id],
     );
 
-    res.json({ mensaje: 'Productor modificado correctamente' });
+    if (update.rowCount === 0) {
+      return res.status(404).json({ error: 'Productor no encontrado' });
+    }
+
+    res.json(update.rows[0]);
   } catch (error) {
     console.error('Error al editar productor:', error);
     res.status(500).json({ error: 'Error al editar productor' });
@@ -74,13 +85,22 @@ const eliminarProductor = async (req, res) => {
   const { id } = req.params;
 
   try {
-    await pool.query(
-      `UPDATE productor SET estado = false
-       WHERE id_productor = $1`,
+    const update = await pool.query(
+      `UPDATE productor
+       SET estado = false
+       WHERE id_productor = $1
+       RETURNING id_productor AS id`,
       [id],
     );
 
-    res.json({ mensaje: 'Productor eliminado correctamente' });
+    if (update.rowCount === 0) {
+      return res.status(404).json({ error: 'Productor no encontrado' });
+    }
+
+    res.json({
+      mensaje: 'Productor eliminado correctamente',
+      id: update.rows[0].id,
+    });
   } catch (error) {
     console.error('Error al eliminar productor:', error);
     res.status(500).json({ error: 'Error al eliminar productor' });

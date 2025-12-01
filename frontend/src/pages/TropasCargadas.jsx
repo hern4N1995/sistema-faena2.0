@@ -1,6 +1,4 @@
-// TropasCargadas.jsx — Paginación replicada desde FaenaPage (primeras 3 páginas, “…” y última)
-// Mantiene filtros, tabla/cards y SelectField con apariencia consistente
-
+// src/pages/TropasCargadas.jsx
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
@@ -200,7 +198,22 @@ export default function TropasCargadas() {
           });
         }
 
-        const ordenadas = arr.sort(
+        // Normalizar id: si backend devuelve id_tropa lo mapeamos a id
+        const normalized = arr
+          .map((t) => ({
+            ...t,
+            id: t.id ?? t.id_tropa ?? t.idTropa ?? null,
+            id_planta:
+              t.id_planta ??
+              t.planta_id ??
+              (t.planta && (t.planta.id_planta ?? t.planta.id)) ??
+              null,
+            productor_nombre: t.productor_nombre ?? t.productor ?? '',
+            titular: t.titular ?? t.titular_faena ?? '',
+          }))
+          .filter((t) => t.id != null); // opcional: filtrar registros sin id
+
+        const ordenadas = normalized.sort(
           (a, b) => new Date(b.fecha) - new Date(a.fecha)
         );
         setAllTropas(ordenadas);
@@ -305,28 +318,34 @@ export default function TropasCargadas() {
     return tropas.slice(start, start + pageSize);
   }, [tropas, currentPage, pageSize]);
 
-  const RowActions = ({ tropa }) => (
-    <div className="flex items-center justify-center gap-2">
-      <button
-        onClick={() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          navigate(`/tropas-cargadas/modificar/${tropa.id_tropa}`);
-        }}
-        className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-sm"
-      >
-        ✏️ Modificar
-      </button>
-      <button
-        onClick={() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          navigate(`/tropas-cargadas/resumen/${tropa.id_tropa}`);
-        }}
-        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-sm"
-      >
-        📄 Resumen
-      </button>
-    </div>
-  );
+  // RowActions: usar id normalizado (tropa.id) y fallback a id_tropa si hace falta
+  const RowActions = ({ tropa }) => {
+    const idToUse = tropa.id ?? tropa.id_tropa ?? tropa.idTropa;
+    return (
+      <div className="flex items-center justify-center gap-2">
+        <button
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // App.jsx espera /tropas-cargadas/modificar/:id
+            navigate(`/tropas-cargadas/modificar/${idToUse}`);
+          }}
+          className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-sm"
+        >
+          ✏️ Modificar
+        </button>
+        <button
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // App.jsx espera /tropas-cargadas/resumen/:tropaId
+            navigate(`/tropas-cargadas/resumen/${idToUse}`);
+          }}
+          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-sm"
+        >
+          📄 Resumen
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 sm:py-8 px-3 sm:px-4 lg:px-6 box-border">
@@ -337,325 +356,215 @@ export default function TropasCargadas() {
           </h1>
         </div>
 
-        {/* FILTROS */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
-          <div className="flex gap-3 w-full sm:w-auto flex-wrap">
-            <div className="w-full sm:w-auto">
-              <label className="block text-xs sm:text-sm text-gray-600 mb-1">
-                Desde
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className={INPUT_BASE_CLASS}
-                />
-                {startDate && (
-                  <button
-                    type="button"
-                    onClick={clearStartDate}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition"
-                    title="Limpiar fecha desde"
-                  >
-                    Limpiar
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="w-full sm:w-auto">
-              <label className="block text-xs sm:text-sm text-gray-600 mb-1">
-                Hasta
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className={INPUT_BASE_CLASS}
-                />
-                {endDate && (
-                  <button
-                    type="button"
-                    onClick={clearEndDate}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition"
-                    title="Limpiar fecha hasta"
-                  >
-                    Limpiar
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {rangeInvalid && (
-              <div className="text-xs sm:text-sm text-red-600 self-center">
-                Rango inválido
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-3 w-full sm:w-1/2 items-start">
-            <div className="flex-1 w-full">
-              <label className="block text-xs sm:text-sm text-gray-600 mb-1">
-                Buscar por N° Tropa / DTE / productor
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="search"
-                  placeholder="Ej: 123 / 2023-ABC / Pérez"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className={`w-full sm:w-2/3 ${INPUT_BASE_CLASS}`}
-                />
-                {query && (
-                  <button
-                    type="button"
-                    onClick={clearQuery}
-                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition"
-                    title="Limpiar búsqueda"
-                  >
-                    Limpiar
-                  </button>
-                )}
-
-                <div className="w-32 sm:w-40">
-                  <label className="sr-only">Cant. filas</label>
-                  <SelectField
-                    value={selectedPageSizeOption}
-                    onChange={(sel) => {
-                      const next = sel ? Number(sel.value) : pageSize;
-                      setPageSize(next);
-                    }}
-                    options={pageSizeOptions}
-                    placeholder="Cant. filas"
-                    className=""
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Filtros */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <input
+            className={INPUT_BASE_CLASS}
+            placeholder="Buscar por productor, DTE/DTU o nro tropa"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <input
+            type="date"
+            className={INPUT_BASE_CLASS}
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+          <input
+            type="date"
+            className={INPUT_BASE_CLASS}
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+          <SelectField
+            value={selectedPageSizeOption}
+            onChange={(opt) => setPageSize(opt ? opt.value : 7)}
+            options={pageSizeOptions}
+            placeholder="Tamaño página"
+            className=""
+          />
         </div>
 
-        {loading && (
-          <div className="text-center py-6 text-gray-500">
-            Cargando tropas...
-          </div>
-        )}
-        {error && <div className="text-center py-4 text-red-600">{error}</div>}
-
-        {!loading && paginatedTropas.length === 0 && !error ? (
-          <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-gray-200 rounded-full mb-3">
-              <span className="text-xl">🐄</span>
-            </div>
-            <p className="text-gray-500 text-sm sm:text-lg">
-              No hay tropas registradas para tu planta
-            </p>
-            <p className="text-gray-400 text-xs sm:text-sm mt-1">
-              Ajustá los filtros para ampliar la búsqueda
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Desktop: tabla */}
-            <div className="hidden sm:block">
-              <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-x-auto">
-                <table
-                  style={{ minWidth: 0, width: '100%' }}
-                  className="min-w-full text-xs sm:text-sm text-gray-700"
-                >
-                  <thead className="bg-green-700 text-white uppercase tracking-wide text-[10px] sm:text-xs">
-                    <tr>
-                      <th className="px-2 sm:px-3 py-2 text-left">#</th>
-                      <th className="px-2 sm:px-3 py-2 text-left">N° Tropa</th>
-                      <th className="px-2 sm:px-3 py-2 text-left">Fecha</th>
-                      <th className="px-2 sm:px-3 py-2 text-left">Productor</th>
-                      <th className="px-2 sm:px-3 py-2 text-left">Titular</th>
-                      <th className="px-2 sm:px-3 py-2 text-left">DTE/DTU</th>
-                      <th className="px-2 sm:px-3 py-2 text-center">
-                        Acciones
-                      </th>
+        {/* Tabla */}
+        <div className="bg-white rounded-lg shadow p-4">
+          {loading ? (
+            <div className="text-center py-8">Cargando...</div>
+          ) : error ? (
+            <div className="text-center text-red-600 py-8">{error}</div>
+          ) : tropas.length === 0 ? (
+            <div className="text-center py-8">No hay tropas</div>
+          ) : (
+            <>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-600">
+                    <th className="py-2">Nro Tropa</th>
+                    <th className="py-2">Fecha</th>
+                    <th className="py-2">Productor</th>
+                    <th className="py-2 text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedTropas.map((t) => (
+                    <tr key={t.id ?? t.id_tropa} className="border-t">
+                      <td className="py-3">{t.n_tropa}</td>
+                      <td className="py-3">
+                        {t.fecha ? new Date(t.fecha).toLocaleDateString() : ''}
+                      </td>
+                      <td className="py-3">{t.productor_nombre}</td>
+                      <td className="py-3 text-center">
+                        <RowActions tropa={t} />
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {paginatedTropas.map((tropa, i) => (
-                      <tr
-                        key={tropa.id_tropa}
-                        className="hover:bg-green-50 transition"
-                      >
-                        <td className="px-2 sm:px-3 py-2">
-                          {(currentPage - 1) * pageSize + (i + 1)}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 font-semibold text-green-700">
-                          {tropa.n_tropa}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2">
-                          {tropa.fecha
-                            ? new Date(tropa.fecha).toLocaleDateString('es-AR')
-                            : '—'}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 truncate max-w-xs break-words">
-                          {tropa.productor_nombre || tropa.productor || '—'}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 truncate max-w-xs break-words">
-                          {tropa.titular || '—'}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 text-[11px] sm:text-sm text-gray-700 break-words">
-                          {tropa.dte_dtu || '—'}
-                        </td>
-                        <td className="px-2 sm:px-3 py-2 text-center">
-                          <RowActions tropa={tropa} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  ))}
+                </tbody>
+              </table>
 
-            {/* Mobile: cards */}
-            <div className="block sm:hidden">
-              <div
-                className="space-y-3 px-0"
-                style={{ boxSizing: 'border-box', maxWidth: '100%' }}
-              >
-                {paginatedTropas.map((tropa) => (
-                  <div
-                    key={tropa.id_tropa}
-                    className="group bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 p-2 text-xs border border-gray-100 hover:border-green-200 max-w-full box-border"
+              {/* Mobile: cards */}
+              <div className="block sm:hidden">
+                <div
+                  className="space-y-3 px-0"
+                  style={{ boxSizing: 'border-box', maxWidth: '100%' }}
+                >
+                  {paginatedTropas.map((tropa) => (
+                    <div
+                      key={tropa.id ?? tropa.id_tropa}
+                      className="group bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 p-2 text-xs border border-gray-100 hover:border-green-200 max-w-full box-border"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center space-x-1">
+                          <span className="font-bold text-green-700 text-sm">
+                            {tropa.n_tropa}
+                          </span>
+                          <span className="px-1.5 py-0.5 bg-green-100 text-green-800 text-[10px] font-medium rounded-full">
+                            {tropa.fecha
+                              ? new Date(tropa.fecha).toLocaleDateString(
+                                  'es-AR'
+                                )
+                              : '—'}
+                          </span>
+                        </div>
+                        <div className="w-2 h-2 bg-green-400 rounded-full transition-colors" />
+                      </div>
+
+                      <div className="space-y-1 mb-2">
+                        <div className="flex items-start space-x-1">
+                          <span className="text-gray-400 text-[11px] mt-0.5">
+                            👤
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-gray-800 text-[11px] truncate">
+                              Titular
+                            </p>
+                            <p className="text-gray-700 font-medium text-[11px] truncate">
+                              {tropa.titular || '—'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start space-x-1">
+                          <span className="text-gray-400 text-[11px] mt-0.5">
+                            🏠
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-gray-800 text-[11px]">
+                              Productor
+                            </p>
+                            <p className="text-gray-600 text-[11px] truncate">
+                              {tropa.productor_nombre || tropa.productor || '—'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start space-x-1">
+                          <span className="text-gray-400 text-[11px] mt-0.5">
+                            📄
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-gray-800 text-[11px]">
+                              DTE/DTU
+                            </p>
+                            <p className="text-gray-600 text-[11px] truncate">
+                              {tropa.dte_dtu || '—'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-100">
+                        <RowActions tropa={tropa} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Paginación replicada de FaenaPage */}
+              {tropas.length > pageSize && (
+                <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                      currentPage === 1
+                        ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                        : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                    }`}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center space-x-1">
-                        <span className="font-bold text-green-700 text-sm">
-                          {tropa.n_tropa}
-                        </span>
-                        <span className="px-1.5 py-0.5 bg-green-100 text-green-800 text-[10px] font-medium rounded-full">
-                          {tropa.fecha
-                            ? new Date(tropa.fecha).toLocaleDateString('es-AR')
-                            : '—'}
-                        </span>
-                      </div>
-                      <div className="w-2 h-2 bg-green-400 rounded-full transition-colors" />
-                    </div>
+                    ← Anterior
+                  </button>
 
-                    <div className="space-y-1 mb-2">
-                      <div className="flex items-start space-x-1">
-                        <span className="text-gray-400 text-[11px] mt-0.5">
-                          👤
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-800 text-[11px] truncate">
-                            Titular
-                          </p>
-                          <p className="text-gray-700 font-medium text-[11px] truncate">
-                            {tropa.titular || '—'}
-                          </p>
-                        </div>
-                      </div>
+                  {[...Array(Math.min(3, totalPages))].map((_, i) => {
+                    const page = i + 1;
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                          currentPage === page
+                            ? 'bg-green-700 text-white shadow'
+                            : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
 
-                      <div className="flex items-start space-x-1">
-                        <span className="text-gray-400 text-[11px] mt-0.5">
-                          🏠
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-800 text-[11px]">
-                            Productor
-                          </p>
-                          <p className="text-gray-600 text-[11px] truncate">
-                            {tropa.productor_nombre || tropa.productor || '—'}
-                          </p>
-                        </div>
-                      </div>
+                  {totalPages > 3 && (
+                    <>
+                      <span className="text-slate-500 text-sm">…</span>
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                          currentPage === totalPages
+                            ? 'bg-green-700 text-white shadow'
+                            : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                        }`}
+                      >
+                        {totalPages}
+                      </button>
+                    </>
+                  )}
 
-                      <div className="flex items-start space-x-1">
-                        <span className="text-gray-400 text-[11px] mt-0.5">
-                          📄
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-800 text-[11px]">
-                            DTE/DTU
-                          </p>
-                          <p className="text-gray-600 text-[11px] truncate">
-                            {tropa.dte_dtu || '—'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-gray-100">
-                      <RowActions tropa={tropa} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Paginación replicada de FaenaPage */}
-            {tropas.length > pageSize && (
-              <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                  disabled={currentPage === 1}
-                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                    currentPage === 1
-                      ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                  }`}
-                >
-                  ← Anterior
-                </button>
-
-                {[...Array(Math.min(3, totalPages))].map((_, i) => {
-                  const page = i + 1;
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                        currentPage === page
-                          ? 'bg-green-700 text-white shadow'
-                          : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-
-                {totalPages > 3 && (
-                  <>
-                    <span className="text-slate-500 text-sm">…</span>
-                    <button
-                      onClick={() => setCurrentPage(totalPages)}
-                      className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                        currentPage === totalPages
-                          ? 'bg-green-700 text-white shadow'
-                          : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                      }`}
-                    >
-                      {totalPages}
-                    </button>
-                  </>
-                )}
-
-                <button
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(p + 1, totalPages))
-                  }
-                  disabled={currentPage === totalPages}
-                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                    currentPage === totalPages
-                      ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                  }`}
-                >
-                  Siguiente →
-                </button>
-              </div>
-            )}
-          </>
-        )}
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(p + 1, totalPages))
+                    }
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                      currentPage === totalPages
+                        ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                        : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                    }`}
+                  >
+                    Siguiente →
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

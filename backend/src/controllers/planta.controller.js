@@ -1,3 +1,4 @@
+// controllers/planta.controller.js
 const pool = require('../db');
 
 // Obtener todas las plantas
@@ -5,10 +6,10 @@ const obtenerPlantas = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        p.id_planta,
+        p.id_planta AS id,
         p.nombre,
         p.id_provincia,
-        pr.descripcion AS provincia,
+        pr.descripcion AS nombre_provincia,
         p.direccion,
         p.fecha_habilitacion,
         p.norma_legal,
@@ -49,7 +50,7 @@ const crearPlanta = async (req, res) => {
       )
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING 
-        id_planta,
+        id_planta AS id,
         nombre,
         id_provincia,
         direccion,
@@ -95,7 +96,7 @@ const modificarPlanta = async (req, res) => {
            estado = $6
        WHERE id_planta = $7
        RETURNING 
-         id_planta,
+         id_planta AS id,
          nombre,
          id_provincia,
          direccion,
@@ -124,7 +125,7 @@ const modificarPlanta = async (req, res) => {
   }
 };
 
-// Eliminar planta
+// Eliminar planta (marcar como deshabilitada)
 const eliminarPlanta = async (req, res) => {
   const { id } = req.params;
   try {
@@ -132,7 +133,7 @@ const eliminarPlanta = async (req, res) => {
       `UPDATE planta
        SET estado = false
        WHERE id_planta = $1
-       RETURNING id_planta`,
+       RETURNING id_planta AS id`,
       [id],
     );
 
@@ -140,12 +141,10 @@ const eliminarPlanta = async (req, res) => {
       return res.status(404).json({ error: 'Planta no encontrada' });
     }
 
-    res
-      .status(200)
-      .json({
-        message: 'Planta deshabilitada correctamente',
-        id_planta: update.rows[0].id_planta,
-      });
+    res.status(200).json({
+      message: 'Planta deshabilitada correctamente',
+      id: update.rows[0].id,
+    });
   } catch (error) {
     console.error('Error al deshabilitar planta:', error.message);
     res.status(500).json({ error: 'Error al deshabilitar planta' });

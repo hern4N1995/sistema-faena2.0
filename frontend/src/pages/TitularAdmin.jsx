@@ -118,19 +118,40 @@ export default function TitularAdmin() {
   }, []);
 
   useEffect(() => {
-    const cargarDatos = async () => {
+    let mounted = true;
+
+    async function cargarDatos() {
       try {
+        // Pedidos en paralelo con axios (usa baseURL de src/services/api)
         const [resProvincias, resTitulares] = await Promise.all([
-          await api.get('/provincias'),
-          await api.get('/titulares-faena'),
+          api.get('/provincias', { timeout: 10000 }),
+          api.get('/titulares-faena', { timeout: 10000 }),
         ]);
-        setProvinciasDB(await resProvincias.json());
-        setTitulares(await resTitulares.json());
-      } catch (error) {
-        console.error('Error al cargar datos:', error);
+
+        if (!mounted) return;
+
+        const provincias = resProvincias?.data ?? [];
+        const titulares = resTitulares?.data ?? [];
+
+        setProvincias(Array.isArray(provincias) ? provincias : []);
+        setTitulares(Array.isArray(titulares) ? titulares : []);
+      } catch (err) {
+        if (!mounted) return;
+        // Ignorar cancelaciones si las hubiera
+        if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
+        console.error('Error al cargar datos:', err);
+        setMensajeFeedback(
+          '❌ Error al cargar datos. Revisá la conexión o el servidor.'
+        );
+        setTimeout(() => setMensajeFeedback(''), 4000);
       }
-    };
+    }
+
     cargarDatos();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleChange = (e) => {

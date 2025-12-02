@@ -218,18 +218,18 @@ export default function DepartamentoAdmin() {
 
   useEffect(() => {
     let mounted = true;
-    const source = api.CancelToken.source?.() ?? null; // si tu axios soporta CancelToken
+    const controller = new AbortController(); // estándar web
 
     async function cargarDatos() {
       try {
-        // axios soporta timeout por request; aquí 10s
+        // axios acepta `signal` (v0.22+ / v1+)
         const reqDeptos = api.get('/departamentos', {
           timeout: 10000,
-          cancelToken: source?.token,
+          signal: controller.signal,
         });
         const reqProvincias = api.get('/provincias', {
           timeout: 10000,
-          cancelToken: source?.token,
+          signal: controller.signal,
         });
 
         const [resDeptos, resProvincias] = await Promise.all([
@@ -250,8 +250,8 @@ export default function DepartamentoAdmin() {
         setProvinciasDB(Array.isArray(provincias) ? provincias : []);
       } catch (err) {
         if (!mounted) return;
-        // axios distingue cancelación
-        if (api.isCancel && api.isCancel(err)) return;
+        // si fue abortado, no mostrar error
+        if (err.name === 'CanceledError' || err.name === 'AbortError') return;
         console.error('Carga de datos falló:', err);
         setMensajeFeedback('❌ Error al conectar con el servidor.');
         setTimeout(() => setMensajeFeedback(''), 4000);
@@ -263,8 +263,8 @@ export default function DepartamentoAdmin() {
     return () => {
       mounted = false;
       try {
-        source?.cancel?.('component unmounted');
-      } catch {}
+        controller.abort();
+      } catch (e) {}
     };
   }, []);
 

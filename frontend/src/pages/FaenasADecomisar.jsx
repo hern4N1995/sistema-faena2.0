@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 const useMediaQuery = (query) => {
   const [matches, setMatches] = useState(
@@ -31,7 +32,7 @@ export default function FaenasADecomisar() {
   const fetchFaenas = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/faenas-sin-decomiso', {
+      const res = await api.get('/faenas-sin-decomiso', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       const data = await res.json();

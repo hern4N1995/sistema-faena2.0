@@ -50,7 +50,7 @@ const VeterinariosPage = () => {
 
   const fetchPlantas = async () => {
     try {
-      const res = await fetch('/plantas', {
+      const res = await api.get('/plantas', {
         headers: { ...getAuthHeaders() },
       });
       if (!res.ok) throw new Error('Error al cargar plantas');

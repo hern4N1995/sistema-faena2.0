@@ -108,6 +108,7 @@ export default function TitularAdmin() {
   const [editado, setEditado] = useState({});
   const [esMovil, setEsMovil] = useState(window.innerWidth < 768);
 
+  const [mensajeFeedback, setMensajeFeedback] = useState('');
   const [paginaActual, setPaginaActual] = useState(1);
   const itemsPorPagina = esMovil ? 4 : 6;
 
@@ -131,10 +132,10 @@ export default function TitularAdmin() {
         if (!mounted) return;
 
         const provincias = resProvincias?.data ?? [];
-        const titulares = resTitulares?.data ?? [];
+        const titularesData = resTitulares?.data ?? [];
 
-        setProvincias(Array.isArray(provincias) ? provincias : []);
-        setTitulares(Array.isArray(titulares) ? titulares : []);
+        setProvinciasDB(Array.isArray(provincias) ? provincias : []);
+        setTitulares(Array.isArray(titularesData) ? titularesData : []);
       } catch (err) {
         if (!mounted) return;
         // Ignorar cancelaciones si las hubiera

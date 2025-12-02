@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Select from 'react-select';
+import api from 'src/services/api';
 
 /* ------------------------------------------------------------------ */
 /*  SelectField estilizado                                            */
@@ -206,7 +207,7 @@ const AfeccionesAdmin = () => {
   const handleEliminar = async (id) => {
     if (!window.confirm('¿Eliminar esta afección?')) return;
     try {
-      const res = await fetch(`/afecciones/${id}`, {
+      const res = await api(`/afecciones/${id}`, {
         method: 'DELETE',
         headers: getTokenHeaders(),
       });

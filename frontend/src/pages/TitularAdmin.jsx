@@ -267,12 +267,38 @@ export default function TitularAdmin() {
     });
     setEditado({ ...t });
 
-    // Scroll to top form
+    // Scroll so the form's top is at the top of the viewport (account for fixed header if any)
     if (formRef?.current) {
-      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      try {
+        const rect = formRef.current.getBoundingClientRect();
+        const top = window.pageYOffset + rect.top;
+        // If there's a fixed header, avoid hiding the form under it
+        const header = document.querySelector('header');
+        const isHeaderFixed = header
+          ? window.getComputedStyle(header).position === 'fixed'
+          : false;
+        const headerOffset = isHeaderFixed ? header.offsetHeight : 0;
+        // Keep a small margin from top (8px)
+        const scrollTo = Math.max(0, top - headerOffset - 8);
+        window.scrollTo({ top: scrollTo, behavior: 'smooth' });
+      } catch (e) {
+        // fallback to element scrollIntoView if anything fails
+        formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    // Focus first input in the form when we scroll to it
+    setTimeout(() => {
+      try {
+        const firstInput = formRef.current?.querySelector(
+          'input[name="nombre"]'
+        );
+        if (firstInput) firstInput.focus();
+      } catch (e) {
+        // ignore
+      }
+    }, 500);
   };
 
   /* ---------- Guardar edición de titular (usando el formulario superior) ---------- */

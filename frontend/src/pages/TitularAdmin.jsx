@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
+import api from 'src/services/api';
 
 function SelectField({ label, value, onChange, options, placeholder }) {
   const [isFocusing, setIsFocusing] = useState(false);
@@ -120,8 +121,8 @@ export default function TitularAdmin() {
     const cargarDatos = async () => {
       try {
         const [resProvincias, resTitulares] = await Promise.all([
-          fetch('/provincias'),
-          fetch('/titulares-faena'),
+          await api.get('/provincias'),
+          await api.get('/titulares-faena'),
         ]);
         setProvinciasDB(await resProvincias.json());
         setTitulares(await resTitulares.json());
@@ -141,6 +142,7 @@ export default function TitularAdmin() {
     setNuevoTitular({ ...nuevoTitular, provincia: selected });
   };
 
+  /* ---------- Agregar titular ---------- */
   const agregarTitular = async () => {
     if (
       !nuevoTitular.nombre ||
@@ -150,21 +152,29 @@ export default function TitularAdmin() {
       alert('Por favor complete los campos obligatorios');
       return;
     }
+
     try {
-      const res = await fetch('/titulares-faena', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre: nuevoTitular.nombre,
-          id_provincia: parseInt(nuevoTitular.provincia.value, 10),
-          localidad: nuevoTitular.localidad,
-          direccion: nuevoTitular.direccion,
-          documento: nuevoTitular.documento,
-        }),
+      const payload = {
+        nombre: nuevoTitular.nombre,
+        id_provincia:
+          Number.parseInt(
+            nuevoTitular.provincia?.value ?? nuevoTitular.provincia,
+            10
+          ) || null,
+        localidad: nuevoTitular.localidad,
+        direccion: nuevoTitular.direccion || '',
+        documento: nuevoTitular.documento || '',
+      };
+
+      const res = await api.post('/titulares-faena', payload, {
+        timeout: 10000,
       });
-      const data = await res.json();
-      if (res.ok) {
-        setTitulares([...titulares, data]);
+      const data = res?.data ?? null;
+
+      if (data) {
+        setTitulares((prev) =>
+          Array.isArray(prev) ? [...prev, data] : [data]
+        );
         setNuevoTitular({
           nombre: '',
           provincia: null,
@@ -173,9 +183,16 @@ export default function TitularAdmin() {
           documento: '',
         });
         setPaginaActual(1);
+      } else {
+        // fallback: recargar lista si la API no devuelve el recurso creado
+        const listRes = await api.get('/titulares-faena', { timeout: 10000 });
+        setTitulares(Array.isArray(listRes.data) ? listRes.data : []);
+        setPaginaActual(1);
       }
     } catch (error) {
       console.error('Error al agregar titular:', error);
+      // mostrar feedback al usuario si querés:
+      // openErrorModal('No se pudo agregar titular', error?.response?.data?.message || error.message);
     }
   };
 
@@ -184,38 +201,58 @@ export default function TitularAdmin() {
     setEditado({ ...t });
   };
 
+  /* ---------- Guardar edición de titular ---------- */
   const guardarEdicion = async () => {
+    if (!editandoId) return;
+
     try {
-      const res = await fetch(`/titulares-faena/${editandoId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editado),
+      const res = await api.put(`/titulares-faena/${editandoId}`, editado, {
+        timeout: 10000,
       });
-      if (res.ok) {
-        const actualizados = titulares.map((t) =>
-          t.id === editandoId ? editado : t
-        );
-        setTitulares(actualizados);
-        setEditandoId(null);
-        setEditado({});
-      }
+      const updated = res?.data ?? editado;
+
+      // actualizar lista local (reemplaza el elemento por el actualizado)
+      setTitulares((prev) =>
+        Array.isArray(prev)
+          ? prev.map((t) =>
+              String(t.id) === String(editandoId) ? { ...t, ...updated } : t
+            )
+          : prev
+      );
+
+      setEditandoId(null);
+      setEditado({});
     } catch (error) {
       console.error('Error al guardar edición:', error);
+      // openErrorModal('No se pudo guardar', error?.response?.data?.message || error.message);
     }
   };
 
+  /* ---------- Eliminar titular ---------- */
   const eliminarTitular = async (id) => {
     if (!window.confirm('¿Eliminar este titular?')) return;
+
     try {
-      const res = await fetch(`/titulares-faena/${id}`, {
-        method: 'DELETE',
+      const res = await api.delete(`/titulares-faena/${id}`, {
+        timeout: 10000,
       });
-      if (res.ok) {
-        setTitulares(titulares.filter((t) => t.id !== id));
+      const status = res?.status ?? 0;
+
+      if (status >= 200 && status < 300) {
+        setTitulares((prev) =>
+          Array.isArray(prev)
+            ? prev.filter((t) => String(t.id) !== String(id))
+            : []
+        );
         setPaginaActual(1);
+      } else {
+        const data = res?.data ?? {};
+        console.error('Error al eliminar titular:', data);
+        // setMensajeFeedback(`❌ ${data?.message || data?.error || 'Error al eliminar.'}`);
       }
     } catch (error) {
       console.error('Error al eliminar titular:', error);
+      // setMensajeFeedback(`❌ ${error?.response?.data?.message || error.message || 'Error de conexión.'}`);
     }
   };
 

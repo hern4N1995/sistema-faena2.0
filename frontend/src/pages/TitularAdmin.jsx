@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Select from 'react-select';
 import api from 'src/services/api';
 
@@ -104,6 +104,7 @@ export default function TitularAdmin() {
     direccion: '',
     documento: '',
   });
+  const formRef = useRef(null);
   const [editandoId, setEditandoId] = useState(null);
   const [editado, setEditado] = useState({});
   const [esMovil, setEsMovil] = useState(window.innerWidth < 768);
@@ -166,6 +167,11 @@ export default function TitularAdmin() {
 
   /* ---------- Agregar titular ---------- */
   const agregarTitular = async () => {
+    // If editing, delegate to guardarEdicion
+    if (editandoId) {
+      await guardarEdicion();
+      return;
+    }
     if (
       !nuevoTitular.nombre ||
       !nuevoTitular.provincia ||
@@ -194,8 +200,21 @@ export default function TitularAdmin() {
       const data = res?.data ?? null;
 
       if (data) {
+        // Ensure provincia text is present (API may return only id_provincia)
+        const provinciaDesc = provinciasDB.find(
+          (p) => String(p.id) === String(data.id_provincia)
+        )?.descripcion;
+        const dataWithProvincia = {
+          ...data,
+          provincia:
+            data.provincia ??
+            provinciaDesc ??
+            (nuevoTitular.provincia?.label || ''),
+        };
         setTitulares((prev) =>
-          Array.isArray(prev) ? [...prev, data] : [data]
+          Array.isArray(prev)
+            ? [...prev, dataWithProvincia]
+            : [dataWithProvincia]
         );
         setNuevoTitular({
           nombre: '',
@@ -218,20 +237,76 @@ export default function TitularAdmin() {
     }
   };
 
-  const iniciarEdicion = (t) => {
-    setEditandoId(t.id);
-    setEditado({ ...t });
+  const cancelarEdicion = () => {
+    setEditandoId(null);
+    setEditado({});
+    setNuevoTitular({
+      nombre: '',
+      provincia: null,
+      localidad: '',
+      direccion: '',
+      documento: '',
+    });
   };
 
-  /* ---------- Guardar edición de titular ---------- */
+  const iniciarEdicion = (t) => {
+    setEditandoId(t.id);
+    // Populate top form with selected titular
+    const provinciaOption = provinciasDB.find(
+      (p) =>
+        String(p.id) === String(t.id_provincia) || p.descripcion === t.provincia
+    );
+    setNuevoTitular({
+      nombre: t.nombre || '',
+      provincia: provinciaOption
+        ? { value: provinciaOption.id, label: provinciaOption.descripcion }
+        : null,
+      localidad: t.localidad || '',
+      direccion: t.direccion || '',
+      documento: t.documento || '',
+    });
+    setEditado({ ...t });
+
+    // Scroll to top form
+    if (formRef?.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  /* ---------- Guardar edición de titular (usando el formulario superior) ---------- */
   const guardarEdicion = async () => {
     if (!editandoId) return;
 
     try {
-      const res = await api.put(`/titulares-faena/${editandoId}`, editado, {
+      const payload = {
+        nombre: nuevoTitular.nombre,
+        id_provincia:
+          Number.parseInt(
+            nuevoTitular.provincia?.value ?? nuevoTitular.provincia,
+            10
+          ) || null,
+        localidad: nuevoTitular.localidad,
+        direccion: nuevoTitular.direccion || '',
+        documento: nuevoTitular.documento || '',
+      };
+
+      const res = await api.put(`/titulares-faena/${editandoId}`, payload, {
         timeout: 10000,
       });
-      const updated = res?.data ?? editado;
+      let updated = res?.data ?? { ...payload, id: editandoId };
+      // Ensure provincia description for list
+      const provinciaDesc2 = provinciasDB.find(
+        (p) => String(p.id) === String(updated.id_provincia)
+      )?.descripcion;
+      updated = {
+        ...updated,
+        provincia:
+          updated.provincia ??
+          provinciaDesc2 ??
+          (nuevoTitular.provincia?.label || ''),
+      };
 
       // actualizar lista local (reemplaza el elemento por el actualizado)
       setTitulares((prev) =>
@@ -244,6 +319,13 @@ export default function TitularAdmin() {
 
       setEditandoId(null);
       setEditado({});
+      setNuevoTitular({
+        nombre: '',
+        provincia: null,
+        localidad: '',
+        direccion: '',
+        documento: '',
+      });
     } catch (error) {
       console.error('Error al guardar edición:', error);
       // openErrorModal('No se pudo guardar', error?.response?.data?.message || error.message);
@@ -296,7 +378,10 @@ export default function TitularAdmin() {
         </h1>
 
         {/* Formulario */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
+        <div
+          ref={formRef}
+          className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6"
+        >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Bloque superior */}
             <div className="flex flex-col">
@@ -363,13 +448,21 @@ export default function TitularAdmin() {
               />
             </div>
 
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <button
                 onClick={agregarTitular}
                 className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition text-sm font-semibold shadow"
               >
-                ➕ Agregar
+                {editandoId ? '💾 Guardar' : '➕ Agregar'}
               </button>
+              {editandoId && (
+                <button
+                  onClick={cancelarEdicion}
+                  className="w-full bg-slate-200 text-slate-700 px-4 py-3 rounded-lg hover:bg-slate-300 transition text-sm font-semibold shadow"
+                >
+                  Cancelar
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -444,40 +537,19 @@ export default function TitularAdmin() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {visibles.map((t) => (
                   <tr key={t.id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3">
-                      {editandoId === t.id ? (
-                        <input
-                          value={editado.nombre}
-                          onChange={(e) =>
-                            setEditado({ ...editado, nombre: e.target.value })
-                          }
-                          className="w-full border-2 border-gray-200 rounded-lg px-2 py-2 text-sm bg-gray-50 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
-                        />
-                      ) : (
-                        t.nombre
-                      )}
-                    </td>
+                    <td className="px-4 py-3">{t.nombre}</td>
                     <td className="px-4 py-3">{t.provincia}</td>
                     <td className="px-4 py-3">{t.localidad}</td>
                     <td className="px-4 py-3">{t.direccion}</td>
                     <td className="px-4 py-3">{t.documento}</td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex justify-center gap-2">
-                        {editandoId === t.id ? (
-                          <button
-                            onClick={guardarEdicion}
-                            className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
-                          >
-                            💾 Guardar
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => iniciarEdicion(t)}
-                            className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                          >
-                            ✏️ Editar
-                          </button>
-                        )}
+                        <button
+                          onClick={() => iniciarEdicion(t)}
+                          className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                        >
+                          ✏️ Editar
+                        </button>
                         <button
                           onClick={() => eliminarTitular(t.id)}
                           className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"

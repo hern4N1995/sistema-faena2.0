@@ -181,6 +181,16 @@ const Paginacion = ({ currentPage, totalPages, onPageChange }) => {
 
 /* ---------- Componente principal ---------- */
 export default function DepartamentoAdmin() {
+  console.log('DepartamentoAdmin render start', {
+    deviceType,
+    registrosLength: Array.isArray(registros)
+      ? registros.length
+      : typeof registros,
+    provinciasLength: Array.isArray(provinciasDB)
+      ? provinciasDB.length
+      : typeof provinciasDB,
+  });
+
   const [registros, setRegistros] = useState([]);
   const [provinciasDB, setProvinciasDB] = useState([]);
   const [provinciaSeleccionada, setProvinciaSeleccionada] = useState('');

@@ -2,7 +2,14 @@ import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import api from 'src/services/api';
 
-function SelectField({ label, value, onChange, options, placeholder }) {
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  maxMenuHeight = 200,
+}) {
   const [isFocusing, setIsFocusing] = useState(false);
   const customStyles = {
     control: (base, state) => ({
@@ -69,6 +76,7 @@ function SelectField({ label, value, onChange, options, placeholder }) {
         value={value}
         onChange={onChange}
         options={options}
+        maxMenuHeight={maxMenuHeight}
         placeholder={placeholder}
         styles={customStyles}
         noOptionsMessage={() => 'Sin opciones'}
@@ -95,6 +103,15 @@ const VeterinariosPage = () => {
     estado: 'Activo',
     id_planta: '',
   });
+
+  const [esMovil, setEsMovil] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+  useEffect(() => {
+    const handleResize = () => setEsMovil(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const [veterinarios, setVeterinarios] = useState([]);
   const [plantas, setPlantas] = useState([]);
@@ -386,26 +403,20 @@ const VeterinariosPage = () => {
                 value: String(p.id_planta ?? p.id),
                 label: p.nombre,
               }))}
+              maxMenuHeight={esMovil ? 48 * 3 : 48 * 6}
               placeholder="Seleccionar planta"
             />
 
-            <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
-                Estado
-              </label>
-              <select
-                name="estado"
-                value={form.estado}
-                onChange={handleChange}
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
-              >
-                {estados.map((e) => (
-                  <option key={e} value={e}>
-                    {e}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <SelectField
+              label="Estado"
+              value={{ value: form.estado, label: form.estado }}
+              onChange={(s) =>
+                setForm((prev) => ({ ...prev, estado: s?.value || '' }))
+              }
+              options={estados.map((e) => ({ value: e, label: e }))}
+              maxMenuHeight={esMovil ? 48 * 3 : 48 * 6}
+              placeholder="Seleccionar estado"
+            />
 
             <div className="flex items-end">
               <button

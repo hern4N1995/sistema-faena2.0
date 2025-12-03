@@ -264,7 +264,7 @@ export default function VeterinariosPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-6">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-2 mb-4">
             👩‍⚕️ {editandoId ? 'Modificar Veterinario' : 'Agregar Veterinario'}
@@ -285,10 +285,10 @@ export default function VeterinariosPage() {
           {/* Formulario */}
           <form
             onSubmit={handleSubmit}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4"
           >
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Nombre
               </label>
               <input
@@ -297,12 +297,12 @@ export default function VeterinariosPage() {
                 onChange={handleChange}
                 placeholder="Nombre"
                 required
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Apellido
               </label>
               <input
@@ -311,12 +311,12 @@ export default function VeterinariosPage() {
                 onChange={handleChange}
                 placeholder="Apellido"
                 required
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Matrícula
               </label>
               <input
@@ -325,12 +325,12 @@ export default function VeterinariosPage() {
                 onChange={handleChange}
                 placeholder="Matrícula"
                 required
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 DNI
               </label>
               <input
@@ -338,12 +338,12 @@ export default function VeterinariosPage() {
                 value={form.dni}
                 onChange={handleChange}
                 placeholder="DNI"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Email
               </label>
               <input
@@ -352,12 +352,12 @@ export default function VeterinariosPage() {
                 value={form.email}
                 onChange={handleChange}
                 placeholder="Email"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Teléfono
               </label>
               <input
@@ -365,7 +365,7 @@ export default function VeterinariosPage() {
                 value={form.n_telefono}
                 onChange={handleChange}
                 placeholder="Teléfono"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
               />
             </div>
 
@@ -407,7 +407,7 @@ export default function VeterinariosPage() {
             <div className="flex items-end">
               <button
                 type="submit"
-                className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition text-sm font-semibold"
+                className="w-full bg-green-600 text-white px-2 sm:px-4 py-1 sm:py-3 rounded-lg hover:bg-green-700 transition text-xs sm:text-sm font-semibold"
               >
                 {editandoId ? '💾 Guardar Cambios' : '➕ Guardar'}
               </button>
@@ -425,7 +425,7 @@ export default function VeterinariosPage() {
                 placeholder="🔍 Buscar veterinario"
                 value={filtro}
                 onChange={(e) => setFiltro(e.target.value)}
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50 mb-4"
               />
               {veterinariosFiltrados.length > 0 ? (
                 veterinariosFiltrados.map((v) => (

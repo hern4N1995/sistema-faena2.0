@@ -11,13 +11,25 @@ function SelectField({
   maxMenuHeight = 200,
 }) {
   const [isFocusing, setIsFocusing] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const controlHeight = isMobile ? '32px' : '48px';
+  const controlPadding = isMobile ? '8px' : '16px';
+  const fontSize = isMobile ? '12px' : '14px';
+
   const customStyles = {
     control: (base, state) => ({
       ...base,
-      height: '48px',
-      minHeight: '48px',
-      paddingLeft: '16px',
-      paddingRight: '16px',
+      height: controlHeight,
+      minHeight: controlHeight,
+      paddingLeft: controlPadding,
+      paddingRight: controlPadding,
       backgroundColor: '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
@@ -33,7 +45,7 @@ function SelectField({
     valueContainer: (base) => ({
       ...base,
       padding: '0 0 0 2px',
-      height: '48px',
+      height: controlHeight,
       display: 'flex',
       alignItems: 'center',
     }),
@@ -41,18 +53,18 @@ function SelectField({
       ...base,
       margin: 0,
       padding: 0,
-      fontSize: '14px',
+      fontSize: fontSize,
       fontFamily: 'inherit',
       color: '#111827',
     }),
     singleValue: (base) => ({
       ...base,
-      fontSize: '14px',
+      fontSize: fontSize,
       color: '#111827',
       margin: 0,
     }),
-    placeholder: (base) => ({ ...base, fontSize: '14px', color: '#6b7280' }),
-    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
+    placeholder: (base) => ({ ...base, fontSize: fontSize, color: '#6b7280' }),
+    indicatorsContainer: (base) => ({ ...base, height: controlHeight }),
     menu: (base) => ({
       ...base,
       borderRadius: '0.5rem',
@@ -60,8 +72,8 @@ function SelectField({
     }),
     option: (base, { isFocused }) => ({
       ...base,
-      fontSize: '14px',
-      padding: '10px 16px',
+      fontSize: fontSize,
+      padding: isMobile ? '6px 12px' : '10px 16px',
       backgroundColor: isFocused ? '#d1fae5' : '#fff',
       color: isFocused ? '#065f46' : '#111827',
     }),
@@ -287,19 +299,19 @@ const VeterinariosPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 px-1 sm:px-4 sm:py-8 py-2">
-      <div className="w-full sm:max-w-4xl mx-auto space-y-2 sm:space-y-6">
-        <div className="w-full bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 p-2 sm:p-6 space-y-2 sm:space-y-4">
-          <h2 className="text-lg sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-1 mb-1 sm:pt-2 sm:mb-2">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 px-0.5 sm:px-4 sm:py-8 py-1">
+      <div className="w-full mx-auto space-y-1 sm:space-y-6">
+        <div className="w-full bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 p-1 sm:p-6 space-y-1 sm:space-y-4">
+          <h2 className="text-base sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow py-0.5 sm:pt-2 sm:mb-2">
             {editandoId ? '👩‍⚕️ Modificar Veterinario' : '👩‍⚕️ Agregar Veterinario'}
           </h2>
 
           <form
             onSubmit={handleSubmit}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4"
           >
             <div className="flex flex-col">
-              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
+              <label className="mb-0.5 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Nombre
               </label>
               <input
@@ -308,12 +320,12 @@ const VeterinariosPage = () => {
                 onChange={handleChange}
                 required
                 placeholder="Nombre"
-                className="w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
+              <label className="mb-0.5 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Apellido
               </label>
               <input
@@ -322,12 +334,12 @@ const VeterinariosPage = () => {
                 onChange={handleChange}
                 required
                 placeholder="Apellido"
-                className="w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
+              <label className="mb-0.5 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Matrícula
               </label>
               <input
@@ -336,12 +348,12 @@ const VeterinariosPage = () => {
                 onChange={handleChange}
                 required
                 placeholder="Matrícula"
-                className="w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
+              <label className="mb-0.5 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 DNI
               </label>
               <input
@@ -350,7 +362,7 @@ const VeterinariosPage = () => {
                 onChange={handleChange}
                 required
                 placeholder="DNI"
-                className="w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
 
@@ -421,7 +433,7 @@ const VeterinariosPage = () => {
             <div className="flex items-end">
               <button
                 type="submit"
-                className="w-full bg-green-600 text-white px-3 sm:px-4 py-1 sm:py-3 rounded-lg hover:bg-green-700 transition text-xs sm:text-sm font-semibold"
+                className="w-full bg-green-600 text-white px-2 sm:px-4 py-1 sm:py-3 rounded-lg hover:bg-green-700 transition text-xs sm:text-sm font-semibold"
               >
                 {editandoId ? 'Guardar Cambios' : 'Guardar'}
               </button>
@@ -432,7 +444,7 @@ const VeterinariosPage = () => {
           {error && <p className="text-red-600">{error}</p>}
         </div>
 
-        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-3 sm:p-6 space-y-2 sm:space-y-4">
+        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-1 sm:p-6 space-y-1 sm:space-y-4">
           <h3 className="text-base sm:text-lg font-semibold">
             Veterinarios Registrados
           </h3>
@@ -441,15 +453,15 @@ const VeterinariosPage = () => {
             placeholder="Buscar por matrícula, nombre, apellido o DNI"
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
-            className="mb-2 sm:mb-4 w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+            className="mb-1 sm:mb-4 w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-1 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
           />
 
-          <div className="space-y-2 sm:space-y-4">
+          <div className="space-y-1 sm:space-y-4">
             {veterinariosFiltrados.length > 0 ? (
               veterinariosFiltrados.map((v) => (
                 <div
                   key={v.id_veterinario || v.id}
-                  className="bg-white p-2 sm:p-4 rounded-xl shadow border border-gray-200"
+                  className="bg-white p-1 sm:p-4 rounded-xl shadow border border-gray-200"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1 space-y-0.5 sm:space-y-1 text-xs sm:text-sm text-gray-700">
@@ -469,16 +481,16 @@ const VeterinariosPage = () => {
                         — Estado: {v.estado || '-'}
                       </p>
                     </div>
-                    <div className="mt-2 sm:mt-0 flex gap-1 sm:gap-2">
+                    <div className="mt-1 sm:mt-0 flex gap-0.5 sm:gap-2">
                       <button
                         onClick={() => handleEditar(v)}
-                        className="px-2 sm:px-3 py-1 sm:py-2 rounded-lg bg-yellow-600 text-white text-xs sm:text-sm hover:bg-yellow-700 transition"
+                        className="px-1 sm:px-3 py-0.5 sm:py-2 rounded-lg bg-yellow-600 text-white text-xs sm:text-sm hover:bg-yellow-700 transition"
                       >
                         ✏️ Editar
                       </button>
                       <button
                         onClick={() => handleEliminar(v.id_veterinario || v.id)}
-                        className="px-2 sm:px-3 py-1 sm:py-2 rounded-lg bg-red-600 text-white text-xs sm:text-sm hover:bg-red-700 transition"
+                        className="px-1 sm:px-3 py-0.5 sm:py-2 rounded-lg bg-red-600 text-white text-xs sm:text-sm hover:bg-red-700 transition"
                       >
                         🗑️ Eliminar
                       </button>

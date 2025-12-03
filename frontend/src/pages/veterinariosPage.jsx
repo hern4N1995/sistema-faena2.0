@@ -287,19 +287,19 @@ const VeterinariosPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 px-4 sm:py-8 py-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-2 mb-2">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 px-2 sm:px-4 sm:py-8 py-3">
+      <div className="max-w-4xl mx-auto space-y-3 sm:space-y-6">
+        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-3 sm:p-6 space-y-2 sm:space-y-4">
+          <h2 className="text-lg sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-1 mb-1 sm:pt-2 sm:mb-2">
             {editandoId ? '👩‍⚕️ Modificar Veterinario' : '👩‍⚕️ Agregar Veterinario'}
           </h2>
 
           <form
             onSubmit={handleSubmit}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4"
           >
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Nombre
               </label>
               <input
@@ -308,12 +308,12 @@ const VeterinariosPage = () => {
                 onChange={handleChange}
                 required
                 placeholder="Nombre"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                className="w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Apellido
               </label>
               <input
@@ -322,12 +322,12 @@ const VeterinariosPage = () => {
                 onChange={handleChange}
                 required
                 placeholder="Apellido"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                className="w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Matrícula
               </label>
               <input
@@ -336,12 +336,12 @@ const VeterinariosPage = () => {
                 onChange={handleChange}
                 required
                 placeholder="Matrícula"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                className="w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 DNI
               </label>
               <input
@@ -350,12 +350,12 @@ const VeterinariosPage = () => {
                 onChange={handleChange}
                 required
                 placeholder="DNI"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                className="w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Email
               </label>
               <input
@@ -364,12 +364,12 @@ const VeterinariosPage = () => {
                 value={form.email}
                 onChange={handleChange}
                 placeholder="Email"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                className="w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="mb-2 font-semibold text-gray-700 text-sm">
+              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
                 Teléfono
               </label>
               <input
@@ -377,7 +377,7 @@ const VeterinariosPage = () => {
                 value={form.n_telefono}
                 onChange={handleChange}
                 placeholder="Teléfono"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                className="w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
 
@@ -432,51 +432,53 @@ const VeterinariosPage = () => {
           {error && <p className="text-red-600">{error}</p>}
         </div>
 
-        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4">
-          <h3 className="text-lg font-semibold">Veterinarios Registrados</h3>
+        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-3 sm:p-6 space-y-2 sm:space-y-4">
+          <h3 className="text-base sm:text-lg font-semibold">
+            Veterinarios Registrados
+          </h3>
           <input
             type="text"
             placeholder="Buscar por matrícula, nombre, apellido o DNI"
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
-            className="mb-4 w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+            className="mb-2 sm:mb-4 w-full border-2 border-gray-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
           />
 
-          <div className="space-y-4">
+          <div className="space-y-2 sm:space-y-4">
             {veterinariosFiltrados.length > 0 ? (
               veterinariosFiltrados.map((v) => (
                 <div
                   key={v.id_veterinario || v.id}
-                  className="bg-white p-4 rounded-xl shadow border border-gray-200"
+                  className="bg-white p-2 sm:p-4 rounded-xl shadow border border-gray-200"
                 >
                   <div className="flex justify-between items-start">
-                    <div className="flex-1 space-y-1 text-sm text-gray-700">
-                      <p className="font-semibold text-gray-800">
+                    <div className="flex-1 space-y-0.5 sm:space-y-1 text-xs sm:text-sm text-gray-700">
+                      <p className="font-semibold text-gray-800 text-xs sm:text-base">
                         {v.nombre} {v.apellido}
                       </p>
-                      <p>
+                      <p className="truncate">
                         Matrícula: {v.matricula} — DNI: {v.dni || '-'}
                       </p>
-                      <p>
+                      <p className="truncate">
                         Email: {v.email || '-'} — Tel: {v.n_telefono || '-'}
                       </p>
-                      <p>
+                      <p className="truncate">
                         Planta:{' '}
                         {v.planta_nombre ||
                           `ID ${v.id_planta || v.idPlanta || ''}`}{' '}
                         — Estado: {v.estado || '-'}
                       </p>
                     </div>
-                    <div className="mt-3 sm:mt-0 flex gap-2">
+                    <div className="mt-2 sm:mt-0 flex gap-1 sm:gap-2">
                       <button
                         onClick={() => handleEditar(v)}
-                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                        className="px-2 sm:px-3 py-1 sm:py-2 rounded-lg bg-yellow-600 text-white text-xs sm:text-sm hover:bg-yellow-700 transition"
                       >
                         ✏️ Editar
                       </button>
                       <button
                         onClick={() => handleEliminar(v.id_veterinario || v.id)}
-                        className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                        className="px-2 sm:px-3 py-1 sm:py-2 rounded-lg bg-red-600 text-white text-xs sm:text-sm hover:bg-red-700 transition"
                       >
                         🗑️ Eliminar
                       </button>

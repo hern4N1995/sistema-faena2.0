@@ -264,7 +264,7 @@ export default function VeterinariosPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-6">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-2 mb-4">
             👩‍⚕️ {editandoId ? 'Modificar Veterinario' : 'Agregar Veterinario'}

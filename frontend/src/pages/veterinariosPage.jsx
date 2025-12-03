@@ -1,5 +1,86 @@
 import React, { useState, useEffect } from 'react';
+import Select from 'react-select';
 import api from 'src/services/api';
+
+function SelectField({ label, value, onChange, options, placeholder }) {
+  const [isFocusing, setIsFocusing] = useState(false);
+  const customStyles = {
+    control: (base, state) => ({
+      ...base,
+      height: '48px',
+      minHeight: '48px',
+      paddingLeft: '16px',
+      paddingRight: '16px',
+      backgroundColor: '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '0.5rem',
+      boxShadow: isFocusing
+        ? '0 0 0 1px #000'
+        : state.isFocused
+        ? '0 0 0 4px #d1fae5'
+        : 'none',
+      transition: 'all 50ms ease',
+      '&:hover': { borderColor: '#96f1b7' },
+      '&:focus-within': { borderColor: '#22c55e' },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 0 0 2px',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+      fontSize: '14px',
+      fontFamily: 'inherit',
+      color: '#111827',
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#111827',
+      margin: 0,
+    }),
+    placeholder: (base) => ({ ...base, fontSize: '14px', color: '#6b7280' }),
+    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused }) => ({
+      ...base,
+      fontSize: '14px',
+      padding: '10px 16px',
+      backgroundColor: isFocused ? '#d1fae5' : '#fff',
+      color: isFocused ? '#065f46' : '#111827',
+    }),
+  };
+
+  return (
+    <div className="flex flex-col">
+      <label className="mb-2 font-semibold text-gray-700 text-sm">
+        {label}
+      </label>
+      <Select
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={placeholder}
+        styles={customStyles}
+        noOptionsMessage={() => 'Sin opciones'}
+        components={{ IndicatorSeparator: () => null }}
+        onFocus={() => {
+          setIsFocusing(true);
+          setTimeout(() => setIsFocusing(false), 50);
+        }}
+      />
+    </div>
+  );
+}
 
 const estados = ['Activo', 'Inactivo'];
 

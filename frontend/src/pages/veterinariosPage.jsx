@@ -270,160 +270,214 @@ const VeterinariosPage = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <h2 className="text-xl font-bold">
-        {editandoId ? 'Modificar Veterinario' : 'Agregar Veterinario'}
-      </h2>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 px-4 sm:py-8 py-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-2 mb-2">
+            {editandoId ? '👩‍⚕️ Modificar Veterinario' : '👩‍⚕️ Agregar Veterinario'}
+          </h2>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <input
-            name="nombre"
-            value={form.nombre}
-            onChange={handleChange}
-            required
-            placeholder="Nombre"
-            className="border rounded px-3 py-2"
-          />
-          <input
-            name="apellido"
-            value={form.apellido}
-            onChange={handleChange}
-            required
-            placeholder="Apellido"
-            className="border rounded px-3 py-2"
-          />
-          <input
-            name="matricula"
-            value={form.matricula}
-            onChange={handleChange}
-            required
-            placeholder="Matrícula"
-            className="border rounded px-3 py-2"
-          />
-          <input
-            name="dni"
-            value={form.dni}
-            onChange={handleChange}
-            required
-            placeholder="DNI"
-            className="border rounded px-3 py-2"
-          />
-          <input
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="Email"
-            className="border rounded px-3 py-2"
-          />
-          <input
-            name="n_telefono"
-            value={form.n_telefono}
-            onChange={handleChange}
-            placeholder="Teléfono"
-            className="border rounded px-3 py-2"
-          />
-
-          <select
-            name="id_planta"
-            value={form.id_planta}
-            onChange={handleChange}
-            required
-            className="border rounded px-3 py-2"
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4"
           >
-            <option value="">-- Seleccionar Planta --</option>
-            {plantas.length > 0 ? (
-              plantas.map((p) => (
-                <option key={p.id_planta || p.id} value={p.id_planta || p.id}>
-                  {p.nombre}
-                </option>
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                Nombre
+              </label>
+              <input
+                name="nombre"
+                value={form.nombre}
+                onChange={handleChange}
+                required
+                placeholder="Nombre"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                Apellido
+              </label>
+              <input
+                name="apellido"
+                value={form.apellido}
+                onChange={handleChange}
+                required
+                placeholder="Apellido"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                Matrícula
+              </label>
+              <input
+                name="matricula"
+                value={form.matricula}
+                onChange={handleChange}
+                required
+                placeholder="Matrícula"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                DNI
+              </label>
+              <input
+                name="dni"
+                value={form.dni}
+                onChange={handleChange}
+                required
+                placeholder="DNI"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                Email
+              </label>
+              <input
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="Email"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                Teléfono
+              </label>
+              <input
+                name="n_telefono"
+                value={form.n_telefono}
+                onChange={handleChange}
+                placeholder="Teléfono"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              />
+            </div>
+
+            <SelectField
+              label="Planta"
+              value={
+                plantas.find(
+                  (p) => String(p.id_planta ?? p.id) === String(form.id_planta)
+                )
+                  ? {
+                      value: String(form.id_planta),
+                      label: plantas.find(
+                        (p) =>
+                          String(p.id_planta ?? p.id) === String(form.id_planta)
+                      )?.nombre,
+                    }
+                  : null
+              }
+              onChange={(s) =>
+                setForm((prev) => ({ ...prev, id_planta: s?.value || '' }))
+              }
+              options={plantas.map((p) => ({
+                value: String(p.id_planta ?? p.id),
+                label: p.nombre,
+              }))}
+              placeholder="Seleccionar planta"
+            />
+
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
+                Estado
+              </label>
+              <select
+                name="estado"
+                value={form.estado}
+                onChange={handleChange}
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              >
+                {estados.map((e) => (
+                  <option key={e} value={e}>
+                    {e}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="submit"
+                className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition text-sm font-semibold"
+              >
+                {editandoId ? 'Guardar Cambios' : 'Guardar'}
+              </button>
+            </div>
+          </form>
+
+          {mensaje && <p className="text-green-600">{mensaje}</p>}
+          {error && <p className="text-red-600">{error}</p>}
+        </div>
+
+        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4">
+          <h3 className="text-lg font-semibold">Veterinarios Registrados</h3>
+          <input
+            type="text"
+            placeholder="Buscar por matrícula, nombre, apellido o DNI"
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+            className="mb-4 w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+          />
+
+          <div className="space-y-4">
+            {veterinariosFiltrados.length > 0 ? (
+              veterinariosFiltrados.map((v) => (
+                <div
+                  key={v.id_veterinario || v.id}
+                  className="bg-white p-4 rounded-xl shadow border border-gray-200"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 space-y-1 text-sm text-gray-700">
+                      <p className="font-semibold text-gray-800">
+                        {v.nombre} {v.apellido}
+                      </p>
+                      <p>
+                        Matrícula: {v.matricula} — DNI: {v.dni || '-'}
+                      </p>
+                      <p>
+                        Email: {v.email || '-'} — Tel: {v.n_telefono || '-'}
+                      </p>
+                      <p>
+                        Planta:{' '}
+                        {v.planta_nombre ||
+                          `ID ${v.id_planta || v.idPlanta || ''}`}{' '}
+                        — Estado: {v.estado || '-'}
+                      </p>
+                    </div>
+                    <div className="mt-3 sm:mt-0 flex gap-2">
+                      <button
+                        onClick={() => handleEditar(v)}
+                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        onClick={() => handleEliminar(v.id_veterinario || v.id)}
+                        className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                      >
+                        🗑️ Eliminar
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))
             ) : (
-              <option disabled value="">
-                No hay plantas disponibles
-              </option>
+              <p className="text-gray-500">No se encontraron veterinarios.</p>
             )}
-          </select>
-
-          <select
-            name="estado"
-            value={form.estado}
-            onChange={handleChange}
-            className="border rounded px-3 py-2"
-          >
-            {estados.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </select>
-
-          <div className="flex items-end">
-            <button
-              type="submit"
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full"
-            >
-              {editandoId ? 'Guardar Cambios' : 'Guardar'}
-            </button>
           </div>
         </div>
-      </form>
-
-      {mensaje && <p className="text-green-600">{mensaje}</p>}
-      {error && <p className="text-red-600">{error}</p>}
-
-      <hr className="my-6" />
-
-      <h3 className="text-lg font-semibold">Veterinarios Registrados</h3>
-      <input
-        type="text"
-        placeholder="Buscar por matrícula, nombre, apellido o DNI"
-        value={filtro}
-        onChange={(e) => setFiltro(e.target.value)}
-        className="mb-4 px-4 py-2 border rounded-md w-full"
-      />
-
-      <div className="max-h-[400px] overflow-y-auto border rounded-md p-2 bg-white shadow">
-        {veterinariosFiltrados.length > 0 ? (
-          <ul className="space-y-2">
-            {veterinariosFiltrados.map((v) => (
-              <li
-                key={v.id_veterinario || v.id}
-                className="flex justify-between items-center border rounded px-4 py-2"
-              >
-                <div>
-                  <strong>
-                    {v.nombre} {v.apellido}
-                  </strong>{' '}
-                  — Matrícula: {v.matricula} — DNI: {v.dni || '-'} — Email:{' '}
-                  {v.email || '-'} — Tel: {v.n_telefono || '-'} — Planta:{' '}
-                  {v.planta_nombre || `ID ${v.id_planta || v.idPlanta || ''}`} —
-                  Estado: {v.estado || '-'} — Creado:{' '}
-                  {v.creado_en
-                    ? new Date(v.creado_en).toLocaleDateString()
-                    : '-'}
-                </div>
-                <div className="space-x-2">
-                  <button
-                    onClick={() => handleEditar(v)}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleEliminar(v.id_veterinario || v.id)}
-                    className="text-red-600 hover:underline"
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-500">No se encontraron veterinarios.</p>
-        )}
       </div>
     </div>
   );

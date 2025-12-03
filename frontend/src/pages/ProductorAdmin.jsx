@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import api from 'src/services/api';
 
 /* ------------------------------------------------------------------ */
 /*  InputField institucional (igual que TropaForm / UsuarioPage)      */
@@ -48,10 +49,11 @@ export default function ProductorAdmin() {
 
   const fetchProductores = async () => {
     try {
-      const res = await fetch('/productores');
-      const data = await res.json();
+      const res = await api.get('/productores', { timeout: 10000 });
+      const data = res?.data ?? [];
       setProductores(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
+      console.error('Error fetching productores:', err);
       setError('Error al cargar productores');
     }
   };
@@ -68,12 +70,18 @@ export default function ProductorAdmin() {
     const url = editandoId ? `/productores/${editandoId}` : '/productores';
     const method = editandoId ? 'PUT' : 'POST';
     try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevoProductor),
-      });
-      if (!res.ok) throw new Error('Error al guardar productor');
+      let res;
+      if (editandoId) {
+        res = await api.put(`/productores/${editandoId}`, nuevoProductor, {
+          timeout: 10000,
+        });
+      } else {
+        res = await api.post('/productores', nuevoProductor, {
+          timeout: 10000,
+        });
+      }
+      if (!(res && res.status >= 200 && res.status < 300))
+        throw new Error('Error al guardar productor');
       setMensaje(
         editandoId ? 'Productor modificado ✅' : 'Productor creado ✅'
       );
@@ -82,7 +90,12 @@ export default function ProductorAdmin() {
       setPaginaActual(1);
       await fetchProductores();
     } catch (err) {
-      setError(err.message);
+      console.error('Error saving productor:', err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          'Error al guardar productor'
+      );
     }
   };
 
@@ -96,12 +109,18 @@ export default function ProductorAdmin() {
   const handleEliminar = async (id) => {
     if (!window.confirm('¿Seguro que deseas eliminar este productor?')) return;
     try {
-      const res = await fetch(`/productores/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Error al eliminar productor');
+      const res = await api.delete(`/productores/${id}`, { timeout: 10000 });
+      if (!(res && res.status >= 200 && res.status < 300))
+        throw new Error('Error al eliminar productor');
       setPaginaActual(1);
       await fetchProductores();
     } catch (err) {
-      setError(err.message);
+      console.error('Error deleting productor:', err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          'Error al eliminar productor'
+      );
     }
   };
 

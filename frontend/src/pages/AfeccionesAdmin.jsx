@@ -134,22 +134,22 @@ const AfeccionesAdmin = () => {
 
   const fetchAfecciones = async () => {
     try {
-      const res = await fetch('/afecciones', {
-        headers: getTokenHeaders(),
-      });
-      const data = await res.json();
+      const res = await api.get('/afecciones', { timeout: 10000 });
+      const data = res?.data ?? [];
       setAfecciones(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
+      console.error('Error fetching afecciones:', err);
       setError('No se pudieron cargar las afecciones');
     }
   };
 
   const fetchEspecies = async () => {
     try {
-      const res = await fetch('/especies', { headers: getTokenHeaders() });
-      const data = await res.json();
+      const res = await api.get('/especies', { timeout: 10000 });
+      const data = res?.data ?? [];
       setEspecies(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
+      console.error('Error fetching especies:', err);
       setError('No se pudieron cargar las especies');
     }
   };
@@ -184,18 +184,16 @@ const AfeccionesAdmin = () => {
     };
 
     try {
-      const res = await fetch(
-        editandoId ? `/afecciones/${editandoId}` : '/afecciones',
-        {
-          method: editandoId ? 'PUT' : 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getTokenHeaders(),
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-      if (!res.ok) throw new Error('Error al guardar');
+      let res;
+      if (editandoId) {
+        res = await api.put(`/afecciones/${editandoId}`, payload, {
+          timeout: 10000,
+        });
+      } else {
+        res = await api.post('/afecciones', payload, { timeout: 10000 });
+      }
+      if (!(res && res.status >= 200 && res.status < 300))
+        throw new Error('Error al guardar');
       await fetchAfecciones();
       cancelarEdicion();
       alert(editandoId ? 'Afección actualizada' : 'Afección registrada');
@@ -207,11 +205,9 @@ const AfeccionesAdmin = () => {
   const handleEliminar = async (id) => {
     if (!window.confirm('¿Eliminar esta afección?')) return;
     try {
-      const res = await api(`/afecciones/${id}`, {
-        method: 'DELETE',
-        headers: getTokenHeaders(),
-      });
-      if (!res.ok) throw new Error('Error al eliminar');
+      const res = await api.delete(`/afecciones/${id}`, { timeout: 10000 });
+      if (!(res && res.status >= 200 && res.status < 300))
+        throw new Error('Error al eliminar');
       await fetchAfecciones();
       alert('Afección eliminada correctamente');
     } catch {

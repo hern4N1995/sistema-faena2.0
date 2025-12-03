@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from 'src/services/api';
 
 const estados = ['Activo', 'Inactivo'];
 
@@ -35,11 +36,11 @@ const VeterinariosPage = () => {
 
   const fetchVeterinarios = async () => {
     try {
-      const res = await fetch('/veterinarios', {
+      const res = await api.get('/veterinarios', {
         headers: { ...getAuthHeaders() },
+        timeout: 10000,
       });
-      if (!res.ok) throw new Error('Error al cargar veterinarios');
-      const data = await res.json();
+      const data = res?.data ?? [];
       setVeterinarios(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('fetchVeterinarios:', err);
@@ -52,9 +53,9 @@ const VeterinariosPage = () => {
     try {
       const res = await api.get('/plantas', {
         headers: { ...getAuthHeaders() },
+        timeout: 10000,
       });
-      if (!res.ok) throw new Error('Error al cargar plantas');
-      const data = await res.json();
+      const data = res?.data ?? [];
       setPlantas(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('fetchPlantas:', err);
@@ -98,20 +99,20 @@ const VeterinariosPage = () => {
     const method = editandoId ? 'PUT' : 'POST';
 
     try {
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify(form),
-      });
-
-      if (res.status === 401) throw new Error('No autorizado');
-      if (res.status === 403) throw new Error('Acceso denegado');
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || 'Error al guardar veterinario');
+      let res;
+      if (editandoId) {
+        res = await api.put(`/veterinarios/${editandoId}`, form, {
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          timeout: 10000,
+        });
+      } else {
+        res = await api.post('/veterinarios', form, {
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          timeout: 10000,
+        });
+      }
+      if (!(res && res.status >= 200 && res.status < 300)) {
+        throw new Error('Error al guardar veterinario');
       }
 
       setMensaje(editandoId ? 'Veterinario modificado' : 'Veterinario creado');
@@ -120,7 +121,11 @@ const VeterinariosPage = () => {
       await fetchVeterinarios();
     } catch (err) {
       console.error('handleSubmit:', err);
-      setError(err.message);
+      const msg =
+        err?.response?.data?.message ||
+        err.message ||
+        'Error al guardar veterinario';
+      setError(msg);
     }
   };
 
@@ -144,21 +149,22 @@ const VeterinariosPage = () => {
     if (!window.confirm('¿Seguro que deseas eliminar este veterinario?'))
       return;
     try {
-      const res = await fetch(`/veterinarios/${id}`, {
-        method: 'DELETE',
+      const res = await api.delete(`/veterinarios/${id}`, {
         headers: { ...getAuthHeaders() },
+        timeout: 10000,
       });
-      if (res.status === 401) throw new Error('No autorizado');
-      if (res.status === 403) throw new Error('Acceso denegado');
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || 'Error al eliminar veterinario');
+      if (!(res && res.status >= 200 && res.status < 300)) {
+        throw new Error('Error al eliminar veterinario');
       }
       setMensaje('Veterinario eliminado');
       await fetchVeterinarios();
     } catch (err) {
       console.error('handleEliminar:', err);
-      setError(err.message);
+      const msg =
+        err?.response?.data?.message ||
+        err.message ||
+        'Error al eliminar veterinario';
+      setError(msg);
     }
   };
 

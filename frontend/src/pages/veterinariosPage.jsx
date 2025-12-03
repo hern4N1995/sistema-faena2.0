@@ -287,9 +287,9 @@ const VeterinariosPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 px-2 sm:px-4 sm:py-8 py-3">
-      <div className="max-w-4xl mx-auto space-y-3 sm:space-y-6">
-        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-3 sm:p-6 space-y-2 sm:space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 px-1 sm:px-4 sm:py-8 py-2">
+      <div className="w-full sm:max-w-4xl mx-auto space-y-2 sm:space-y-6">
+        <div className="w-full bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 p-2 sm:p-6 space-y-2 sm:space-y-4">
           <h2 className="text-lg sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-1 mb-1 sm:pt-2 sm:mb-2">
             {editandoId ? '👩‍⚕️ Modificar Veterinario' : '👩‍⚕️ Agregar Veterinario'}
           </h2>
@@ -421,7 +421,7 @@ const VeterinariosPage = () => {
             <div className="flex items-end">
               <button
                 type="submit"
-                className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition text-sm font-semibold"
+                className="w-full bg-green-600 text-white px-3 sm:px-4 py-1 sm:py-3 rounded-lg hover:bg-green-700 transition text-xs sm:text-sm font-semibold"
               >
                 {editandoId ? 'Guardar Cambios' : 'Guardar'}
               </button>

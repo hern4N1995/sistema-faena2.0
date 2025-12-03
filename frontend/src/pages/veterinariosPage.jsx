@@ -285,7 +285,7 @@ export default function VeterinariosPage() {
           {/* Formulario */}
           <form
             onSubmit={handleSubmit}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            className="max-w-4xl mx-auto w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             <div className="flex flex-col">
               <label className="mb-2 font-semibold text-gray-700 text-sm">
@@ -482,33 +482,24 @@ export default function VeterinariosPage() {
                 onChange={(e) => setFiltro(e.target.value)}
                 className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50 mb-4"
               />
-              <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200">
-                <table className="min-w-full text-sm text-gray-700">
+              <div className="rounded-xl ring-1 ring-gray-200">
+                <table className="w-full table-fixed text-sm text-gray-700">
                   <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
                     <tr>
-                      <th className="px-4 py-3 text-left font-semibold">
+                      <th className="px-3 py-2 text-left font-semibold">
                         Nombre
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold">
-                        Apellido
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold">
+                      <th className="px-3 py-2 text-left font-semibold">
                         Matrícula
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold">DNI</th>
-                      <th className="px-4 py-3 text-left font-semibold">
-                        Email
+                      <th className="px-3 py-2 text-left font-semibold">DNI</th>
+                      <th className="px-3 py-2 text-left font-semibold">
+                        Contacto
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold">
-                        Teléfono
+                      <th className="px-3 py-2 text-left font-semibold">
+                        Planta / Estado
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold">
-                        Planta
-                      </th>
-                      <th className="px-4 py-3 text-center font-semibold">
-                        Estado
-                      </th>
-                      <th className="px-4 py-3 text-center font-semibold">
+                      <th className="px-3 py-2 text-center font-semibold">
                         Acciones
                       </th>
                     </tr>
@@ -519,33 +510,33 @@ export default function VeterinariosPage() {
                         key={v.id_veterinario || v.id}
                         className="hover:bg-gray-50 transition"
                       >
-                        <td className="px-4 py-3">{v.nombre}</td>
-                        <td className="px-4 py-3">{v.apellido}</td>
-                        <td className="px-4 py-3">{v.matricula}</td>
-                        <td className="px-4 py-3">{v.dni || '—'}</td>
-                        <td className="px-4 py-3">{v.email || '—'}</td>
-                        <td className="px-4 py-3">{v.n_telefono || '—'}</td>
-                        <td className="px-4 py-3">
-                          {v.planta_nombre || `ID ${v.id_planta || ''}`}
+                        <td className="px-3 py-2 truncate">
+                          {v.nombre} {v.apellido}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-3 py-2 truncate">{v.matricula}</td>
+                        <td className="px-3 py-2 truncate">{v.dni || '—'}</td>
+                        <td className="px-3 py-2 truncate">
+                          {v.email || '-'} · {v.n_telefono || '-'}
+                        </td>
+                        <td className="px-3 py-2 truncate">
+                          {v.planta_nombre || `ID ${v.id_planta || ''}`} ·{' '}
                           {v.estado === 'Activo' ? '✅' : '❌'}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-3 py-2 text-center">
                           <div className="flex justify-center gap-2">
                             <button
                               onClick={() => iniciarEdicion(v)}
-                              className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                              className="px-2 py-1 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
                             >
-                              ✏️ Editar
+                              ✏️
                             </button>
                             <button
                               onClick={() =>
                                 eliminarVeterinario(v.id_veterinario || v.id)
                               }
-                              className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                              className="px-2 py-1 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
                             >
-                              🗑️ Eliminar
+                              🗑️
                             </button>
                           </div>
                         </td>

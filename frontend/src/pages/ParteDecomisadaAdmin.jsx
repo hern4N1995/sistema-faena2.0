@@ -12,11 +12,26 @@ function ConfirmModal({
   onConfirm,
   onCancel,
   type = 'confirm',
+  action = 'confirm', // 'create', 'update', 'delete'
 }) {
   if (!isOpen) return null;
 
   const isSuccess = type === 'success';
   const isError = type === 'error';
+
+  const getConfirmButtonText = () => {
+    if (action === 'create') return 'Crear';
+    if (action === 'update') return 'Actualizar';
+    if (action === 'delete') return 'Eliminar';
+    return 'Confirmar';
+  };
+
+  const getConfirmButtonColor = () => {
+    if (action === 'delete') return 'bg-red-600 hover:bg-red-700';
+    if (action === 'create') return 'bg-green-600 hover:bg-green-700';
+    if (action === 'update') return 'bg-blue-600 hover:bg-blue-700';
+    return 'bg-green-600 hover:bg-green-700';
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -43,9 +58,9 @@ function ConfirmModal({
               </button>
               <button
                 onClick={onConfirm}
-                className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition font-semibold"
+                className={`px-6 py-2 rounded-lg text-white transition font-semibold ${getConfirmButtonColor()}`}
               >
-                Eliminar
+                {getConfirmButtonText()}
               </button>
             </>
           )}
@@ -189,6 +204,7 @@ export default function ParteDecomisadaAdmin() {
     type: 'confirm',
     title: '',
     message: '',
+    action: 'confirm',
     onConfirm: null,
   });
 
@@ -256,6 +272,7 @@ export default function ParteDecomisadaAdmin() {
     setModal({
       isOpen: true,
       type: 'confirm',
+      action: editandoId ? 'update' : 'create',
       title: editandoId ? 'Confirmar actualización' : 'Confirmar creación',
       message: editandoId
         ? '¿Deseas actualizar esta parte decomisada?'
@@ -322,6 +339,7 @@ export default function ParteDecomisadaAdmin() {
     setModal({
       isOpen: true,
       type: 'confirm',
+      action: 'delete',
       title: 'Eliminar Parte Decomisada',
       message:
         '¿Estás seguro de que deseas eliminar esta parte decomisada? Esta acción no se puede deshacer.',
@@ -382,6 +400,7 @@ export default function ParteDecomisadaAdmin() {
         type={modal.type}
         title={modal.title}
         message={modal.message}
+        action={modal.action}
         onConfirm={() => {
           if (modal.onConfirm) modal.onConfirm();
           else setModal({ ...modal, isOpen: false });

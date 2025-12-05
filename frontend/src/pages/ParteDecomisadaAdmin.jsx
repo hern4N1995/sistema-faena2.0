@@ -3,6 +3,67 @@ import Select from 'react-select';
 import api from 'src/services/api';
 
 /* ------------------------------------------------------------------ */
+/*  Modal Component para confirmaciones y mensajes                   */
+/* ------------------------------------------------------------------ */
+function ConfirmModal({
+  isOpen,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  type = 'confirm',
+}) {
+  if (!isOpen) return null;
+
+  const isSuccess = type === 'success';
+  const isError = type === 'error';
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 animate-in">
+        <div className="flex items-center justify-center mb-4">
+          {isSuccess && <div className="text-4xl">✅</div>}
+          {isError && <div className="text-4xl">❌</div>}
+          {type === 'confirm' && <div className="text-4xl">⚠️</div>}
+        </div>
+
+        <h2 className="text-xl font-bold text-center text-gray-800 mb-2">
+          {title}
+        </h2>
+        <p className="text-center text-gray-600 mb-6">{message}</p>
+
+        <div className="flex gap-3 justify-center">
+          {type === 'confirm' && (
+            <>
+              <button
+                onClick={onCancel}
+                className="px-6 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={onConfirm}
+                className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition font-semibold"
+              >
+                Eliminar
+              </button>
+            </>
+          )}
+          {(isSuccess || isError) && (
+            <button
+              onClick={onConfirm}
+              className="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-semibold"
+            >
+              Aceptar
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  SelectField con estilos visuales unificados                      */
 /* ------------------------------------------------------------------ */
 function SelectField({
@@ -123,6 +184,13 @@ export default function ParteDecomisadaAdmin() {
   const [esMovil, setEsMovil] = useState(
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: 'confirm',
+    title: '',
+    message: '',
+    onConfirm: null,
+  });
 
   useEffect(() => {
     const handleResize = () => setEsMovil(window.innerWidth < 768);
@@ -185,26 +253,58 @@ export default function ParteDecomisadaAdmin() {
       estado: form.estado === 'Activo',
     };
 
-    try {
-      if (editandoId) {
-        await api.put(`/partes-decomisadas/${editandoId}`, payload);
-        setMensaje('✅ Parte decomisada actualizada correctamente');
-      } else {
-        await api.post('/partes-decomisadas', payload);
-        setMensaje('✅ Parte decomisada creada correctamente');
-      }
-      resetForm();
-      await loadList();
-      setTimeout(() => setMensaje(''), 3000);
-    } catch (err) {
-      console.error('handleSubmit', err);
-      const msg =
-        err.response?.data?.message ||
-        err.message ||
-        'Error al guardar la parte decomisada';
-      setError(`❌ ${msg}`);
-      setTimeout(() => setError(''), 4000);
-    }
+    setModal({
+      isOpen: true,
+      type: 'confirm',
+      title: editandoId ? 'Confirmar actualización' : 'Confirmar creación',
+      message: editandoId
+        ? '¿Deseas actualizar esta parte decomisada?'
+        : '¿Deseas crear esta parte decomisada?',
+      onConfirm: async () => {
+        try {
+          if (editandoId) {
+            await api.put(`/partes-decomisadas/${editandoId}`, payload);
+            setModal({
+              isOpen: true,
+              type: 'success',
+              title: '¡Actualizado!',
+              message: 'La parte decomisada se actualizó correctamente',
+              onConfirm: () => {
+                setModal({ ...modal, isOpen: false });
+                resetForm();
+                loadList();
+              },
+            });
+          } else {
+            await api.post('/partes-decomisadas', payload);
+            setModal({
+              isOpen: true,
+              type: 'success',
+              title: '¡Creado!',
+              message: 'La parte decomisada se creó correctamente',
+              onConfirm: () => {
+                setModal({ ...modal, isOpen: false });
+                resetForm();
+                loadList();
+              },
+            });
+          }
+        } catch (err) {
+          console.error('handleSubmit', err);
+          const msg =
+            err.response?.data?.message ||
+            err.message ||
+            'Error al guardar la parte decomisada';
+          setModal({
+            isOpen: true,
+            type: 'error',
+            title: 'Error',
+            message: msg,
+            onConfirm: () => setModal({ ...modal, isOpen: false }),
+          });
+        }
+      },
+    });
   };
 
   const iniciarEdicion = (p) => {
@@ -214,27 +314,47 @@ export default function ParteDecomisadaAdmin() {
       estado: p.estado ? 'Activo' : 'Inactivo',
     });
     setEditandoId(p.id_parte_decomisada || p.id);
+    // Desplazar al tope de la página
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const eliminar = async (id) => {
-    if (!window.confirm('¿Seguro que deseas eliminar esta parte decomisada?'))
-      return;
-
-    try {
-      await api.delete(`/partes-decomisadas/${id}`);
-      setMensaje('✅ Parte decomisada eliminada correctamente');
-      if (editandoId === id) resetForm();
-      await loadList();
-      setTimeout(() => setMensaje(''), 3000);
-    } catch (err) {
-      console.error('eliminar', err);
-      const msg =
-        err.response?.data?.message ||
-        err.message ||
-        'Error al eliminar la parte decomisada';
-      setError(`❌ ${msg}`);
-      setTimeout(() => setError(''), 4000);
-    }
+  const eliminar = (id) => {
+    setModal({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Eliminar Parte Decomisada',
+      message:
+        '¿Estás seguro de que deseas eliminar esta parte decomisada? Esta acción no se puede deshacer.',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/partes-decomisadas/${id}`);
+          setModal({
+            isOpen: true,
+            type: 'success',
+            title: '¡Eliminado!',
+            message: 'La parte decomisada se eliminó correctamente',
+            onConfirm: () => {
+              setModal({ ...modal, isOpen: false });
+              if (editandoId === id) resetForm();
+              loadList();
+            },
+          });
+        } catch (err) {
+          console.error('eliminar', err);
+          const msg =
+            err.response?.data?.message ||
+            err.message ||
+            'Error al eliminar la parte decomisada';
+          setModal({
+            isOpen: true,
+            type: 'error',
+            title: 'Error',
+            message: msg,
+            onConfirm: () => setModal({ ...modal, isOpen: false }),
+          });
+        }
+      },
+    });
   };
 
   const listaFiltrada = lista.filter((p) => {
@@ -256,251 +376,269 @@ export default function ParteDecomisadaAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100">
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-        <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-6">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-2 mb-4">
-            📦{' '}
-            {editandoId
-              ? 'Editar Parte Decomisada'
-              : 'Agregar Parte Decomisada'}
-          </h1>
+    <>
+      <ConfirmModal
+        isOpen={modal.isOpen}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        onConfirm={() => {
+          if (modal.onConfirm) modal.onConfirm();
+          else setModal({ ...modal, isOpen: false });
+        }}
+        onCancel={() => setModal({ ...modal, isOpen: false })}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+          <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-6">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-2 mb-4">
+              📦{' '}
+              {editandoId
+                ? 'Editar Parte Decomisada'
+                : 'Agregar Parte Decomisada'}
+            </h1>
 
-          {/* Feedback */}
-          {mensaje && (
-            <div className="mb-4 text-sm text-green-600">
-              <strong>{mensaje}</strong>
-            </div>
-          )}
-          {error && (
-            <div className="mb-4 text-sm text-red-600">
-              <strong>{error}</strong>
-            </div>
-          )}
+            {/* Feedback */}
+            {mensaje && (
+              <div className="mb-4 text-sm text-green-600">
+                <strong>{mensaje}</strong>
+              </div>
+            )}
+            {error && (
+              <div className="mb-4 text-sm text-red-600">
+                <strong>{error}</strong>
+              </div>
+            )}
 
-          {/* Formulario */}
-          <form
-            onSubmit={handleSubmit}
-            className="max-w-4xl mx-auto w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4"
-          >
-            <SelectField
-              label="Tipo"
-              value={
-                form.id_tipo_parte_deco
-                  ? {
-                      value: String(form.id_tipo_parte_deco),
-                      label:
-                        tipos.find(
-                          (t) =>
-                            String(t.id_tipo_parte_deco ?? t.id) ===
-                            String(form.id_tipo_parte_deco)
-                        )?.nombre_tipo_parte || `ID ${form.id_tipo_parte_deco}`,
-                    }
-                  : null
-              }
-              onChange={(s) =>
-                setForm((prev) => ({
-                  ...prev,
-                  id_tipo_parte_deco: s?.value || '',
-                }))
-              }
-              options={tipos.map((t) => ({
-                value: String(t.id_tipo_parte_deco ?? t.id),
-                label: t.nombre_tipo_parte,
-              }))}
-              placeholder="Seleccionar tipo"
-            />
-
-            <div className="flex flex-col">
-              <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
-                Nombre
-              </label>
-              <input
-                name="nombre_parte"
-                value={form.nombre_parte}
-                onChange={(e) =>
+            {/* Formulario */}
+            <form
+              onSubmit={handleSubmit}
+              className="max-w-4xl mx-auto w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4"
+            >
+              <SelectField
+                label="Tipo"
+                value={
+                  form.id_tipo_parte_deco
+                    ? {
+                        value: String(form.id_tipo_parte_deco),
+                        label:
+                          tipos.find(
+                            (t) =>
+                              String(t.id_tipo_parte_deco ?? t.id) ===
+                              String(form.id_tipo_parte_deco)
+                          )?.nombre_tipo_parte ||
+                          `ID ${form.id_tipo_parte_deco}`,
+                      }
+                    : null
+                }
+                onChange={(s) =>
                   setForm((prev) => ({
                     ...prev,
-                    nombre_parte: e.target.value,
+                    id_tipo_parte_deco: s?.value || '',
                   }))
                 }
-                placeholder="Nombre de la parte"
-                required
-                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                options={tipos.map((t) => ({
+                  value: String(t.id_tipo_parte_deco ?? t.id),
+                  label: t.nombre_tipo_parte,
+                }))}
+                placeholder="Seleccionar tipo"
               />
-            </div>
 
-            <SelectField
-              label="Estado"
-              value={{ value: form.estado, label: form.estado }}
-              onChange={(s) =>
-                setForm((prev) => ({ ...prev, estado: s?.value || 'Activo' }))
-              }
-              options={ESTADOS.map((e) => ({ value: e, label: e }))}
-              placeholder="Seleccionar estado"
-            />
+              <div className="flex flex-col">
+                <label className="mb-1 sm:mb-2 font-semibold text-gray-700 text-xs sm:text-sm">
+                  Nombre
+                </label>
+                <input
+                  name="nombre_parte"
+                  value={form.nombre_parte}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      nombre_parte: e.target.value,
+                    }))
+                  }
+                  placeholder="Nombre de la parte"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                />
+              </div>
 
-            <div className="flex items-end">
+              <SelectField
+                label="Estado"
+                value={{ value: form.estado, label: form.estado }}
+                onChange={(s) =>
+                  setForm((prev) => ({ ...prev, estado: s?.value || 'Activo' }))
+                }
+                options={ESTADOS.map((e) => ({ value: e, label: e }))}
+                placeholder="Seleccionar estado"
+              />
+
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  className="w-full bg-green-600 text-white px-2 sm:px-4 py-2 sm:py-3 rounded-lg hover:bg-green-700 transition text-xs sm:text-sm font-semibold"
+                >
+                  {editandoId ? '💾 Guardar Cambios' : '➕ Guardar'}
+                </button>
+              </div>
+            </form>
+
+            {/* Botón Limpiar */}
+            <div className="flex justify-center">
               <button
-                type="submit"
-                className="w-full bg-green-600 text-white px-2 sm:px-4 py-2 sm:py-3 rounded-lg hover:bg-green-700 transition text-xs sm:text-sm font-semibold"
+                onClick={resetForm}
+                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition font-semibold"
               >
-                {editandoId ? '💾 Guardar Cambios' : '➕ Guardar'}
+                Limpiar
               </button>
             </div>
-          </form>
 
-          {/* Botón Limpiar */}
-          <div className="flex justify-center">
-            <button
-              onClick={resetForm}
-              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition font-semibold"
-            >
-              Limpiar
-            </button>
-          </div>
-
-          {/* Lista de partes decomisadas */}
-          {esMovil ? (
-            <div className="space-y-4 mt-6">
-              <h3 className="text-lg font-semibold text-gray-800">
-                Partes Decomisadas Registradas
-              </h3>
-              <input
-                type="text"
-                placeholder="🔍 Buscar parte"
-                value={filtro}
-                onChange={(e) => setFiltro(e.target.value)}
-                className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-              />
-              {listaFiltrada.length > 0 ? (
-                listaFiltrada.map((p) => (
-                  <div
-                    key={p.id_parte_decomisada || p.id}
-                    className="bg-gray-50 p-2 sm:p-4 rounded-xl shadow border border-gray-200"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 space-y-1 text-sm text-gray-700">
-                        <p className="font-semibold text-gray-800">
-                          {p.nombre_parte}
-                        </p>
-                        <p>Tipo: {p.tipo_nombre || '—'}</p>
-                        <p>
-                          Creado:{' '}
-                          {p.fecha_creacion
-                            ? new Date(p.fecha_creacion).toLocaleDateString()
-                            : '—'}
-                        </p>
-                        <p>Estado: {p.estado ? '✅ Activo' : '❌ Inactivo'}</p>
-                      </div>
-                      <div className="flex gap-2 ml-2">
-                        <button
-                          onClick={() => iniciarEdicion(p)}
-                          className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() =>
-                            eliminar(p.id_parte_decomisada || p.id)
-                          }
-                          className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                        >
-                          🗑️
-                        </button>
+            {/* Lista de partes decomisadas */}
+            {esMovil ? (
+              <div className="space-y-4 mt-6">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Partes Decomisadas Registradas
+                </h3>
+                <input
+                  type="text"
+                  placeholder="🔍 Buscar parte"
+                  value={filtro}
+                  onChange={(e) => setFiltro(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-lg px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                />
+                {listaFiltrada.length > 0 ? (
+                  listaFiltrada.map((p) => (
+                    <div
+                      key={p.id_parte_decomisada || p.id}
+                      className="bg-gray-50 p-2 sm:p-4 rounded-xl shadow border border-gray-200"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 space-y-1 text-sm text-gray-700">
+                          <p className="font-semibold text-gray-800">
+                            {p.nombre_parte}
+                          </p>
+                          <p>Tipo: {p.tipo_nombre || '—'}</p>
+                          <p>
+                            Creado:{' '}
+                            {p.fecha_creacion
+                              ? new Date(p.fecha_creacion).toLocaleDateString()
+                              : '—'}
+                          </p>
+                          <p>
+                            Estado: {p.estado ? '✅ Activo' : '❌ Inactivo'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 ml-2">
+                          <button
+                            onClick={() => iniciarEdicion(p)}
+                            className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() =>
+                              eliminar(p.id_parte_decomisada || p.id)
+                            }
+                            className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500">
-                  No se encontraron partes decomisadas.
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Partes Decomisadas Registradas
-              </h3>
-              <input
-                type="text"
-                placeholder="🔍 Buscar parte"
-                value={filtro}
-                onChange={(e) => setFiltro(e.target.value)}
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50 mb-4"
-              />
-              <div className="rounded-xl ring-1 ring-gray-200">
-                <table className="w-full table-fixed text-sm text-gray-700">
-                  <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-semibold">
-                        Nombre
-                      </th>
-                      <th className="px-3 py-2 text-left font-semibold">
-                        Tipo
-                      </th>
-                      <th className="px-3 py-2 text-left font-semibold">
-                        Creado
-                      </th>
-                      <th className="px-3 py-2 text-left font-semibold">
-                        Estado
-                      </th>
-                      <th className="px-3 py-2 text-center font-semibold">
-                        Acciones
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {listaFiltrada.map((p) => (
-                      <tr
-                        key={p.id_parte_decomisada || p.id}
-                        className="hover:bg-gray-50 transition"
-                      >
-                        <td className="px-3 py-2 truncate">{p.nombre_parte}</td>
-                        <td className="px-3 py-2 truncate">
-                          {p.tipo_nombre || '—'}
-                        </td>
-                        <td className="px-3 py-2 truncate">
-                          {p.fecha_creacion
-                            ? new Date(p.fecha_creacion).toLocaleDateString()
-                            : '—'}
-                        </td>
-                        <td className="px-3 py-2">
-                          {p.estado ? '✅ Activo' : '❌ Inactivo'}
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => iniciarEdicion(p)}
-                              className="px-2 py-1 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              onClick={() =>
-                                eliminar(p.id_parte_decomisada || p.id)
-                              }
-                              className="px-2 py-1 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  ))
+                ) : (
+                  <p className="text-gray-500">
+                    No se encontraron partes decomisadas.
+                  </p>
+                )}
               </div>
-              {listaFiltrada.length === 0 && (
-                <p className="text-center text-gray-500 mt-4">
-                  No se encontraron partes decomisadas.
-                </p>
-              )}
-            </div>
-          )}
+            ) : (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  Partes Decomisadas Registradas
+                </h3>
+                <input
+                  type="text"
+                  placeholder="🔍 Buscar parte"
+                  value={filtro}
+                  onChange={(e) => setFiltro(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50 mb-4"
+                />
+                <div className="rounded-xl ring-1 ring-gray-200">
+                  <table className="w-full table-fixed text-sm text-gray-700">
+                    <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold">
+                          Nombre
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold">
+                          Tipo
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold">
+                          Creado
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold">
+                          Estado
+                        </th>
+                        <th className="px-3 py-2 text-center font-semibold">
+                          Acciones
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {listaFiltrada.map((p) => (
+                        <tr
+                          key={p.id_parte_decomisada || p.id}
+                          className="hover:bg-gray-50 transition"
+                        >
+                          <td className="px-3 py-2 truncate">
+                            {p.nombre_parte}
+                          </td>
+                          <td className="px-3 py-2 truncate">
+                            {p.tipo_nombre || '—'}
+                          </td>
+                          <td className="px-3 py-2 truncate">
+                            {p.fecha_creacion
+                              ? new Date(p.fecha_creacion).toLocaleDateString()
+                              : '—'}
+                          </td>
+                          <td className="px-3 py-2">
+                            {p.estado ? '✅ Activo' : '❌ Inactivo'}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <div className="flex justify-center gap-2">
+                              <button
+                                onClick={() => iniciarEdicion(p)}
+                                className="px-2 py-1 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() =>
+                                  eliminar(p.id_parte_decomisada || p.id)
+                                }
+                                className="px-2 py-1 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {listaFiltrada.length === 0 && (
+                  <p className="text-center text-gray-500 mt-4">
+                    No se encontraron partes decomisadas.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

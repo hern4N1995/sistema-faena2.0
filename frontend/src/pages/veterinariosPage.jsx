@@ -114,6 +114,7 @@ export default function VeterinariosPage() {
     n_telefono: '',
     estado: 'Activo',
     id_planta: '',
+    planta_nombre: '',
   });
 
   const [veterinarios, setVeterinarios] = useState([]);
@@ -174,6 +175,7 @@ export default function VeterinariosPage() {
       n_telefono: '',
       estado: 'Activo',
       id_planta: '',
+      planta_nombre: '',
     });
   };
 
@@ -224,6 +226,7 @@ export default function VeterinariosPage() {
       n_telefono: v.n_telefono || '',
       estado: v.estado || 'Activo',
       id_planta: v.id_planta || '',
+      planta_nombre: v.planta_nombre || '',
     });
     setEditandoId(v.id_veterinario || v.id);
   };
@@ -380,12 +383,18 @@ export default function VeterinariosPage() {
                           (p) =>
                             String(p.id_planta ?? p.id) ===
                             String(form.id_planta)
-                        )?.nombre || `ID ${form.id_planta}`,
+                        )?.nombre ||
+                        form.planta_nombre ||
+                        `ID ${form.id_planta}`,
                     }
                   : null
               }
               onChange={(s) =>
-                setForm((prev) => ({ ...prev, id_planta: s?.value || '' }))
+                setForm((prev) => ({
+                  ...prev,
+                  id_planta: s?.value || '',
+                  planta_nombre: s?.label || '',
+                }))
               }
               options={plantas.map((p) => ({
                 value: String(p.id_planta ?? p.id),

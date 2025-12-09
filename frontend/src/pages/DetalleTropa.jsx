@@ -491,6 +491,7 @@ export default function DetalleTropa() {
 
   const fetchCategoriasByEspecie = async (especieId) => {
     if (!especieId) return [];
+    // Primero intentar endpoint específico: /especies/:id/categorias
     try {
       const res = await api.get(`/especies/${especieId}/categorias`, {
         headers: getTokenHeaders(),
@@ -506,12 +507,35 @@ export default function DetalleTropa() {
         raw: c,
       }));
     } catch (e) {
+      // Si falla (por ejemplo 404 en deploy), hacer fallback a /categorias-especie y filtrar
       console.warn(
-        '[DetalleTropa] fetchCategoriasByEspecie failed',
+        '[DetalleTropa] fetchCategoriasByEspecie failed, intentando fallback',
         especieId,
-        e
+        e?.message
       );
-      return [];
+      try {
+        const r = await api.get('/categorias-especie', {
+          headers: getTokenHeaders(),
+        });
+        const all = Array.isArray(r.data) ? r.data : r.data?.categorias ?? [];
+        const filtered = all.filter(
+          (c) =>
+            String(c.id_especie ?? c.especie_id ?? '') === String(especieId)
+        );
+        return filtered.map((c) => ({
+          value: String(c.id_cat_especie ?? c.id),
+          label: String(
+            c.descripcion ?? c.nombre ?? String(c.id_cat_especie ?? c.id)
+          ),
+          raw: c,
+        }));
+      } catch (e2) {
+        console.warn(
+          '[DetalleTropa] fetchCategoriasByEspecie fallback también falló',
+          e2?.message
+        );
+        return [];
+      }
     }
   };
 

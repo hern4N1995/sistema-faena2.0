@@ -283,10 +283,10 @@ exports.getDetalleAgrupado = async (req, res) => {
 
 /* Guardar detalle de tropa (array de detalles) */
 exports.saveDetalle = async (req, res) => {
-  const { id } = req.params;
+  const { tropaId } = req.params;
   const detalles = req.body;
 
-  if (!/^\d+$/.test(id)) {
+  if (!/^\d+$/.test(tropaId)) {
     return res.status(400).json({ error: 'ID de tropa inválido' });
   }
 
@@ -316,7 +316,7 @@ exports.saveDetalle = async (req, res) => {
       await pool.query(
         `INSERT INTO tropa_detalle (id_tropa, id_especie, id_cat_especie, cantidad)
          VALUES ($1, $2, $3, $4)`,
-        [parseInt(id, 10), id_especie, id_cat_especie, parseInt(cantidad, 10)],
+        [parseInt(tropaId, 10), id_especie, id_cat_especie, parseInt(cantidad, 10)],
       );
 
       detallesInsertados.push({

@@ -3,7 +3,28 @@ import { useParams } from 'react-router-dom';
 import api from '../services/api';
 
 export default function InformeTropa() {
-  const { tropaId } = useParams();
+  const params = useParams();
+  let tropaId =
+    params?.tropaId ??
+    params?.id ??
+    params?.tropa_id ??
+    params?.id_tropa ??
+    null;
+
+  // Fallback: revisar query string ?id= o ?tropaId=
+  if (!tropaId && typeof window !== 'undefined') {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      tropaId =
+        sp.get('tropaId') ||
+        sp.get('id') ||
+        sp.get('tropa_id') ||
+        sp.get('id_tropa') ||
+        null;
+    } catch (e) {
+      // ignore
+    }
+  }
   const [tropaInfo, setTropaInfo] = useState({});
   const [detalle, setDetalle] = useState({
     especie: '',

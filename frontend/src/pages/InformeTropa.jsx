@@ -11,6 +11,17 @@ export default function InformeTropa() {
     params?.id_tropa ??
     null;
 
+  // DEBUG: log params and current location to investigate undefined tropaId
+  if (typeof window !== 'undefined') {
+    try {
+      // small delay to avoid spamming on hot-reload; log once per mount
+      console.debug('InformeTropa initial params:', params);
+      console.debug('InformeTropa location:', window.location.href);
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // Fallback: revisar query string ?id= o ?tropaId=
   if (!tropaId && typeof window !== 'undefined') {
     try {

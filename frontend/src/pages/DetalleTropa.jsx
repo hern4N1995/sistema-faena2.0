@@ -130,7 +130,8 @@ export default function DetalleTropa() {
   const { tropaId } = useParams();
 
   // Normalizar el ID: si viene como string, convertir a número
-  const id = tropaId ? Number(tropaId) : undefined;
+  // tropaId debería ser un string como "137", lo pasamos al endpoint como está
+  const id = tropaId ? String(tropaId).trim() : undefined;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

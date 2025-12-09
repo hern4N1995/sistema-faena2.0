@@ -59,19 +59,31 @@ const actualizarEspecie = async (req, res) => {
   }
 };
 
-// Eliminación lógica
-const eliminarEspecie = async (req, res) => {
+// Obtener categorías de una especie específica
+const getCategoriasPorEspecie = async (req, res) => {
   const { id } = req.params;
 
+  if (!id || !/^\d+$/.test(id)) {
+    return res.status(400).json({ error: 'ID de especie inválido' });
+  }
+
   try {
-    await pool.query(
-      `UPDATE especie SET estado = FALSE WHERE id_especie = $1`,
-      [id],
+    const result = await pool.query(
+      `
+      SELECT 
+        id_cat_especie,
+        descripcion,
+        id_especie
+      FROM categoria_especie
+      WHERE id_especie = $1 AND estado IS TRUE
+      ORDER BY descripcion
+      `,
+      [parseInt(id, 10)],
     );
-    res.sendStatus(200);
+    res.json(result.rows);
   } catch (err) {
-    console.error('Error al eliminar especie:', err.message);
-    res.status(500).json({ error: 'Error al eliminar especie' });
+    console.error('Error al obtener categorías por especie:', err.message);
+    res.status(500).json({ error: 'Error al obtener categorías' });
   }
 };
 
@@ -80,4 +92,5 @@ module.exports = {
   registrarEspecie,
   actualizarEspecie,
   eliminarEspecie,
+  getCategoriasPorEspecie,
 };

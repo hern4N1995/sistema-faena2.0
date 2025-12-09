@@ -108,9 +108,9 @@ exports.createTropa = async (req, res) => {
 
 /* Obtener tropa por ID */
 exports.getById = async (req, res) => {
-  const { id } = req.params;
+  const { tropaId } = req.params;
 
-  if (!/^\d+$/.test(id)) {
+  if (!/^\d+$/.test(tropaId)) {
     return res
       .status(400)
       .json({ error: 'ID inválido. Debe ser un número entero.' });
@@ -133,7 +133,7 @@ exports.getById = async (req, res) => {
       LEFT JOIN productor pr ON t.id_productor = pr.id_productor
       WHERE t.id_tropa = $1
     `,
-      [parseInt(id, 10)],
+      [parseInt(tropaId, 10)],
     );
 
     if (result.rows.length === 0) {

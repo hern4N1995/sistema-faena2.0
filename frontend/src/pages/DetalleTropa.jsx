@@ -161,6 +161,49 @@ export default function DetalleTropa() {
     selectKey: undefined,
   });
 
+  // When editing.id_especie changes, reload category options for the edit form
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      const especieId = editing?.id_especie;
+      if (!especieId) {
+        if (mounted) setEditCategoryOptions([]);
+        return;
+      }
+      try {
+        const opts = await fetchCategoriasByEspecie(especieId);
+        if (!mounted) return;
+        const normalized = opts.map((o) => ({
+          value: String(o.value),
+          label: String(o.label),
+        }));
+        // ensure current selectedCategory stays if present
+        setEditCategoryOptions(normalized);
+        if (editing.selectedCategory) {
+          const exists = normalized.some(
+            (x) => String(x.value) === String(editing.selectedCategory.value)
+          );
+          if (!exists) {
+            setEditing((s) => ({
+              ...s,
+              selectedCategory: null,
+              id_cat_especie: '',
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn(
+          '[DetalleTropa] error loading edit categories for especie',
+          especieId,
+          e?.message || e
+        );
+      }
+    };
+    load();
+    return () => (mounted = false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing.id_especie]);
+
   const [confirmDelete, setConfirmDelete] = useState({
     id: null,
     ids: null,
@@ -960,18 +1003,26 @@ export default function DetalleTropa() {
             cantidad: Number(newCantidad),
           };
           try {
-            await api.patch(`/tropas/tropa-detalle/${effectiveEditingId}`, payload, {
-              headers: getTokenHeaders(),
-            });
+            await api.patch(
+              `/tropas/tropa-detalle/${effectiveEditingId}`,
+              payload,
+              {
+                headers: getTokenHeaders(),
+              }
+            );
             showToast('success', 'Detalle actualizado.');
             cancelEdit();
             await fetchDetalleAgrupado();
             return;
           } catch (ePatch) {
             try {
-              await api.put(`/tropas/tropa-detalle/${effectiveEditingId}`, payload, {
-                headers: getTokenHeaders(),
-              });
+              await api.put(
+                `/tropas/tropa-detalle/${effectiveEditingId}`,
+                payload,
+                {
+                  headers: getTokenHeaders(),
+                }
+              );
               showToast('success', 'Detalle actualizado.');
               cancelEdit();
               await fetchDetalleAgrupado();
@@ -989,18 +1040,26 @@ export default function DetalleTropa() {
       {
         const payload = { cantidad: Number(newCantidad) };
         try {
-          await api.patch(`/tropas/tropa-detalle/${effectiveEditingId}`, payload, {
-            headers: getTokenHeaders(),
-          });
+          await api.patch(
+            `/tropas/tropa-detalle/${effectiveEditingId}`,
+            payload,
+            {
+              headers: getTokenHeaders(),
+            }
+          );
           showToast('success', 'Cantidad reemplazada.');
           cancelEdit();
           await fetchDetalleAgrupado();
           return;
         } catch (ePatch) {
           try {
-            await api.put(`/tropas/tropa-detalle/${effectiveEditingId}`, payload, {
-              headers: getTokenHeaders(),
-            });
+            await api.put(
+              `/tropas/tropa-detalle/${effectiveEditingId}`,
+              payload,
+              {
+                headers: getTokenHeaders(),
+              }
+            );
             showToast('success', 'Cantidad reemplazada.');
             cancelEdit();
             await fetchDetalleAgrupado();
@@ -1019,6 +1078,7 @@ export default function DetalleTropa() {
   };
 
   const openConfirmDelete = (item) => {
+    console.log('[DetalleTropa] openConfirmDelete called for item:', item);
     const resolvedId = resolveIdFromItem(item);
     if (resolvedId != null) {
       setConfirmDelete({
@@ -1074,6 +1134,7 @@ export default function DetalleTropa() {
   const cancelDelete = () =>
     setConfirmDelete({ id: null, ids: [], nombre: '' });
   const confirmDeleteNow = async () => {
+    console.log('[DetalleTropa] confirmDeleteNow invoked', confirmDelete);
     const did = confirmDelete.id;
     const dids = Array.isArray(confirmDelete.ids) ? confirmDelete.ids : null;
     if (!did && (!dids || dids.length === 0)) return cancelDelete();
@@ -1518,6 +1579,7 @@ export default function DetalleTropa() {
                                       : categoryOptions
                                   }
                                   placeholder="— Seleccionar categoría —"
+                                  isDisabled={!editing.id_especie}
                                 />
                                 <input
                                   className={`${INPUT_BASE_CLASS} text-gray-800`}
@@ -1639,6 +1701,7 @@ export default function DetalleTropa() {
                                                 : categoryOptions
                                             }
                                             placeholder="— Seleccionar categoría —"
+                                            isDisabled={!editing.id_especie}
                                           />
                                         </div>
                                       ) : (

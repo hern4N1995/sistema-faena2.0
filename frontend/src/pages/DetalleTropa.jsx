@@ -680,9 +680,34 @@ export default function DetalleTropa() {
       selectedObj
     );
 
+    // If no resolvedId, try to pick an id from rawRows first element
+    let editId = null;
+    if (resolvedId != null) editId = String(resolvedId);
+    else if (Array.isArray(item.rawRows) && item.rawRows.length > 0) {
+      const first = item.rawRows[0];
+      const tryKeys = (obj) => {
+        if (!obj) return null;
+        const keys = [
+          'id_tropa_detalle',
+          'id_tropadetalle',
+          'id_tropa_det',
+          'id_tropaDetalle',
+          'id_detalle',
+          'id',
+        ];
+        for (const k of keys)
+          if (obj[k] !== undefined && obj[k] !== null) return obj[k];
+        return null;
+      };
+      const fromRaw = tryKeys(first);
+      if (fromRaw != null) editId = String(fromRaw);
+    }
+
+    // final fallback to item.key so UI can still enter edit mode
+    if (!editId) editId = String(item.key ?? 'noid');
+
     setEditing({
-      // If a concrete detail id isn't available use the group's key so UI can enter edit mode
-      id: resolvedId != null ? String(resolvedId) : String(item.key ?? 'noid'),
+      id: editId,
       id_cat_especie: currentCategoryStr,
       remanente: String(item.cantidad ?? item.remanente ?? 0),
       id_especie: especieId ?? null,
@@ -721,10 +746,26 @@ export default function DetalleTropa() {
     try {
       const original =
         detalle.categorias.find((c) => {
+          // direct ids on the grouped row
           const ids = [c.id_tropa_detalle, c.id, c.id_detalle].map((v) =>
             v == null ? null : String(v)
           );
-          return ids.includes(String(editing.id));
+          if (ids.includes(String(editing.id))) return true;
+
+          // or any rawRows within the grouped row may contain the id
+          if (Array.isArray(c.rawRows)) {
+            for (const rr of c.rawRows) {
+              const rrIds = [
+                rr.id_tropa_detalle,
+                rr.id,
+                rr.id_detalle,
+                rr.id_tropa_detalle_id,
+              ].map((v) => (v == null ? null : String(v)));
+              if (rrIds.includes(String(editing.id))) return true;
+            }
+          }
+
+          return false;
         }) || null;
 
       if (!original)
@@ -967,7 +1008,8 @@ export default function DetalleTropa() {
       nombre: item.nombre ?? item.descripcion ?? '',
     });
   };
-  const cancelDelete = () => setConfirmDelete({ id: null, nombre: '' });
+  const cancelDelete = () =>
+    setConfirmDelete({ id: null, ids: [], nombre: '' });
   const confirmDeleteNow = async () => {
     const did = confirmDelete.id;
     const dids = Array.isArray(confirmDelete.ids) ? confirmDelete.ids : null;

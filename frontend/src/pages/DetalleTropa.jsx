@@ -1141,15 +1141,13 @@ export default function DetalleTropa() {
       try {
         console.log(
           '[DetalleTropa] /tropas/:id/detalle sample rows:',
-          rows
-            .slice(0, 10)
-            .map((r) => ({
-              id: r.id_tropa_detalle ?? r.id ?? r.id_detalle,
-              id_cat_especie: r.id_cat_especie ?? r.id_cat,
-              categoria_nombre: r.categoria_nombre ?? r.nombre ?? r.descripcion,
-              cantidad: r.cantidad,
-              id_especie: r.id_especie,
-            }))
+          rows.slice(0, 10).map((r) => ({
+            id: r.id_tropa_detalle ?? r.id ?? r.id_detalle,
+            id_cat_especie: r.id_cat_especie ?? r.id_cat,
+            categoria_nombre: r.categoria_nombre ?? r.nombre ?? r.descripcion,
+            cantidad: r.cantidad,
+            id_especie: r.id_especie,
+          }))
         );
       } catch (e) {
         console.log('[DetalleTropa] could not stringify rows sample', e);
@@ -1202,15 +1200,13 @@ export default function DetalleTropa() {
       try {
         console.log(
           '[DetalleTropa] candidates sample:',
-          candidates
-            .slice(0, 10)
-            .map((c) => ({
-              id: c.id_tropa_detalle ?? c.id ?? c.id_detalle,
-              id_cat_especie: c.id_cat_especie ?? c.id_cat,
-              categoria_nombre: c.categoria_nombre ?? c.nombre ?? c.descripcion,
-              cantidad: c.cantidad,
-              id_especie: c.id_especie,
-            }))
+          candidates.slice(0, 10).map((c) => ({
+            id: c.id_tropa_detalle ?? c.id ?? c.id_detalle,
+            id_cat_especie: c.id_cat_especie ?? c.id_cat,
+            categoria_nombre: c.categoria_nombre ?? c.nombre ?? c.descripcion,
+            cantidad: c.cantidad,
+            id_especie: c.id_especie,
+          }))
         );
       } catch (e) {
         console.log('[DetalleTropa] could not stringify candidates sample', e);
@@ -1219,6 +1215,61 @@ export default function DetalleTropa() {
         ids = candidates
           .map((c) => c.id_tropa_detalle ?? c.id ?? c.id_detalle)
           .filter((v) => v !== undefined && v !== null);
+      }
+
+      // If we found nothing by strict match (cantidad/id/name), try a looser
+      // match: collect all rows that belong to the same category (id or name)
+      // and same especie. This handles the UI-aggregation case where multiple
+      // DB rows were inserted separately and the frontend displays a single
+      // aggregated row (sum of cantidades).
+      if ((!ids || ids.length === 0) && rows.length > 0) {
+        try {
+          const loose = rows.filter((rr) => {
+            try {
+              const rrCatId =
+                rr.id_cat_especie ??
+                rr.id_cat ??
+                rr.id_categoria ??
+                rr.categoria_id ??
+                null;
+              const itemCatId = item.id_cat_especie ?? item.id_cat ?? null;
+              const rrCatName =
+                (rr.categoria_nombre ?? rr.nombre ?? rr.descripcion ?? '') + '';
+              const itemCatName = (item.nombre ?? item.descripcion ?? '') + '';
+              const rrEsp = String(
+                rr.id_especie ?? rr.especie ?? rr.especie_nombre ?? ''
+              );
+              const itemEsp = String(
+                item.id_especie ?? item.especie ?? item.especie_nombre ?? ''
+              );
+
+              const sameEspecie =
+                rrEsp !== '' && itemEsp !== '' ? rrEsp === itemEsp : true;
+
+              const matchById =
+                rrCatId != null &&
+                itemCatId != null &&
+                String(rrCatId) === String(itemCatId);
+              const matchByName =
+                itemCatName &&
+                rrCatName &&
+                String(rrCatName).toLowerCase().trim() ===
+                  String(itemCatName).toLowerCase().trim();
+
+              return (matchById || matchByName) && sameEspecie;
+            } catch (e) {
+              return false;
+            }
+          });
+          console.log('[DetalleTropa] loose match count:', loose.length);
+          if (loose.length > 0) {
+            ids = loose
+              .map((c) => c.id_tropa_detalle ?? c.id ?? c.id_detalle)
+              .filter((v) => v !== undefined && v !== null);
+          }
+        } catch (e) {
+          console.warn('[DetalleTropa] loose match error', e?.message || e);
+        }
       }
     } catch (e) {
       console.warn(

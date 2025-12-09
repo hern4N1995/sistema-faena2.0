@@ -852,7 +852,7 @@ export default function DetalleTropa() {
 
       if (especieChanged) {
         try {
-          await api.delete(`/tropa-detalle/${effectiveEditingId}`, {
+          await api.delete(`/tropas/tropa-detalle/${effectiveEditingId}`, {
             headers: getTokenHeaders(),
           });
         } catch (eDel) {
@@ -912,7 +912,7 @@ export default function DetalleTropa() {
         if (destino) {
           try {
             await api.patch(
-              `/tropa-detalle/${
+              `/tropas/tropa-detalle/${
                 destino.id_tropa_detalle ?? destino.id ?? destino.id_detalle
               }`,
               { cantidad: Number(newCantidad) },
@@ -921,7 +921,7 @@ export default function DetalleTropa() {
           } catch (eUpd) {
             try {
               await api.put(
-                `/tropa-detalle/${
+                `/tropas/tropa-detalle/${
                   destino.id_tropa_detalle ?? destino.id ?? destino.id_detalle
                 }`,
                 { cantidad: Number(newCantidad) },
@@ -937,7 +937,7 @@ export default function DetalleTropa() {
           }
 
           try {
-            await api.delete(`/tropa-detalle/${effectiveEditingId}`, {
+            await api.delete(`/tropas/tropa-detalle/${effectiveEditingId}`, {
               headers: getTokenHeaders(),
             });
           } catch (eDel) {
@@ -960,7 +960,7 @@ export default function DetalleTropa() {
             cantidad: Number(newCantidad),
           };
           try {
-            await api.patch(`/tropa-detalle/${effectiveEditingId}`, payload, {
+            await api.patch(`/tropas/tropa-detalle/${effectiveEditingId}`, payload, {
               headers: getTokenHeaders(),
             });
             showToast('success', 'Detalle actualizado.');
@@ -969,7 +969,7 @@ export default function DetalleTropa() {
             return;
           } catch (ePatch) {
             try {
-              await api.put(`/tropa-detalle/${effectiveEditingId}`, payload, {
+              await api.put(`/tropas/tropa-detalle/${effectiveEditingId}`, payload, {
                 headers: getTokenHeaders(),
               });
               showToast('success', 'Detalle actualizado.');
@@ -989,7 +989,7 @@ export default function DetalleTropa() {
       {
         const payload = { cantidad: Number(newCantidad) };
         try {
-          await api.patch(`/tropa-detalle/${effectiveEditingId}`, payload, {
+          await api.patch(`/tropas/tropa-detalle/${effectiveEditingId}`, payload, {
             headers: getTokenHeaders(),
           });
           showToast('success', 'Cantidad reemplazada.');
@@ -998,7 +998,7 @@ export default function DetalleTropa() {
           return;
         } catch (ePatch) {
           try {
-            await api.put(`/tropa-detalle/${effectiveEditingId}`, payload, {
+            await api.put(`/tropas/tropa-detalle/${effectiveEditingId}`, payload, {
               headers: getTokenHeaders(),
             });
             showToast('success', 'Cantidad reemplazada.');
@@ -1081,12 +1081,12 @@ export default function DetalleTropa() {
     try {
       const headers = { ...getTokenHeaders() };
       if (did) {
-        await api.delete(`/tropa-detalle/${did}`, { headers });
+        await api.delete(`/tropas/tropa-detalle/${did}`, { headers });
       } else if (dids && dids.length > 0) {
         // delete sequentially to avoid overloading server and to handle partial failures
         for (const idRow of dids) {
           try {
-            await api.delete(`/tropa-detalle/${idRow}`, { headers });
+            await api.delete(`/tropas/tropa-detalle/${idRow}`, { headers });
           } catch (e) {
             console.warn(
               '[DetalleTropa] Error eliminando fila',

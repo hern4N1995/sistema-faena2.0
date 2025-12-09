@@ -1134,30 +1134,31 @@ export default function DetalleTropa() {
         headers: getTokenHeaders(),
       });
       const rows = Array.isArray(r.data) ? r.data : r.data?.detalle ?? [];
+      console.log('[DetalleTropa] /tropas/:id/detalle rows length:', rows.length);
       const candidates = rows.filter((rr) => {
         try {
-          const rrCat = String(
-            rr.id_cat_especie ??
-              rr.id_cat ??
-              rr.id_categoria ??
-              rr.categoria_id ??
-              ''
-          );
-          const itemCat = String(item.id_cat_especie ?? item.id_cat ?? '');
-          const sameCat = rrCat !== '' && itemCat !== '' && rrCat === itemCat;
-          const sameCantidad =
-            String(rr.cantidad ?? '') === String(item.cantidad ?? '');
-          const rrEsp = String(
-            rr.id_especie ?? rr.especie ?? rr.especie_nombre ?? ''
-          );
-          const itemEsp = String(
-            item.id_especie ?? item.especie ?? item.especie_nombre ?? ''
-          );
-          const sameEspecie =
-            rrEsp !== '' && itemEsp !== '' ? rrEsp === itemEsp : true;
-          return (
-            (sameCat && sameCantidad && sameEspecie) || (sameCat && sameEspecie)
-          );
+          const rrCatId = rr.id_cat_especie ?? rr.id_cat ?? rr.id_categoria ?? rr.categoria_id ?? null;
+          const itemCatId = item.id_cat_especie ?? item.id_cat ?? null;
+          const rrCatName = (rr.categoria_nombre ?? rr.nombre ?? rr.descripcion ?? '') + '';
+          const itemCatName = (item.nombre ?? item.descripcion ?? '') + '';
+
+          const sameCatId = rrCatId != null && itemCatId != null && String(rrCatId) === String(itemCatId);
+          const sameCatName = itemCatName && rrCatName && String(rrCatName).toLowerCase().trim() === String(itemCatName).toLowerCase().trim();
+
+          const sameCantidad = item.cantidad != null && (String(rr.cantidad ?? '') === String(item.cantidad ?? ''));
+
+          // Prefer id match; if not available, allow name match. Require at least category match
+          // and prefer matching cantidad when available.
+          if (sameCatId) {
+            if (item.cantidad != null) return sameCantidad;
+            return true;
+          }
+          if (sameCatName) {
+            if (item.cantidad != null) return sameCantidad;
+            return true;
+          }
+
+          return false;
         } catch (e) {
           return false;
         }

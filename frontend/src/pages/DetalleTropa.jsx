@@ -848,7 +848,7 @@ export default function DetalleTropa() {
       const categoriaChanged =
         newCat !== undefined &&
         String(newCat) !==
-          String(original.id_cat_especie ?? original.id_cat ?? '');
+          String(originalFound.id_cat_especie ?? originalFound.id_cat ?? '');
 
       if (especieChanged) {
         try {

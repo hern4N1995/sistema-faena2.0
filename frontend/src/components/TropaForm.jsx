@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api'; // tu instancia axios
 
@@ -587,6 +588,7 @@ function InlineCreateModal({
   );
 }
 export default function TropaForm({ onCreated }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     fecha: '',
     dte_dtu: '',
@@ -937,9 +939,20 @@ export default function TropaForm({ onCreated }) {
         payload.id_planta = String(usuario.id_planta);
 
       const res = await api.post('/tropas', payload);
-      if (res?.data?.id_tropa) {
-        if (onCreated) onCreated(res.data.id_tropa);
+
+      // Extraer id_tropa de la respuesta (buscar en varios formatos posibles)
+      const id_tropa =
+        res?.data?.id_tropa ??
+        res?.data?.id ??
+        res?.data?.insertId ??
+        res?.data?.id_insertado ??
+        null;
+
+      if (id_tropa) {
+        console.log('[TropaForm] Tropa creada con id:', id_tropa);
         showToast('success', 'Tropa creada correctamente.');
+
+        // Limpiar formulario
         setForm({
           fecha: '',
           dte_dtu: '',
@@ -950,10 +963,29 @@ export default function TropaForm({ onCreated }) {
           id_productor: '',
           id_titular_faena: '',
         });
+
+        // Redirigir a detalle de tropa
+        const urlPath = `/tropas-cargadas/modificar/${id_tropa}`;
+        console.log('[TropaForm] Redirigiendo a:', urlPath);
+
+        // Llamar callback si existe (para compatibilidad)
+        if (onCreated && typeof onCreated === 'function') {
+          onCreated(id_tropa);
+        }
+
+        // Usar navigate para redirigir
+        setTimeout(() => {
+          navigate(urlPath);
+        }, 500);
         return;
       }
+
       if (res?.status >= 200 && res.status < 300) {
-        showToast('success', 'Tropa creada (respuesta sin id).');
+        console.warn('[TropaForm] Respuesta 2xx pero sin id_tropa:', res.data);
+        showToast(
+          'error',
+          'Tropa creada pero sin ID. Por favor, intenta nuevamente.'
+        );
         return;
       }
       showToast('error', 'Error al guardar tropa.');

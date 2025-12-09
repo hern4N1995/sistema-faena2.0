@@ -1077,7 +1077,7 @@ export default function DetalleTropa() {
     }
   };
 
-  const openConfirmDelete = (item) => {
+  const openConfirmDelete = async (item) => {
     console.log('[DetalleTropa] openConfirmDelete called for item:', item);
     const resolvedId = resolveIdFromItem(item);
     if (resolvedId != null) {
@@ -1114,7 +1114,7 @@ export default function DetalleTropa() {
       return ids;
     };
 
-    const ids = collect(item.rawRows || []);
+    let ids = collect(item.rawRows || []);
     if (ids.length > 0) {
       setConfirmDelete({
         id: null,
@@ -1124,12 +1124,71 @@ export default function DetalleTropa() {
       return;
     }
 
-    // Fallback: no id available
-    setConfirmDelete({
-      id: null,
-      ids: [],
-      nombre: item.nombre ?? item.descripcion ?? '',
-    });
+    // If no ids in the item, try to fetch raw detalle rows and match by
+    // category/especie/cantidad to find underlying records to delete.
+    try {
+      console.log(
+        '[DetalleTropa] No ids in item, fetching /tropas/:id/detalle to find matches'
+      );
+      const r = await api.get(`/tropas/${id}/detalle`, {
+        headers: getTokenHeaders(),
+      });
+      const rows = Array.isArray(r.data) ? r.data : r.data?.detalle ?? [];
+      const candidates = rows.filter((rr) => {
+        try {
+          const rrCat = String(
+            rr.id_cat_especie ??
+              rr.id_cat ??
+              rr.id_categoria ??
+              rr.categoria_id ??
+              ''
+          );
+          const itemCat = String(item.id_cat_especie ?? item.id_cat ?? '');
+          const sameCat = rrCat !== '' && itemCat !== '' && rrCat === itemCat;
+          const sameCantidad =
+            String(rr.cantidad ?? '') === String(item.cantidad ?? '');
+          const rrEsp = String(
+            rr.id_especie ?? rr.especie ?? rr.especie_nombre ?? ''
+          );
+          const itemEsp = String(
+            item.id_especie ?? item.especie ?? item.especie_nombre ?? ''
+          );
+          const sameEspecie =
+            rrEsp !== '' && itemEsp !== '' ? rrEsp === itemEsp : true;
+          return (
+            (sameCat && sameCantidad && sameEspecie) || (sameCat && sameEspecie)
+          );
+        } catch (e) {
+          return false;
+        }
+      });
+
+      if (candidates.length > 0) {
+        ids = candidates
+          .map((c) => c.id_tropa_detalle ?? c.id ?? c.id_detalle)
+          .filter((v) => v !== undefined && v !== null);
+      }
+    } catch (e) {
+      console.warn(
+        '[DetalleTropa] Error fetching detalle for delete fallback',
+        e?.message || e
+      );
+    }
+
+    if (ids && ids.length > 0) {
+      setConfirmDelete({
+        id: null,
+        ids,
+        nombre: item.nombre ?? item.descripcion ?? '',
+      });
+      return;
+    }
+
+    // Nothing found: notify user
+    showToast(
+      'error',
+      'No se encontró identificador para eliminar este elemento.'
+    );
   };
   const cancelDelete = () =>
     setConfirmDelete({ id: null, ids: [], nombre: '' });

@@ -266,27 +266,86 @@ export default function DetalleTropa() {
   const fetchEspecies = async () => {
     try {
       console.log('[DetalleTropa] Obteniendo especies...');
-      const res = await api.get('/especies', { headers: getTokenHeaders() });
-      console.log('[DetalleTropa] Respuesta de especies:', res.data);
 
-      const data = res.data;
-      const activos = Array.isArray(data)
-        ? data.filter((e) =>
-            e.estado === undefined ? true : Boolean(e.estado)
-          )
-        : [];
+      // Intentar obtener de /especies primero
+      try {
+        const res = await api.get('/especies', { headers: getTokenHeaders() });
+        console.log(
+          '[DetalleTropa] Respuesta de especies (endpoint /especies):',
+          res.data
+        );
 
-      console.log('[DetalleTropa] Especies activas:', activos);
+        const data = res.data;
+        const activos = Array.isArray(data)
+          ? data.filter((e) =>
+              e.estado === undefined ? true : Boolean(e.estado)
+            )
+          : [];
 
-      const opts = activos.map((s) => ({
-        value: s.id ?? s.id_especie ?? s.nombre,
-        label: s.nombre ?? s.descripcion ?? String(s.id ?? ''),
-      }));
+        console.log('[DetalleTropa] Especies activas:', activos);
 
-      console.log('[DetalleTropa] Opciones de especies:', opts);
+        const opts = activos.map((s) => ({
+          value: s.id ?? s.id_especie ?? s.nombre,
+          label: s.nombre ?? s.descripcion ?? String(s.id ?? ''),
+        }));
 
-      setEspecies(activos);
-      setEspeciesOptions(opts);
+        console.log('[DetalleTropa] Opciones de especies:', opts);
+
+        setEspecies(activos);
+        setEspeciesOptions(opts);
+        return;
+      } catch (err1) {
+        console.warn(
+          '[DetalleTropa] Error con /especies, intentando /categorias-especie:',
+          err1.message
+        );
+
+        // Fallback: obtener especies desde categorías
+        const resCat = await api.get('/categorias-especie', {
+          headers: getTokenHeaders(),
+        });
+        console.log(
+          '[DetalleTropa] Respuesta de categorias-especie:',
+          resCat.data
+        );
+
+        const categorias = Array.isArray(resCat.data) ? resCat.data : [];
+        const especiesSet = new Set();
+        const especiesList = [];
+
+        for (const cat of categorias) {
+          const especieId = cat.id_especie;
+          const especieNombre = cat.especie;
+
+          if (especieId && !especiesSet.has(especieId)) {
+            especiesSet.add(especieId);
+            especiesList.push({
+              id_especie: especieId,
+              descripcion: especieNombre,
+              id: especieId,
+              nombre: especieNombre,
+            });
+          }
+        }
+
+        console.log(
+          '[DetalleTropa] Especies extraídas de categorías:',
+          especiesList
+        );
+
+        const opts = especiesList.map((s) => ({
+          value: s.id_especie ?? s.id,
+          label: s.descripcion ?? s.nombre,
+        }));
+
+        console.log(
+          '[DetalleTropa] Opciones de especies (desde categorías):',
+          opts
+        );
+
+        setEspecies(especiesList);
+        setEspeciesOptions(opts);
+      }
     } catch (err) {
       console.error('[DetalleTropa] Error al obtener especies:', err);
       console.error('[DetalleTropa] Error response:', err.response?.data);
@@ -295,7 +354,6 @@ export default function DetalleTropa() {
       setError((prev) => prev || 'No se pudieron cargar las especies');
     }
   };
-
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -367,7 +425,54 @@ export default function DetalleTropa() {
           err
         );
         console.warn('[DetalleTropa] Error response:', err.response?.data);
-        setCatalogoCategorias([]);
+
+        // Fallback: obtener de categorias-especie y filtrar
+        try {
+          console.log(
+            '[DetalleTropa] Intentando fallback con /categorias-especie'
+          );
+          const resCat = await api.get(`/categorias-especie`, {
+            headers: getTokenHeaders(),
+          });
+
+          console.log(
+            '[DetalleTropa] Respuesta de categorias-especie:',
+            resCat.data
+          );
+
+          const allCats = Array.isArray(resCat.data) ? resCat.data : [];
+          const filtradas = allCats.filter(
+            (c) =>
+              String(c.id_especie ?? c.especie_id ?? '') ===
+              String(especieSeleccionada.value)
+          );
+
+          console.log(
+            '[DetalleTropa] Categorías filtradas para especie:',
+            filtradas
+          );
+
+          const opts = filtradas.map((c) => normalizeOption(c));
+
+          const seen = new Set();
+          const dedup = [];
+          for (const o of opts) {
+            if (!seen.has(o.value)) {
+              seen.add(o.value);
+              dedup.push(o);
+            }
+          }
+
+          console.log(
+            '[DetalleTropa] Categorías sin duplicar (fallback):',
+            dedup
+          );
+
+          setCatalogoCategorias(dedup);
+        } catch (err2) {
+          console.warn('[DetalleTropa] Fallback también falló:', err2);
+          setCatalogoCategorias([]);
+        }
       }
     };
     loadCategorias();

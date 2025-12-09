@@ -542,6 +542,8 @@ export default function DetalleTropa() {
   // openEdit: build editCategoryOptions and selectedCategory object
   const openEdit = async (item) => {
     const resolvedId = resolveIdFromItem(item);
+    console.log('[DetalleTropa] openEdit called for item:', item);
+    console.log('[DetalleTropa] openEdit resolvedId:', resolvedId);
 
     let especieId = item.id_especie ?? item.especie_id ?? null;
     if (
@@ -566,6 +568,10 @@ export default function DetalleTropa() {
     if (especieId) {
       try {
         fetchedOptions = await fetchCategoriasByEspecie(especieId);
+        console.log(
+          '[DetalleTropa] fetchedOptions length:',
+          Array.isArray(fetchedOptions) ? fetchedOptions.length : 0
+        );
       } catch {
         fetchedOptions = [];
       }
@@ -575,6 +581,10 @@ export default function DetalleTropa() {
       Array.isArray(fetchedOptions) && fetchedOptions.length > 0
         ? fetchedOptions
         : categoryOptions;
+    console.log(
+      '[DetalleTropa] sourceOptions length:',
+      Array.isArray(sourceOptions) ? sourceOptions.length : 0
+    );
 
     // normalize and dedupe
     const seen = new Set();
@@ -631,6 +641,15 @@ export default function DetalleTropa() {
     const selectKeyForThisEdit = `cat-${
       resolvedId ?? 'noid'
     }-${currentCategoryStr}`;
+
+    console.log(
+      '[DetalleTropa] selectKeyForThisEdit:',
+      selectKeyForThisEdit,
+      'currentCategoryStr:',
+      currentCategoryStr,
+      'selectedObj:',
+      selectedObj
+    );
 
     setEditing({
       id: resolvedId != null ? String(resolvedId) : null,

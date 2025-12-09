@@ -207,23 +207,53 @@ export default function CategoriaEspecieAdmin() {
   }, []);
 
   useEffect(() => {
-    Promise.all([fetchCategorias(), fetchEspecies()]).finally(() =>
-      setLoading(false)
-    );
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([fetchCategorias(), fetchEspecies()]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchCategorias = async () => {
     try {
-      const { data } = await api.get('/categorias-especie');
-      setCategorias(Array.isArray(data) ? data : []);
+      console.log('🔄 Fetching categorías from /api/categorias-especie...');
+      const response = await api.get('/categorias-especie');
+      console.log('✅ Categorías response:', response);
+
+      // Extraer data de la respuesta
+      const data = response.data;
+      console.log('📊 Data extracted:', data);
+
+      if (Array.isArray(data)) {
+        console.log('✅ Data is array, setting categorias:', data);
+        setCategorias(data);
+      } else {
+        console.warn('⚠️ Data is not array:', typeof data, data);
+        setCategorias([]);
+      }
     } catch (err) {
-      console.error('Error al cargar categorías:', err);
+      console.error('❌ Error al cargar categorías:', err);
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        response: err.response?.data,
+        status: err.response?.status,
+        headers: err.response?.headers,
+      });
       setCategorias([]);
       setModal({
         isOpen: true,
         type: 'error',
-        title: 'Error',
-        message: '❌ Error cargando categorías',
+        title: 'Error al cargar categorías',
+        message:
+          err.response?.data?.error ||
+          err.message ||
+          '❌ No se pudieron cargar las categorías',
         onConfirm: () => setModal({ ...modal, isOpen: false }),
       });
     }
@@ -231,10 +261,22 @@ export default function CategoriaEspecieAdmin() {
 
   const fetchEspecies = async () => {
     try {
-      const { data } = await api.get('/especies');
-      setEspecies(Array.isArray(data) ? data : []);
+      console.log('🔄 Fetching especies from /api/especies...');
+      const response = await api.get('/especies');
+      console.log('✅ Especies response:', response);
+
+      const data = response.data;
+      console.log('📊 Data extracted:', data);
+
+      if (Array.isArray(data)) {
+        console.log('✅ Data is array, setting especies:', data);
+        setEspecies(data);
+      } else {
+        console.warn('⚠️ Data is not array:', typeof data, data);
+        setEspecies([]);
+      }
     } catch (err) {
-      console.error('Error al cargar especies:', err);
+      console.error('❌ Error al cargar especies:', err);
       setEspecies([]);
     }
   };

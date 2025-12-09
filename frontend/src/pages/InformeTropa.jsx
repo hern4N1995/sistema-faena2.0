@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import api from '../services/api';
 
 export default function InformeTropa() {
-  const { id } = useParams();
+  const { tropaId } = useParams();
   const [tropaInfo, setTropaInfo] = useState({});
   const [detalle, setDetalle] = useState({
     especie: '',
@@ -15,8 +15,10 @@ export default function InformeTropa() {
   });
 
   useEffect(() => {
+    if (!tropaId) return;
+
     api
-      .get(`/tropas/${id}/detalle-agrupado`)
+      .get(`/tropas/${tropaId}/detalle-agrupado`)
       .then((res) => setDetalle(res.data))
       .catch(() =>
         setDetalle({
@@ -28,7 +30,7 @@ export default function InformeTropa() {
           titular: '',
         })
       );
-  }, [id]);
+  }, [tropaId]);
 
   const { especie, categorias, n_tropa, fecha, dte_dtu, titular } = detalle;
   const totalEspecie = Array.isArray(categorias)

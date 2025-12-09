@@ -200,9 +200,20 @@ export default function TropasCargadas() {
           });
         }
 
-        const ordenadas = arr.sort(
-          (a, b) => new Date(b.fecha) - new Date(a.fecha)
-        );
+        const ordenadas = arr
+          .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+          .map((t) => ({
+            // Normalizar identificador: asegurar `id_tropa` esté disponible
+            id_tropa: t.id_tropa ?? t.id ?? t.id_tropa ?? null,
+            // mantener el resto de propiedades
+            ...t,
+          }));
+
+        // Debug: mostrar primer elemento para verificar estructura
+        if (ordenadas.length > 0) {
+          console.debug('TropasCargadas: ejemplo tropa normalizada ->', ordenadas[0]);
+        }
+
         setAllTropas(ordenadas);
       })
       .catch((err) => {

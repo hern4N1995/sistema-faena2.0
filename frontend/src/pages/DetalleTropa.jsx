@@ -768,14 +768,77 @@ export default function DetalleTropa() {
           return false;
         }) || null;
 
-      if (!original)
+      // If we didn't find an original in the grouped detalle, try to
+      // fetch the non-aggregated detalle rows and look for a matching
+      // underlying record. This handles the case where the UI shows
+      // aggregated/grouped rows without exposing the underlying ids.
+      let originalFound = original;
+      let effectiveEditingId = String(editing.id);
+      if (!originalFound) {
+        try {
+          console.warn(
+            '[DetalleTropa] original not found — fetching raw detalle'
+          );
+          const rawRes = await api.get(`/tropas/${id}/detalle`, {
+            headers: getTokenHeaders(),
+          });
+          const rawRows = Array.isArray(rawRes.data)
+            ? rawRes.data
+            : rawRes.data?.detalle ?? [];
+          // Try to find a row by matching common category id properties
+          const candidate =
+            rawRows.find((r) => {
+              const catVals = [
+                r.id_cat_especie,
+                r.id_cat,
+                r.id_categoria,
+                r.categoria_id,
+              ].map((v) => (v == null ? null : String(v)));
+              if (catVals.includes(String(editing.id))) return true;
+              if (catVals.includes(String(editing.id_cat_especie))) return true;
+              // also try matching by any id fields if editing.id looks numeric
+              const idVals = [r.id_tropa_detalle, r.id, r.id_detalle].map((v) =>
+                v == null ? null : String(v)
+              );
+              if (idVals.includes(String(editing.id))) return true;
+              return false;
+            }) || null;
+
+          if (candidate) {
+            // set the effective editing id to the underlying record id
+            effectiveEditingId = String(
+              candidate.id_tropa_detalle ??
+                candidate.id ??
+                candidate.id_detalle ??
+                editing.id
+            );
+            originalFound = candidate;
+            console.log(
+              '[DetalleTropa] Found underlying candidate for edit:',
+              effectiveEditingId,
+              candidate
+            );
+          } else {
+            console.warn(
+              '[DetalleTropa] No underlying candidate found in /detalle'
+            );
+          }
+        } catch (eRaw) {
+          console.warn(
+            '[DetalleTropa] Error fetching /tropas/:id/detalle fallback',
+            eRaw?.message || eRaw
+          );
+        }
+      }
+
+      if (!originalFound)
         return showToast(
           'error',
           'No se encontró el registro original para editar.'
         );
 
       const originalEspecieId =
-        original?.id_especie ?? original?.especie_id ?? null;
+        originalFound?.id_especie ?? originalFound?.especie_id ?? null;
       const newEspecieId = editing.id_especie ?? originalEspecieId ?? null;
 
       const especieChanged =
@@ -789,7 +852,7 @@ export default function DetalleTropa() {
 
       if (especieChanged) {
         try {
-          await api.delete(`/tropa-detalle/${editing.id}`, {
+          await api.delete(`/tropa-detalle/${effectiveEditingId}`, {
             headers: getTokenHeaders(),
           });
         } catch (eDel) {
@@ -874,7 +937,7 @@ export default function DetalleTropa() {
           }
 
           try {
-            await api.delete(`/tropa-detalle/${editing.id}`, {
+            await api.delete(`/tropa-detalle/${effectiveEditingId}`, {
               headers: getTokenHeaders(),
             });
           } catch (eDel) {
@@ -897,7 +960,7 @@ export default function DetalleTropa() {
             cantidad: Number(newCantidad),
           };
           try {
-            await api.patch(`/tropa-detalle/${editing.id}`, payload, {
+            await api.patch(`/tropa-detalle/${effectiveEditingId}`, payload, {
               headers: getTokenHeaders(),
             });
             showToast('success', 'Detalle actualizado.');
@@ -906,7 +969,7 @@ export default function DetalleTropa() {
             return;
           } catch (ePatch) {
             try {
-              await api.put(`/tropa-detalle/${editing.id}`, payload, {
+              await api.put(`/tropa-detalle/${effectiveEditingId}`, payload, {
                 headers: getTokenHeaders(),
               });
               showToast('success', 'Detalle actualizado.');
@@ -926,7 +989,7 @@ export default function DetalleTropa() {
       {
         const payload = { cantidad: Number(newCantidad) };
         try {
-          await api.patch(`/tropa-detalle/${editing.id}`, payload, {
+          await api.patch(`/tropa-detalle/${effectiveEditingId}`, payload, {
             headers: getTokenHeaders(),
           });
           showToast('success', 'Cantidad reemplazada.');
@@ -935,7 +998,7 @@ export default function DetalleTropa() {
           return;
         } catch (ePatch) {
           try {
-            await api.put(`/tropa-detalle/${editing.id}`, payload, {
+            await api.put(`/tropa-detalle/${effectiveEditingId}`, payload, {
               headers: getTokenHeaders(),
             });
             showToast('success', 'Cantidad reemplazada.');

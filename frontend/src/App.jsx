@@ -45,7 +45,7 @@ function App() {
           <Route path="tropa" element={<Tropa />} />
           <Route path="tropas-cargadas" element={<TropasCargadas />} />
           <Route
-            path="tropas-cargadas/modificar/:id"
+            path="tropas-cargadas/modificar/:tropaId"
             element={<DetalleTropa />}
           />
           {/* Normalizado: usar :tropaId para que coincida con los controladores y rutas del backend */}

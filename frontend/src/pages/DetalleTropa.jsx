@@ -127,7 +127,10 @@ function SelectField({
 }
 
 export default function DetalleTropa() {
-  const { id } = useParams();
+  const { tropaId } = useParams();
+
+  // Normalizar el ID: si viene como string, convertir a número
+  const id = tropaId ? Number(tropaId) : undefined;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -187,11 +190,24 @@ export default function DetalleTropa() {
 
   const fetchTropa = async () => {
     try {
+      console.log('[DetalleTropa] Obteniendo tropa con ID:', id);
       const res = await api.get(`/tropas/${id}`, {
         headers: getTokenHeaders(),
       });
-      const { n_tropa, dte_dtu, fecha, titular, planta, productor } =
-        res.data || {};
+      console.log('[DetalleTropa] Respuesta de tropa:', res.data);
+
+      const data = res.data || {};
+
+      // Extraer datos con múltiples fallbacks
+      const n_tropa = data.n_tropa ?? data.numero_tropa ?? data.numero ?? '';
+      const dte_dtu = data.dte_dtu ?? data.dte ?? data.dtu ?? '';
+      const fecha = data.fecha ?? '';
+      const titular = data.titular ?? data.titular_nombre ?? '';
+      const planta =
+        data.planta ?? data.planta_nombre ?? data.nombre_planta ?? '';
+      const productor =
+        data.productor ?? data.productor_nombre ?? data.nombre_productor ?? '';
+
       setTropaInfo({
         numero_tropa: n_tropa || '',
         dte: dte_dtu || '',
@@ -200,8 +216,20 @@ export default function DetalleTropa() {
         planta: planta || '',
         productor: productor || '',
       });
+
+      console.log('[DetalleTropa] Tropa info seteada:', {
+        numero_tropa: n_tropa || '',
+        dte: dte_dtu || '',
+        fecha: fecha || '',
+        titular: titular || '',
+        planta: planta || '',
+        productor: productor || '',
+      });
     } catch (err) {
-      console.error('Error al obtener tropa:', err);
+      console.error('[DetalleTropa] Error al obtener tropa:', err);
+      console.error('[DetalleTropa] URL intentada: /tropas/' + id);
+      console.error('[DetalleTropa] Response status:', err.response?.status);
+      console.error('[DetalleTropa] Response data:', err.response?.data);
       setError('No se pudo obtener la tropa');
     }
   };
@@ -236,21 +264,31 @@ export default function DetalleTropa() {
 
   const fetchEspecies = async () => {
     try {
+      console.log('[DetalleTropa] Obteniendo especies...');
       const res = await api.get('/especies', { headers: getTokenHeaders() });
+      console.log('[DetalleTropa] Respuesta de especies:', res.data);
+
       const data = res.data;
       const activos = Array.isArray(data)
         ? data.filter((e) =>
             e.estado === undefined ? true : Boolean(e.estado)
           )
         : [];
+
+      console.log('[DetalleTropa] Especies activas:', activos);
+
       const opts = activos.map((s) => ({
         value: s.id ?? s.id_especie ?? s.nombre,
         label: s.nombre ?? s.descripcion ?? String(s.id ?? ''),
       }));
+
+      console.log('[DetalleTropa] Opciones de especies:', opts);
+
       setEspecies(activos);
       setEspeciesOptions(opts);
     } catch (err) {
-      console.error('Error al obtener especies:', err);
+      console.error('[DetalleTropa] Error al obtener especies:', err);
+      console.error('[DetalleTropa] Error response:', err.response?.data);
       setEspecies([]);
       setEspeciesOptions([]);
       setError((prev) => prev || 'No se pudieron cargar las especies');
@@ -260,6 +298,7 @@ export default function DetalleTropa() {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
+      console.log('[DetalleTropa] Montando componente con ID:', id);
       setLoading(true);
       setError('');
       await Promise.all([
@@ -267,7 +306,10 @@ export default function DetalleTropa() {
         fetchDetalleAgrupado(),
         fetchEspecies(),
       ]);
-      if (mounted) setLoading(false);
+      if (mounted) {
+        console.log('[DetalleTropa] Carga completada');
+        setLoading(false);
+      }
     };
     load();
     return () => (mounted = false);
@@ -277,16 +319,34 @@ export default function DetalleTropa() {
   useEffect(() => {
     const loadCategorias = async () => {
       if (!especieSeleccionada?.value) {
+        console.log(
+          '[DetalleTropa] Sin especie seleccionada, limpiando categorías'
+        );
         setCatalogoCategorias([]);
         return;
       }
+
+      console.log(
+        '[DetalleTropa] Cargando categorías para especie:',
+        especieSeleccionada.value
+      );
+
       try {
         const r = await api.get(
           `/especies/${especieSeleccionada.value}/categorias`,
           { headers: getTokenHeaders() }
         );
+
+        console.log('[DetalleTropa] Respuesta de categorías:', r.data);
+
         const list = Array.isArray(r.data) ? r.data : r.data?.categorias ?? [];
+
+        console.log('[DetalleTropa] Categorías crudas:', list);
+
         const opts = list.map((c) => normalizeOption(c));
+
+        console.log('[DetalleTropa] Categorías normalizadas:', opts);
+
         const seen = new Set();
         const dedup = [];
         for (const o of opts) {
@@ -295,6 +355,9 @@ export default function DetalleTropa() {
             dedup.push(o);
           }
         }
+
+        console.log('[DetalleTropa] Categorías sin duplicar:', dedup);
+
         setCatalogoCategorias(dedup);
       } catch (err) {
         console.warn(
@@ -302,6 +365,7 @@ export default function DetalleTropa() {
           especieSeleccionada?.value,
           err
         );
+        console.warn('[DetalleTropa] Error response:', err.response?.data);
         setCatalogoCategorias([]);
       }
     };
@@ -937,7 +1001,11 @@ export default function DetalleTropa() {
             </label>
             <input
               type="text"
-              value={tropaInfo.planta?.nombre ?? tropaInfo.planta ?? ''}
+              value={
+                typeof tropaInfo.planta === 'object'
+                  ? tropaInfo.planta?.nombre || ''
+                  : tropaInfo.planta || ''
+              }
               disabled
               className={INPUT_BASE_CLASS}
             />

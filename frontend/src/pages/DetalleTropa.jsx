@@ -1134,18 +1134,52 @@ export default function DetalleTropa() {
         headers: getTokenHeaders(),
       });
       const rows = Array.isArray(r.data) ? r.data : r.data?.detalle ?? [];
-      console.log('[DetalleTropa] /tropas/:id/detalle rows length:', rows.length);
+      console.log(
+        '[DetalleTropa] /tropas/:id/detalle rows length:',
+        rows.length
+      );
+      try {
+        console.log(
+          '[DetalleTropa] /tropas/:id/detalle sample rows:',
+          rows
+            .slice(0, 10)
+            .map((r) => ({
+              id: r.id_tropa_detalle ?? r.id ?? r.id_detalle,
+              id_cat_especie: r.id_cat_especie ?? r.id_cat,
+              categoria_nombre: r.categoria_nombre ?? r.nombre ?? r.descripcion,
+              cantidad: r.cantidad,
+              id_especie: r.id_especie,
+            }))
+        );
+      } catch (e) {
+        console.log('[DetalleTropa] could not stringify rows sample', e);
+      }
       const candidates = rows.filter((rr) => {
         try {
-          const rrCatId = rr.id_cat_especie ?? rr.id_cat ?? rr.id_categoria ?? rr.categoria_id ?? null;
+          const rrCatId =
+            rr.id_cat_especie ??
+            rr.id_cat ??
+            rr.id_categoria ??
+            rr.categoria_id ??
+            null;
           const itemCatId = item.id_cat_especie ?? item.id_cat ?? null;
-          const rrCatName = (rr.categoria_nombre ?? rr.nombre ?? rr.descripcion ?? '') + '';
+          const rrCatName =
+            (rr.categoria_nombre ?? rr.nombre ?? rr.descripcion ?? '') + '';
           const itemCatName = (item.nombre ?? item.descripcion ?? '') + '';
 
-          const sameCatId = rrCatId != null && itemCatId != null && String(rrCatId) === String(itemCatId);
-          const sameCatName = itemCatName && rrCatName && String(rrCatName).toLowerCase().trim() === String(itemCatName).toLowerCase().trim();
+          const sameCatId =
+            rrCatId != null &&
+            itemCatId != null &&
+            String(rrCatId) === String(itemCatId);
+          const sameCatName =
+            itemCatName &&
+            rrCatName &&
+            String(rrCatName).toLowerCase().trim() ===
+              String(itemCatName).toLowerCase().trim();
 
-          const sameCantidad = item.cantidad != null && (String(rr.cantidad ?? '') === String(item.cantidad ?? ''));
+          const sameCantidad =
+            item.cantidad != null &&
+            String(rr.cantidad ?? '') === String(item.cantidad ?? '');
 
           // Prefer id match; if not available, allow name match. Require at least category match
           // and prefer matching cantidad when available.
@@ -1164,6 +1198,23 @@ export default function DetalleTropa() {
         }
       });
 
+      console.log('[DetalleTropa] candidates length:', candidates.length);
+      try {
+        console.log(
+          '[DetalleTropa] candidates sample:',
+          candidates
+            .slice(0, 10)
+            .map((c) => ({
+              id: c.id_tropa_detalle ?? c.id ?? c.id_detalle,
+              id_cat_especie: c.id_cat_especie ?? c.id_cat,
+              categoria_nombre: c.categoria_nombre ?? c.nombre ?? c.descripcion,
+              cantidad: c.cantidad,
+              id_especie: c.id_especie,
+            }))
+        );
+      } catch (e) {
+        console.log('[DetalleTropa] could not stringify candidates sample', e);
+      }
       if (candidates.length > 0) {
         ids = candidates
           .map((c) => c.id_tropa_detalle ?? c.id ?? c.id_detalle)

@@ -161,7 +161,11 @@ export default function DetalleTropa() {
     selectKey: undefined,
   });
 
-  const [confirmDelete, setConfirmDelete] = useState({ id: null, nombre: '' });
+  const [confirmDelete, setConfirmDelete] = useState({
+    id: null,
+    ids: null,
+    nombre: '',
+  });
 
   const [bufferRows, setBufferRows] = useState([]);
   const [especieSeleccionada, setEspecieSeleccionada] = useState(null);
@@ -480,12 +484,37 @@ export default function DetalleTropa() {
 
   const resolveIdFromItem = (item) => {
     if (!item) return null;
-    const direct = item.id_tropa_detalle ?? item.id ?? item.id_detalle ?? null;
+    // Try several common id property names
+    const tryKeys = (obj) => {
+      if (!obj) return null;
+      const keys = [
+        'id_tropa_detalle',
+        'id_tropadetalle',
+        'id_tropa_det',
+        'id_tropaDetalle',
+        'id_tropa_detalle',
+        'id_detalle',
+        'id',
+        'idDetalle',
+      ];
+      for (const k of keys) {
+        if (obj[k] !== undefined && obj[k] !== null) return obj[k];
+      }
+      return null;
+    };
+
+    const direct = tryKeys(item);
     if (direct != null) return direct;
+
     if (Array.isArray(item.rawRows) && item.rawRows.length > 0) {
       const r0 = item.rawRows[0];
-      return r0?.id_tropa_detalle ?? r0?.id ?? r0?.id_detalle ?? null;
+      const fromRaw = tryKeys(r0);
+      if (fromRaw != null) return fromRaw;
     }
+
+    // As a last resort, some grouped items include an array of ids under 'ids' or similar
+    if (Array.isArray(item.ids) && item.ids.length > 0) return item.ids[0];
+
     return null;
   };
 
@@ -652,7 +681,8 @@ export default function DetalleTropa() {
     );
 
     setEditing({
-      id: resolvedId != null ? String(resolvedId) : null,
+      // If a concrete detail id isn't available use the group's key so UI can enter edit mode
+      id: resolvedId != null ? String(resolvedId) : String(item.key ?? 'noid'),
       id_cat_especie: currentCategoryStr,
       remanente: String(item.cantidad ?? item.remanente ?? 0),
       id_especie: especieId ?? null,
@@ -886,21 +916,86 @@ export default function DetalleTropa() {
 
   const openConfirmDelete = (item) => {
     const resolvedId = resolveIdFromItem(item);
+    if (resolvedId != null) {
+      setConfirmDelete({
+        id: resolvedId,
+        ids: null,
+        nombre: item.nombre ?? item.descripcion ?? '',
+      });
+      return;
+    }
+
+    // Try to collect ids from rawRows
+    const collect = (rows) => {
+      if (!Array.isArray(rows)) return [];
+      const ids = [];
+      for (const r of rows) {
+        const tryKeys = (obj) => {
+          if (!obj) return null;
+          const keys = [
+            'id_tropa_detalle',
+            'id_tropadetalle',
+            'id_tropa_det',
+            'id_tropaDetalle',
+            'id_detalle',
+            'id',
+          ];
+          for (const k of keys)
+            if (obj[k] !== undefined && obj[k] !== null) return obj[k];
+          return null;
+        };
+        const v = tryKeys(r);
+        if (v != null) ids.push(v);
+      }
+      return ids;
+    };
+
+    const ids = collect(item.rawRows || []);
+    if (ids.length > 0) {
+      setConfirmDelete({
+        id: null,
+        ids,
+        nombre: item.nombre ?? item.descripcion ?? '',
+      });
+      return;
+    }
+
+    // Fallback: no id available
     setConfirmDelete({
-      id: resolvedId,
+      id: null,
+      ids: [],
       nombre: item.nombre ?? item.descripcion ?? '',
     });
   };
   const cancelDelete = () => setConfirmDelete({ id: null, nombre: '' });
   const confirmDeleteNow = async () => {
     const did = confirmDelete.id;
-    if (!did) return cancelDelete();
+    const dids = Array.isArray(confirmDelete.ids) ? confirmDelete.ids : null;
+    if (!did && (!dids || dids.length === 0)) return cancelDelete();
+
     try {
-      await api.delete(`/tropa-detalle/${did}`, { headers: getTokenHeaders() });
+      const headers = { ...getTokenHeaders() };
+      if (did) {
+        await api.delete(`/tropa-detalle/${did}`, { headers });
+      } else if (dids && dids.length > 0) {
+        // delete sequentially to avoid overloading server and to handle partial failures
+        for (const idRow of dids) {
+          try {
+            await api.delete(`/tropa-detalle/${idRow}`, { headers });
+          } catch (e) {
+            console.warn(
+              '[DetalleTropa] Error eliminando fila',
+              idRow,
+              e?.message
+            );
+          }
+        }
+      }
       showToast('success', 'Detalle eliminado.');
       cancelDelete();
       await fetchDetalleAgrupado();
-    } catch {
+    } catch (e) {
+      console.error('[DetalleTropa] Error confirmDeleteNow', e);
       showToast('error', 'No se pudo eliminar el detalle.');
     }
   };
@@ -1832,7 +1927,8 @@ export default function DetalleTropa() {
         </div>
       </div>
 
-      {confirmDelete.id && (
+      {(confirmDelete.id ||
+        (Array.isArray(confirmDelete.ids) && confirmDelete.ids.length > 0)) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black opacity-30"
@@ -1843,8 +1939,19 @@ export default function DetalleTropa() {
               Confirmar eliminación
             </h3>
             <p className="text-sm text-gray-700 mb-4">
-              ¿Eliminar "{confirmDelete.nombre}" de la tropa? Esta acción no se
-              puede deshacer.
+              {Array.isArray(confirmDelete.ids) &&
+              confirmDelete.ids.length > 0 ? (
+                <>
+                  ¿Eliminar {confirmDelete.ids.length} filas de "
+                  {confirmDelete.nombre}" de la tropa? Esta acción no se puede
+                  deshacer.
+                </>
+              ) : (
+                <>
+                  ¿Eliminar "{confirmDelete.nombre}" de la tropa? Esta acción no
+                  se puede deshacer.
+                </>
+              )}
             </p>
             <div className="flex justify-end gap-2">
               <button

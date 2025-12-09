@@ -25,6 +25,21 @@ export default function InformeTropa() {
       // ignore
     }
   }
+  // Normalizar y validar tropaId (evitar 'undefined' o 'null' string)
+  if (typeof tropaId === 'string') {
+    const t = tropaId.trim();
+    if (
+      t === '' ||
+      t.toLowerCase() === 'undefined' ||
+      t.toLowerCase() === 'null'
+    ) {
+      tropaId = null;
+    } else {
+      // extraer número si viene con otros caracteres
+      const m = t.match(/(\d+)/);
+      tropaId = m ? m[0] : t;
+    }
+  }
   const [tropaInfo, setTropaInfo] = useState({});
   const [detalle, setDetalle] = useState({
     especie: '',
@@ -36,12 +51,45 @@ export default function InformeTropa() {
   });
 
   useEffect(() => {
-    if (!tropaId) return;
+    if (!tropaId) {
+      console.warn('InformeTropa: tropaId no disponible, omitiendo petición');
+      setDetalle({
+        especie: '',
+        categorias: [],
+        n_tropa: '',
+        fecha: '',
+        dte_dtu: '',
+        titular: '',
+      });
+      return;
+    }
 
+    const idNum = Number(tropaId);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+      console.warn('InformeTropa: tropaId inválido ->', tropaId);
+      setDetalle({
+        especie: '',
+        categorias: [],
+        n_tropa: '',
+        fecha: '',
+        dte_dtu: '',
+        titular: '',
+      });
+      return;
+    }
+
+    console.log(
+      'InformeTropa: solicitando detalle agrupado para tropaId=',
+      idNum
+    );
     api
-      .get(`/tropas/${tropaId}/detalle-agrupado`)
-      .then((res) => setDetalle(res.data))
-      .catch(() =>
+      .get(`/tropas/${idNum}/detalle-agrupado`)
+      .then((res) => {
+        console.log('InformeTropa: detalle agrupado recibido', res.data);
+        setDetalle(res.data);
+      })
+      .catch((err) => {
+        console.error('InformeTropa: error al obtener detalle agrupado', err);
         setDetalle({
           especie: '',
           categorias: [],
@@ -49,8 +97,8 @@ export default function InformeTropa() {
           fecha: '',
           dte_dtu: '',
           titular: '',
-        })
-      );
+        });
+      });
   }, [tropaId]);
 
   const { especie, categorias, n_tropa, fecha, dte_dtu, titular } = detalle;

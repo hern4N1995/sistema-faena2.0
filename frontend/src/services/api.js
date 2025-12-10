@@ -5,13 +5,16 @@ import axios from 'axios';
  * Determina la base del API de forma robusta:
  * - Si VITE_API_BASE está definida la usamos.
  * - Si VITE_API_BASE_URL está definida la usamos (compatibilidad).
- * - Si ninguna está definida usamos '/api' (prefijo relativo al mismo host).
+ * - Si en producción (import.meta.env.PROD), usamos la URL del backend remoto.
+ * - Si en desarrollo, usamos '/api' (prefijo relativo al mismo host).
  *
  * Si la variable de entorno apunta al mismo host del frontend pero no incluye '/api',
  * añadimos '/api' al final para evitar peticiones a rutas públicas del frontend.
  */
 const envBase =
-  import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || null;
+  import.meta.env.VITE_API_BASE ||
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.PROD ? 'https://sistema-faena.onrender.com/api' : null);
 
 function ensureApiPath(base) {
   if (!base) return '/api';

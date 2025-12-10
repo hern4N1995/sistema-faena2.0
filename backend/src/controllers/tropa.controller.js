@@ -313,16 +313,47 @@ exports.saveDetalle = async (req, res) => {
         continue;
       }
 
-      await pool.query(
-        `INSERT INTO tropa_detalle (id_tropa, id_especie, id_cat_especie, cantidad)
-         VALUES ($1, $2, $3, $4)`,
-        [parseInt(tropaId, 10), id_especie, id_cat_especie, parseInt(cantidad, 10)],
+      // First, check if a row with the same tropa, especie, and categoria already exists
+      const existingQuery = await pool.query(
+        `SELECT id_tropa_detalle, cantidad FROM tropa_detalle 
+         WHERE id_tropa = $1 AND id_especie = $2 AND id_cat_especie = $3`,
+        [parseInt(tropaId, 10), id_especie, id_cat_especie],
       );
+
+      const cantidadNum = parseInt(cantidad, 10);
+      let result;
+
+      if (existingQuery.rows.length > 0) {
+        // Row exists: update it by adding the new cantidad
+        const existing = existingQuery.rows[0];
+        const newCantidad = (existing.cantidad || 0) + cantidadNum;
+        result = await pool.query(
+          `UPDATE tropa_detalle SET cantidad = $1 WHERE id_tropa_detalle = $2 RETURNING *`,
+          [newCantidad, existing.id_tropa_detalle],
+        );
+        console.log(
+          '[saveDetalle] Updated existing row:',
+          existing.id_tropa_detalle,
+          'new cantidad:',
+          newCantidad,
+        );
+      } else {
+        // Row doesn't exist: insert it
+        result = await pool.query(
+          `INSERT INTO tropa_detalle (id_tropa, id_especie, id_cat_especie, cantidad)
+           VALUES ($1, $2, $3, $4) RETURNING *`,
+          [parseInt(tropaId, 10), id_especie, id_cat_especie, cantidadNum],
+        );
+        console.log(
+          '[saveDetalle] Inserted new row:',
+          result.rows[0]?.id_tropa_detalle,
+        );
+      }
 
       detallesInsertados.push({
         id_especie,
         id_cat_especie,
-        cantidad: parseInt(cantidad, 10),
+        cantidad: cantidadNum,
       });
     }
 

@@ -13,85 +13,52 @@ const DetableFaenaPage = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchTropaDetalle = async () => {
+    const fetchTropaYDetalle = async () => {
       if (!idTropa) {
         console.error('[DetalleFaenaPage] idTropa no proporcionado');
         setError('ID de tropa inválido');
         setLoading(false);
         return;
       }
-
       try {
-        console.log('[DetalleFaenaPage] Cargando detalle para tropa:', idTropa);
-
-        // Intenta obtener detalle directo
-        const res = await api.get(`/tropas/${idTropa}/detalle`);
-        console.log('[DetalleFaenaPage] Datos recibidos:', res.data);
-
-        // Normalizar respuesta
-        let detalleData = res.data;
+        setLoading(true);
+        // Obtener datos generales de la tropa
+        const tropaRes = await api.get(`/tropas/${idTropa}`);
+        const tropa = tropaRes.data?.data || tropaRes.data || {};
+        // Obtener detalle/categorías
+        const detalleRes = await api.get(`/tropas/${idTropa}/detalle`);
+        let detalleData = detalleRes.data;
         if (detalleData && typeof detalleData === 'object') {
-          // Si viene wrapped, extraer
           if (detalleData.data) detalleData = detalleData.data;
-          // Si es array, tomar directamente
           if (!Array.isArray(detalleData)) {
             detalleData = detalleData.categorias || [];
           }
         }
-
-        // Construir objeto faena con datos básicos + categorías
-        if (Array.isArray(detalleData) && detalleData.length > 0) {
+        // Normalizar especie
+        let especie = tropa.especie || tropa.nombre_especie || '';
+        if (!especie && Array.isArray(detalleData) && detalleData.length > 0) {
           const first = detalleData[0];
-          const faenaObj = {
-            id_tropa: idTropa,
-            n_tropa: first.n_tropa || first.nTropa || '',
-            dte_dtu: first.dte_dtu || first.dte || first.dtu || '',
-            fecha:
-              first.fecha || first.fecha_ingreso || new Date().toISOString(),
-            especie: first.especie || first.nombre_especie || 'Especie',
-            categorias: detalleData,
-          };
-          console.log('[DetalleFaenaPage] Faena normalizada:', faenaObj);
-          setFaena(faenaObj);
-          setError(null);
-        } else if (
-          detalleData &&
-          typeof detalleData === 'object' &&
-          !Array.isArray(detalleData)
-        ) {
-          // Es un objeto con propiedades directas
-          setFaena({
-            id_tropa: idTropa,
-            n_tropa: detalleData.n_tropa || detalleData.nTropa || '',
-            dte_dtu:
-              detalleData.dte_dtu || detalleData.dte || detalleData.dtu || '',
-            fecha:
-              detalleData.fecha ||
-              detalleData.fecha_ingreso ||
-              new Date().toISOString(),
-            especie:
-              detalleData.especie || detalleData.nombre_especie || 'Especie',
-            categorias: detalleData.categorias || [],
-          });
-          setError(null);
-        } else {
-          console.warn('[DetalleFaenaPage] Respuesta vacía o inválida');
-          setError('No hay datos disponibles para esta tropa');
-          setFaena(null);
+          especie = first.especie || first.nombre_especie || '';
         }
+        // Construir objeto faena
+        setFaena({
+          id_tropa: idTropa,
+          n_tropa: tropa.n_tropa || tropa.nTropa || '',
+          dte_dtu: tropa.dte_dtu || tropa.dte || tropa.dtu || '',
+          fecha: tropa.fecha || tropa.fecha_ingreso || new Date().toISOString(),
+          especie: especie || 'Especie',
+          categorias: Array.isArray(detalleData) ? detalleData : [],
+        });
+        setError(null);
       } catch (err) {
-        console.error(
-          '[DetalleFaenaPage] Error al cargar detalle:',
-          err.message
-        );
+        console.error('[DetalleFaenaPage] Error al cargar datos:', err);
         setError('Error al cargar datos de la tropa');
         setFaena(null);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchTropaDetalle();
+    fetchTropaYDetalle();
   }, [idTropa]);
 
   const handleSubmit = async (datos) => {

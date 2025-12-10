@@ -71,7 +71,26 @@ const FaenaPage = () => {
         api
           .get(`/tropas/${t.id_tropa}/detalle`)
           .then((r) => ({ status: 'fulfilled', id: t.id_tropa, data: r.data }))
-          .catch((err) => ({ status: 'rejected', id: t.id_tropa, error: err }))
+          .catch((err) => {
+            // Si falla (ej. 404), intentar con detalle-agrupado como fallback
+            console.warn(
+              `[FaenaPage] getDetalle failed for tropa ${t.id_tropa}, trying detalle-agrupado`
+            );
+            return api
+              .get(`/tropas/${t.id_tropa}/detalle-agrupado`)
+              .then((r) => ({
+                status: 'fulfilled',
+                id: t.id_tropa,
+                data: r.data,
+              }))
+              .catch((err2) => {
+                console.warn(
+                  `[FaenaPage] Both getDetalle and getDetalleAgrupado failed for tropa ${t.id_tropa}`,
+                  err2?.message
+                );
+                return { status: 'rejected', id: t.id_tropa, error: err2 };
+              });
+          })
       );
 
       const detalles = await Promise.allSettled(detallePromises);

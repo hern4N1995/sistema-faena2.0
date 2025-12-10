@@ -2,27 +2,29 @@
 import axios from 'axios';
 
 /**
- * Determina la base del API:
- * - Si estamos en Vercel (sistema-faena2-0.vercel.app), usa backend remoto (onrender.com)
- * - Si estamos en localhost, usa /api (relativo, asume backend en mismo puerto o proxy)
- * - Si hay variable de entorno VITE_API_BASE_URL, úsala
+ * Determina la base del API en RUNTIME:
+ * - Si el hostname es sistema-faena2-0.vercel.app → usa backend remoto (onrender.com)
+ * - Si es localhost o 127.0.0.1 → usa /api relativo
+ * - Fallback: /api
  */
 function getApiBase() {
-  // Priorizar variable de entorno si existe
-  if (import.meta.env.VITE_API_BASE_URL) {
-    const url = import.meta.env.VITE_API_BASE_URL.trim();
-    if (url && url !== '') return url;
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+
+    // Vercel: siempre usar backend remoto
+    if (hostname === 'sistema-faena2-0.vercel.app') {
+      console.log('[API] Detectado Vercel, usando backend remoto');
+      return 'https://sistema-faena.onrender.com/api';
+    }
+
+    // Localhost: usar /api relativo
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      console.log('[API] Detectado localhost, usando /api');
+      return '/api';
+    }
   }
 
-  // Si estamos en producción (Vercel), usar backend remoto
-  if (
-    typeof window !== 'undefined' &&
-    window.location.hostname === 'sistema-faena2-0.vercel.app'
-  ) {
-    return 'https://sistema-faena.onrender.com/api';
-  }
-
-  // Para desarrollo local o cualquier otro caso, usar /api relativo
+  // Fallback
   return '/api';
 }
 

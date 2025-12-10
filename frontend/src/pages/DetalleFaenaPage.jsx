@@ -1,27 +1,100 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 import DetalleFaenaForm from '../components/DetalleFaenaForm';
 
-const DetalleFaenaPage = () => {
+const DetableFaenaPage = () => {
   const { idTropa } = useParams();
   const navigate = useNavigate();
   const [faena, setFaena] = useState(null);
   const [modo] = useState('crear');
-  const [resumen, setResumen] = useState(null); // ✅ agregado
+  const [resumen, setResumen] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    fetch(`/tropas/${idTropa}/detalle`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then(setFaena)
-      .catch(() => setFaena(null));
+    const fetchTropaDetalle = async () => {
+      if (!idTropa) {
+        console.error('[DetalleFaenaPage] idTropa no proporcionado');
+        setError('ID de tropa inválido');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log('[DetalleFaenaPage] Cargando detalle para tropa:', idTropa);
+
+        // Intenta obtener detalle directo
+        const res = await api.get(`/tropas/${idTropa}/detalle`);
+        console.log('[DetalleFaenaPage] Datos recibidos:', res.data);
+
+        // Normalizar respuesta
+        let detalleData = res.data;
+        if (detalleData && typeof detalleData === 'object') {
+          // Si viene wrapped, extraer
+          if (detalleData.data) detalleData = detalleData.data;
+          // Si es array, tomar directamente
+          if (!Array.isArray(detalleData)) {
+            detalleData = detalleData.categorias || [];
+          }
+        }
+
+        // Construir objeto faena con datos básicos + categorías
+        if (Array.isArray(detalleData) && detalleData.length > 0) {
+          const first = detalleData[0];
+          const faenaObj = {
+            id_tropa: idTropa,
+            n_tropa: first.n_tropa || first.nTropa || '',
+            dte_dtu: first.dte_dtu || first.dte || first.dtu || '',
+            fecha:
+              first.fecha || first.fecha_ingreso || new Date().toISOString(),
+            especie: first.especie || first.nombre_especie || 'Especie',
+            categorias: detalleData,
+          };
+          console.log('[DetalleFaenaPage] Faena normalizada:', faenaObj);
+          setFaena(faenaObj);
+          setError(null);
+        } else if (
+          detalleData &&
+          typeof detalleData === 'object' &&
+          !Array.isArray(detalleData)
+        ) {
+          // Es un objeto con propiedades directas
+          setFaena({
+            id_tropa: idTropa,
+            n_tropa: detalleData.n_tropa || detalleData.nTropa || '',
+            dte_dtu:
+              detalleData.dte_dtu || detalleData.dte || detalleData.dtu || '',
+            fecha:
+              detalleData.fecha ||
+              detalleData.fecha_ingreso ||
+              new Date().toISOString(),
+            especie:
+              detalleData.especie || detalleData.nombre_especie || 'Especie',
+            categorias: detalleData.categorias || [],
+          });
+          setError(null);
+        } else {
+          console.warn('[DetalleFaenaPage] Respuesta vacía o inválida');
+          setError('No hay datos disponibles para esta tropa');
+          setFaena(null);
+        }
+      } catch (err) {
+        console.error(
+          '[DetalleFaenaPage] Error al cargar detalle:',
+          err.message
+        );
+        setError('Error al cargar datos de la tropa');
+        setFaena(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTropaDetalle();
   }, [idTropa]);
 
   const handleSubmit = async (datos) => {
-    const token = localStorage.getItem('token');
-
     if (!faena?.id_tropa) {
       alert('❌ No se pudo obtener el ID de la tropa');
       return;
@@ -44,47 +117,41 @@ const DetalleFaenaPage = () => {
     }
 
     try {
-      const res = await fetch('/faena/faena', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      console.log('[DetalleFaenaPage] Enviando payload:', payload);
 
-      if (res.status === 401) {
-        alert('⚠️ Sesión expirada. Volvé a iniciar sesión.');
-        navigate('/login');
-        return;
-      }
+      const res = await api.post('/faena/registrar', payload);
 
-      if (res.status === 403) {
-        alert('🚫 No tenés permisos para registrar faenas');
-        return;
-      }
-
-      if (res.status === 400) {
-        const error = await res.json();
-        alert(`❌ Error: ${error?.error || 'Datos inválidos'}`);
-        return;
-      }
-
-      if (!res.ok) throw new Error('Error al guardar faena');
-
-      const result = await res.json();
+      console.log('[DetalleFaenaPage] Respuesta exitosa:', res.data);
       alert('✅ Faena registrada correctamente');
 
       setResumen({
-        id_faena: result.id_faena,
+        id_faena: res.data.id_faena,
         fecha: datos.fecha,
         n_tropa: faena.n_tropa,
         especie: faena.especie,
         categorias: datos.categorias,
       });
     } catch (err) {
-      console.error('Error al guardar faena:', err);
-      alert('❌ No se pudo guardar la faena');
+      console.error('[DetalleFaenaPage] Error al guardar faena:', err);
+
+      if (err.response?.status === 401) {
+        alert('⚠️ Sesión expirada. Volvé a iniciar sesión.');
+        navigate('/login');
+        return;
+      }
+
+      if (err.response?.status === 403) {
+        alert('🚫 No tenés permisos para registrar faenas');
+        return;
+      }
+
+      if (err.response?.status === 400) {
+        const errorMsg = err.response?.data?.error || 'Datos inválidos';
+        alert(`❌ Error: ${errorMsg}`);
+        return;
+      }
+
+      alert('❌ No se pudo guardar la faena. Intenta de nuevo.');
     }
   };
 
@@ -95,7 +162,22 @@ const DetalleFaenaPage = () => {
           Faena
         </h1>
 
-        {resumen ? (
+        {loading ? (
+          <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 rounded-md text-center">
+            <p className="font-semibold">Cargando datos de la tropa...</p>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border-l-4 border-red-400 text-red-800 p-4 rounded-md text-center">
+            <p className="font-semibold mb-1">Error al cargar</p>
+            <p>{error}</p>
+            <button
+              onClick={() => navigate('/faena')}
+              className="mt-4 px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-800"
+            >
+              🔙 Volver a FaenaPage
+            </button>
+          </div>
+        ) : resumen ? (
           <ResumenFaena resumen={resumen} />
         ) : faena ? (
           <>
@@ -125,6 +207,12 @@ const DetalleFaenaPage = () => {
           <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded-md text-center">
             <p className="font-semibold mb-1">Sin animales registrados</p>
             <p>La tropa no tiene animales cargados para faenar.</p>
+            <button
+              onClick={() => navigate('/faena')}
+              className="mt-4 px-4 py-2 rounded-lg bg-yellow-700 text-white hover:bg-yellow-800"
+            >
+              🔙 Volver a FaenaPage
+            </button>
           </div>
         )}
       </div>
@@ -174,4 +262,4 @@ const ResumenFaena = ({ resumen }) => (
   </div>
 );
 
-export default DetalleFaenaPage;
+export default DetableFaenaPage;

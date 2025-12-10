@@ -2,44 +2,31 @@
 import axios from 'axios';
 
 /**
- * Determina la base del API de forma robusta:
- * - Si VITE_API_BASE está definida la usamos.
- * - Si VITE_API_BASE_URL está definida la usamos (compatibilidad).
- * - Si en producción (import.meta.env.PROD), usamos la URL del backend remoto.
- * - Si en desarrollo, usamos '/api' (prefijo relativo al mismo host).
- *
- * Si la variable de entorno apunta al mismo host del frontend pero no incluye '/api',
- * añadimos '/api' al final para evitar peticiones a rutas públicas del frontend.
+ * Determina la base del API:
+ * - Si estamos en Vercel (sistema-faena2-0.vercel.app), usa backend remoto (onrender.com)
+ * - Si estamos en localhost, usa /api (relativo, asume backend en mismo puerto o proxy)
+ * - Si hay variable de entorno VITE_API_BASE_URL, úsala
  */
-const envBase =
-  import.meta.env.VITE_API_BASE ||
-  import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.PROD ? 'https://sistema-faena.onrender.com/api' : null);
-
-function ensureApiPath(base) {
-  if (!base) return '/api';
-  try {
-    // Si es una URL absoluta, normalizar y añadir /api si falta
-    const u = new URL(base, window?.location?.origin);
-    // si la ruta ya contiene '/api' en el pathname no tocarla
-    if (u.pathname && u.pathname.includes('/api')) {
-      // reconstruir origin + pathname (sin duplicar slash)
-      return `${u.origin}${u.pathname.replace(/\/+$/, '')}`;
-    }
-    // añadir '/api' al final del pathname
-    const path = (u.pathname || '').replace(/\/+$/, '') + '/api';
-    return `${u.origin}${path}`;
-  } catch (e) {
-    // Si no es una URL absoluta, tratar como path relativo
-    const p = String(base).trim();
-    if (p === '' || p === '/') return '/api';
-    return p.endsWith('/api')
-      ? p.replace(/\/+$/, '')
-      : p.replace(/\/+$/, '') + '/api';
+function getApiBase() {
+  // Priorizar variable de entorno si existe
+  if (import.meta.env.VITE_API_BASE_URL) {
+    const url = import.meta.env.VITE_API_BASE_URL.trim();
+    if (url && url !== '') return url;
   }
+
+  // Si estamos en producción (Vercel), usar backend remoto
+  if (
+    typeof window !== 'undefined' &&
+    window.location.hostname === 'sistema-faena2-0.vercel.app'
+  ) {
+    return 'https://sistema-faena.onrender.com/api';
+  }
+
+  // Para desarrollo local o cualquier otro caso, usar /api relativo
+  return '/api';
 }
 
-const API_BASE = ensureApiPath(envBase);
+const API_BASE = getApiBase();
 
 // Log temporal para debugging (elimina en producción)
 console.log('API base (build):', API_BASE);

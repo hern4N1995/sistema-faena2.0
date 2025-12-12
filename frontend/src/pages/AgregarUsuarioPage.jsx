@@ -438,7 +438,7 @@ const AgregarUsuarioPage = () => {
     setConfirmDelete({ open: false, id: null, nombre: '' });
     if (!id) return;
     try {
-      await api.delete(`/usuarios/${id}`);
+      await api.put(`/usuarios/${id}`, { estado: false });
       await fetchUsuarios();
       openSuccessModal(
         'Perfil desactivado',
@@ -487,13 +487,9 @@ const AgregarUsuarioPage = () => {
 
     try {
       // 1) PATCH mínimo (si existe)
-      let res = await fetch(`/usuarios/${usuario.id_usuario}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: nuevoEstado }),
-      });
-
-      if (!res.ok) {
+      try {
+        await api.patch(`/usuarios/${usuario.id_usuario}`, { estado: nuevoEstado });
+      } catch (err) {
         // 2) Fallback PUT con objeto completo usando memoria y planta válida
         const usuarioCompleto =
           usuarios.find(
@@ -534,18 +530,14 @@ const AgregarUsuarioPage = () => {
         };
         delete payloadPut.planta_nombre;
 
-        const putRes = await fetch(`/usuarios/${usuario.id_usuario}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payloadPut),
-        });
-        if (!putRes.ok) {
-          const putBody = await tryReadJson(putRes);
-          throw new Error(
-            putBody?.error ||
-              putBody?.message ||
-              `PUT failed (${putRes.status})`
-          );
+        try {
+          await api.put(`/usuarios/${usuario.id_usuario}`, payloadPut);
+        } catch (putErr) {
+          const errorMsg = putErr?.response?.data?.error || 
+                          putErr?.response?.data?.message || 
+                          putErr?.message || 
+                          'PUT failed';
+          throw new Error(errorMsg);
         }
       }
 

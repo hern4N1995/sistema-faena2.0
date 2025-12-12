@@ -123,50 +123,30 @@ export default function ProvinciaAdmin() {
       return;
     }
     try {
-      const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+      const { status, data } = await api.post('/provincias', {
+        descripcion: nuevaDescripcion.trim(),
+      });
 
-      const fetchWithTimeout = (url, options = {}, timeout = 10000) =>
-        Promise.race([
-          fetch(url, options),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timed out')), timeout)
-          ),
-        ]);
-
-      try {
-        const res = await fetchWithTimeout(
-          `${API}/provincias`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ descripcion: nuevaDescripcion.trim() }),
-            // credentials: 'include' // descomentar si usás cookies/sesiones
-          },
-          10000
-        );
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`API error ${res.status}: ${text}`);
-        }
-
-        const data = await res.json();
-        // manejar data (p. ej. agregar a estado, mostrar feedback)
-      } catch (err) {
-        console.error('Error creando provincia:', err);
-        // mostrar feedback al usuario si corresponde
+      if (status >= 200 && status < 300) {
+        setProvincias([...provincias, data]);
+        setNuevaDescripcion('');
+        setSugerencias([]);
+        setMostrarSugerencias(false);
+        setMensajeFeedback('✅ Provincia agregada correctamente.');
+      } else {
+        const msg = data?.message || data?.error || 'Error al agregar provincia.';
+        setMensajeFeedback(`❌ ${msg}`);
+        console.warn('Agregar provincia no 2xx:', status, msg);
       }
-
-      const nueva = await res.json();
-      setProvincias([...provincias, nueva]);
-      setNuevaDescripcion('');
-      setSugerencias([]);
-      setMostrarSugerencias(false);
-      setMensajeFeedback('✅ Provincia agregada correctamente.');
-      setTimeout(() => setMensajeFeedback(''), 4000);
     } catch (err) {
       console.error('Error al agregar provincia:', err);
-      setMensajeFeedback('❌ Error al agregar provincia.');
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Error de conexión con el servidor.';
+      setMensajeFeedback(`❌ ${msg}`);
+    } finally {
       setTimeout(() => setMensajeFeedback(''), 4000);
     }
   };

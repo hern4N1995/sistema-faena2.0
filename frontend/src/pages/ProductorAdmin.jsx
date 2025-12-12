@@ -104,6 +104,8 @@ export default function ProductorAdmin() {
     setEditandoId(p.id_productor);
     setMensaje('');
     setError('');
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleEliminar = async (id) => {

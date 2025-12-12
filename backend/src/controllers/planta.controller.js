@@ -6,7 +6,7 @@ const obtenerPlantas = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        p.id_planta AS id,
+        p.id_planta,
         p.nombre,
         p.id_provincia,
         pr.descripcion AS nombre_provincia,

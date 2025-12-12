@@ -55,53 +55,73 @@ export default function LoginModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="modal-backdrop fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="modal bg-white p-6 rounded shadow-lg w-96 relative">
+    <div className="modal-backdrop fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="modal bg-white p-8 rounded-2xl shadow-2xl w-96 relative border border-gray-100">
         <button
           onClick={onClose}
-          className="absolute top-2 right-3 text-gray-600 text-lg font-bold"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-light transition"
         >
           ×
         </button>
-        <h2 className="text-xl mb-4 font-bold text-center">Login</h2>
+
+        <div className="text-center mb-6">
+          <h2 className="text-3xl font-extrabold text-gray-800">🔐 Acceso</h2>
+          <p className="text-sm text-gray-500 mt-1">Ingresa tus credenciales</p>
+        </div>
 
         {error && (
-          <div className="text-red-600 bg-red-100 px-4 py-2 rounded mb-4 text-sm">
-            {error}
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            ❌ {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Correo electrónico"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError('');
-            }}
-            className="w-full mb-3 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
-          />
-          <input
-            type="password"
-            placeholder="Contraseña"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setError('');
-            }}
-            className="w-full mb-4 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
-          />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Correo electrónico
+            </label>
+            <input
+              type="email"
+              placeholder="tu@email.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError('');
+              }}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+              disabled={loading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Contraseña
+            </label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError('');
+              }}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+              disabled={loading}
+            />
+          </div>
+
           <button
             type="submit"
-            className="w-full bg-green-700 text-white py-2 rounded hover:bg-green-800 transition disabled:opacity-60"
+            className="w-full bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed mt-6"
             disabled={loading}
           >
-            {loading ? 'Ingresando...' : 'Entrar'}
+            {loading ? '⏳ Ingresando...' : '✓ Entrar'}
           </button>
         </form>
+
+        <p className="text-center text-xs text-gray-500 mt-6">
+          Por favor verifica tus datos y vuelve a intentar
+        </p>
       </div>
     </div>
   );

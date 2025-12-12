@@ -1,6 +1,7 @@
 // routes/productor.routes.js
 const express = require('express');
 const router = express.Router();
+const { verificarToken } = require('../middleware/auth');
 const {
   obtenerProductores,
   crearProductor,
@@ -10,8 +11,8 @@ const {
 
 // Rutas relativas al mount point en App.js (App.js monta este router en /api/productores)
 router.get('/', obtenerProductores);
-router.post('/', crearProductor);
-router.put('/:id', editarProductor);
-router.delete('/:id', eliminarProductor);
+router.post('/', verificarToken, crearProductor);
+router.put('/:id', verificarToken, editarProductor);
+router.delete('/:id', verificarToken, eliminarProductor);
 
 module.exports = router;

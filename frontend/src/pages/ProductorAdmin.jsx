@@ -109,18 +109,19 @@ export default function ProductorAdmin() {
   const handleEliminar = async (id) => {
     if (!window.confirm('¿Seguro que deseas eliminar este productor?')) return;
     try {
+      console.log(`[ProductorAdmin] Eliminando productor ID: ${id}`);
       const res = await api.delete(`/productores/${id}`, { timeout: 10000 });
+      console.log(`[ProductorAdmin] Respuesta DELETE:`, res.status, res.data);
       if (!(res && res.status >= 200 && res.status < 300))
         throw new Error('Error al eliminar productor');
+      console.log(`[ProductorAdmin] Productor eliminado exitosamente`);
       setPaginaActual(1);
       await fetchProductores();
     } catch (err) {
-      console.error('Error deleting productor:', err);
-      setError(
-        err?.response?.data?.message ||
-          err.message ||
-          'Error al eliminar productor'
-      );
+      console.error('[ProductorAdmin] Error deleting productor:', err);
+      const errorMsg = err?.response?.data?.details || err?.response?.data?.message || err.message || 'Error al eliminar productor';
+      console.error('[ProductorAdmin] Error detallado:', errorMsg);
+      setError(errorMsg);
     }
   };
 

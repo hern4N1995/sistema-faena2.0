@@ -85,6 +85,8 @@ const eliminarProductor = async (req, res) => {
   const { id } = req.params;
 
   try {
+    console.log(`[eliminarProductor] Intentando eliminar productor ID: ${id}`);
+    
     const update = await pool.query(
       `UPDATE productor
        SET estado = false
@@ -94,16 +96,18 @@ const eliminarProductor = async (req, res) => {
     );
 
     if (update.rowCount === 0) {
+      console.warn(`[eliminarProductor] Productor no encontrado: ${id}`);
       return res.status(404).json({ error: 'Productor no encontrado' });
     }
 
+    console.log(`[eliminarProductor] Productor eliminado exitosamente: ${id}`);
     res.json({
       mensaje: 'Productor eliminado correctamente',
       id: update.rows[0].id,
     });
   } catch (error) {
-    console.error('Error al eliminar productor:', error);
-    res.status(500).json({ error: 'Error al eliminar productor' });
+    console.error(`[eliminarProductor] Error al eliminar productor ${id}:`, error.message);
+    res.status(500).json({ error: 'Error al eliminar productor', details: error.message });
   }
 };
 

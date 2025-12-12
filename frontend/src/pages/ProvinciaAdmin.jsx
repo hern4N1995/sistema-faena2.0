@@ -81,40 +81,15 @@ export default function ProvinciaAdmin() {
   }, []);
 
   const fetchProvincias = async () => {
-    const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-
-    const fetchWithTimeout = (url, options = {}, timeout = 10000) =>
-      Promise.race([
-        fetch(url, options),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Request timed out')), timeout)
-        ),
-      ]);
-
     try {
-      const res = await fetchWithTimeout(
-        `${API}/provincias`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          // credentials: 'include' // descomentar si se usan cookies/sesiones
-        },
-        10000
-      );
-
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`API error ${res.status}: ${txt}`);
-      }
-
-      const data = await res.json();
+      const res = await api.get('/provincias');
+      const data = res.data;
       setProvincias(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Error al cargar provincias:', err);
-      setProvincias([]); // fallback seguro
-      // opcional: mostrar feedback al usuario
-      setMensajeFeedback?.('❌ Error al cargar provincias.');
-      setTimeout(() => setMensajeFeedback?.(''), 4000);
+      console.error('[ProvinciaAdmin] Error al cargar provincias:', err);
+      setProvincias([]);
+      setMensajeFeedback('❌ Error al cargar provincias.');
+      setTimeout(() => setMensajeFeedback(''), 4000);
     }
   };
 
@@ -387,108 +362,115 @@ export default function ProvinciaAdmin() {
                       {editandoId === prov.id ? (
                         <input
                           value={descripcionEditada}
-                          onChange={(e) =>
-                            setDescripcionEditada(e.target.value)
-                          }
-                          className="w-full px-2 py-1 border rounded bg-gray-50"
+                          onChange={(e) => setDescripcionEditada(e.target.value)}
+                          className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
                         />
                       ) : (
-                        prov.descripcion
+                        <span>{prov.descripcion}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 flex gap-2">
+                    <td className="px-4 py-3">
                       {editandoId === prov.id ? (
-                        <button
-                          onClick={guardarEdicion}
-                          className="px-3 py-1 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
-                        >
-                          Guardar
-                        </button>
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={guardarEdicion}
+                            className="px-3 py-1 bg-green-700 text-white rounded-md text-xs font-semibold hover:bg-green-800"
+                          >
+                            Guardar
+                          </button>
+                          <button
+                            onClick={() => setEditandoId(null)}
+                            className="px-3 py-1 bg-slate-200 text-slate-700 rounded-md text-xs font-semibold hover:bg-slate-300"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
                       ) : (
-                        <button
-                          onClick={() =>
-                            iniciarEdicion(prov.id, prov.descripcion)
-                          }
-                          className="px-3 py-1 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-600 transition"
-                        >
-                          ✏️ Editar
-                        </button>
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => iniciarEdicion(prov.id, prov.descripcion)}
+                            className="px-3 py-1 bg-white text-green-700 border border-green-700 rounded-md text-xs font-semibold hover:bg-green-50"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => eliminarProvincia(prov.id)}
+                            className="px-3 py-1 bg-red-600 text-white rounded-md text-xs font-semibold hover:bg-red-700"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
                       )}
-                      <button
-                        onClick={() => eliminarProvincia(prov.id)}
-                        className="px-3 py-1 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                      >
-                        🗑️ Eliminar
-                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {/* Paginación */}
+          {totalPaginas > 1 && (
+            <div className="mt-4 flex justify-center items-center gap-2 flex-wrap">
+              <button
+                onClick={paginaAnterior}
+                disabled={paginaActual === 1}
+                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                  paginaActual === 1
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                }`}
+              >
+                ← Anterior
+              </button>
+
+              {[...Array(Math.min(3, totalPaginas))].map((_, i) => {
+                const page = i + 1;
+                return (
+                  <button
+                    key={page}
+                    onClick={() => irPagina(page)}
+                    className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                      paginaActual === page
+                        ? 'bg-green-700 text-white shadow'
+                        : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+
+              {totalPaginas > 3 && (
+                <>
+                  <span className="text-slate-500 text-sm">…</span>
+                  <button
+                    onClick={() => irPagina(totalPaginas)}
+                    className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                      paginaActual === totalPaginas
+                        ? 'bg-green-700 text-white shadow'
+                        : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                    }`}
+                  >
+                    {totalPaginas}
+                  </button>
+                </>
+              )}
+
+              <button
+                onClick={paginaSiguiente}
+                disabled={paginaActual === totalPaginas}
+                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                  paginaActual === totalPaginas
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                }`}
+              >
+                Siguiente →
+              </button>
+            </div>
+          )}
+
         </div>
-
-        {/* Paginación fuera del contenedor */}
-        {totalPaginas > 1 && (
-          <div className="flex justify-center items-center gap-2 pt-4 flex-wrap">
-            <button
-              onClick={paginaAnterior}
-              disabled={paginaActual === 1}
-              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                paginaActual === 1
-                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-              }`}
-            >
-              ← Anterior
-            </button>
-
-            {[...Array(Math.min(3, totalPaginas))].map((_, i) => {
-              const page = i + 1;
-              return (
-                <button
-                  key={page}
-                  onClick={() => irPagina(page)}
-                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                    paginaActual === page
-                      ? 'bg-green-700 text-white shadow'
-                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              );
-            })}
-
-            {totalPaginas > 3 && (
-              <>
-                <span className="text-slate-500 text-sm">…</span>
-                <button
-                  onClick={() => irPagina(totalPaginas)}
-                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                    paginaActual === totalPaginas
-                      ? 'bg-green-700 text-white shadow'
-                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-                  }`}
-                >
-                  {totalPaginas}
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={paginaSiguiente}
-              disabled={paginaActual === totalPaginas}
-              className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                paginaActual === totalPaginas
-                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                  : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
-              }`}
-            >
-              Siguiente →
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -4,24 +4,39 @@ require('dotenv').config();
 
 const connectionString = process.env.DATABASE_URL || null;
 
-// Si hay connectionString (DATABASE_URL) la usamos y forzamos ssl
-const pool = connectionString
-  ? new Pool({
-      connectionString,
-      ssl: {
-        rejectUnauthorized: false,
-      },
-    })
-  : new Pool({
-      host: process.env.PGHOST,
-      port: process.env.PGPORT && Number(process.env.PGPORT),
-      user: process.env.PGUSER,
-      password: process.env.PGPASSWORD,
-      database: process.env.PGDATABASE,
-      ssl: {
-        rejectUnauthorized: false,
-      },
-    });
+let pool;
+
+if (connectionString) {
+  // Producción: usar DATABASE_URL con SSL
+  console.log('[DB] Conectando con DATABASE_URL (producción)');
+  pool = new Pool({
+    connectionString,
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  });
+} else {
+  // Desarrollo local: usar variables individuales SIN SSL
+  console.log('[DB] Conectando con variables individuales (desarrollo local)');
+
+  const poolConfig = {
+    host: process.env.PGHOST || 'localhost',
+    port: (process.env.PGPORT && Number(process.env.PGPORT)) || 5432,
+    user: process.env.PGUSER || 'postgres',
+    password: process.env.PGPASSWORD || '',
+    database: process.env.PGDATABASE || 'sistema_faena_db',
+  };
+
+  console.log('[DB] Config:', {
+    host: poolConfig.host,
+    port: poolConfig.port,
+    user: poolConfig.user,
+    database: poolConfig.database,
+  });
+
+  // NUNCA usar SSL en localhost
+  pool = new Pool(poolConfig);
+}
 
 module.exports = pool;
 

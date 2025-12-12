@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
+import api from '../services/api';
 
 /* Visual constants */
 const INPUT_BASE_CLASS =
@@ -363,13 +364,12 @@ export default function DecomisoPage() {
     const fetchDatos = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token') || '';
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        console.log('[DecomisoPage] Cargando datos para id_faena:', id_faena);
 
-        const resFaena = await fetch(`/faena/${id_faena}/decomiso-datos`, {
-          headers,
-        });
-        const faena = await resFaena.json();
+        const resFaena = await api.get(`/faena/${id_faena}/decomiso-datos`);
+        console.log('[DecomisoPage] Respuesta faena:', resFaena.data);
+        
+        const faena = resFaena.data;
         if (Array.isArray(faena) && faena.length > 0) {
           setInfoFaena({
             id_faena_detalle: faena[0].id_faena_detalle,
@@ -386,13 +386,15 @@ export default function DecomisoPage() {
           setDatosFaena(faena);
         }
 
-        const resBase = await fetch('/decomisos/datos-base', { headers });
-        const base = await resBase.json();
+        const resBase = await api.get('/decomisos/datos-base');
+        console.log('[DecomisoPage] Respuesta datos-base:', resBase.data);
+        
+        const base = resBase.data;
         setTiposParte(Array.isArray(base?.tiposParte) ? base.tiposParte : []);
         setPartes(Array.isArray(base?.partes) ? base.partes : []);
         setAfecciones(Array.isArray(base?.afecciones) ? base.afecciones : []);
       } catch (e) {
-        console.error('Error cargando datos base de decomisos:', e);
+        console.error('[DecomisoPage] Error cargando datos:', e?.response?.data || e.message);
         setErrors(['Error cargando datos iniciales. Reintentá más tarde.']);
       } finally {
         setLoading(false);
@@ -640,31 +642,18 @@ export default function DecomisoPage() {
   const confirmAndSave = async (payload) => {
     setReviewServerErrors([]);
     try {
-      const token = localStorage.getItem('token') || '';
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
-      const res = await fetch('/decomisos', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        const serverMsg =
-          data?.error || data?.mensaje || 'Error desconocido del servidor';
-        setReviewServerErrors([`Error del servidor: ${serverMsg}`]);
-        return;
-      }
+      console.log('[DecomisoPage] Enviando decomiso:', payload);
+      const res = await api.post('/decomisos', payload);
+      const data = res.data;
+      console.log('[DecomisoPage] Decomiso guardado:', data);
       setReviewOpen(false);
       setSuccess('Decomiso registrado correctamente.');
       if (data?.id_decomiso) navigate(`/decomisos/detalle/${data.id_decomiso}`);
     } catch (e) {
-      console.error('Error guardando desde modal', e);
-      setReviewServerErrors([
-        'Error guardando decomiso. Revisá la consola o intentá nuevamente.',
-      ]);
+      console.error('[DecomisoPage] Error guardando decomiso:', e?.response?.data || e.message);
+      const serverMsg =
+        e?.response?.data?.error || e?.response?.data?.mensaje || 'Error desconocido del servidor';
+      setReviewServerErrors([`Error del servidor: ${serverMsg}`]);
     }
   };
 

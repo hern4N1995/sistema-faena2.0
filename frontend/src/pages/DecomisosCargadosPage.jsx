@@ -28,14 +28,28 @@ const DecomisosCargadosPage = () => {
       try {
         console.log('[DecomisosCargadosPage] Cargando decomisos');
         const res = await api.get('/decomisos');
-        console.log('[DecomisosCargadosPage] Respuesta:', res.data);
+        console.log('[DecomisosCargadosPage] Respuesta completa:', res.data);
+        console.log('[DecomisosCargadosPage] Tipo de respuesta:', typeof res.data, Array.isArray(res.data));
         
-        const data = res.data;
-        const arr = Array.isArray(data) ? data : Array.isArray(data?.decomisos) ? data.decomisos : [];
+        let arr = [];
+        if (Array.isArray(res.data)) {
+          arr = res.data;
+        } else if (res.data && typeof res.data === 'object') {
+          if (Array.isArray(res.data.decomisos)) {
+            arr = res.data.decomisos;
+          } else if (Array.isArray(res.data.data)) {
+            arr = res.data.data;
+          } else if (Array.isArray(res.data.rows)) {
+            arr = res.data.rows;
+          }
+        }
+        
+        console.log('[DecomisosCargadosPage] Array final:', arr, 'Cantidad:', arr.length);
         setDecomisos(arr);
         setLoading(false);
       } catch (err) {
         console.error('[DecomisosCargadosPage] Error al cargar decomisos:', err?.response?.data || err.message);
+        console.error('[DecomisosCargadosPage] Status:', err?.response?.status);
         setError('No se pudo cargar la lista de decomisos');
         setLoading(false);
       }

@@ -33,11 +33,28 @@ const DecomisoResumenPage = () => {
       try {
         console.log('[DecomisoResumenPage] Cargando resumen para id:', id);
         const res = await api.get(`/decomisos/${id}/resumen`);
-        console.log('[DecomisoResumenPage] Respuesta:', res.data);
-        setResumen(res.data);
+        console.log('[DecomisoResumenPage] Respuesta completa:', res.data);
+        console.log('[DecomisoResumenPage] Tipo de respuesta:', typeof res.data, Array.isArray(res.data));
+        
+        let data = res.data;
+        
+        // Si viene wrapped, extraer
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          if (Array.isArray(data.data)) {
+            data = data.data;
+          } else if (Array.isArray(data.resumen)) {
+            data = data.resumen;
+          } else if (Array.isArray(data.rows)) {
+            data = data.rows;
+          }
+        }
+        
+        console.log('[DecomisoResumenPage] Data final:', data);
+        setResumen(Array.isArray(data) ? data : []);
         setLoading(false);
       } catch (err) {
         console.error('[DecomisoResumenPage] Error al cargar resumen:', err?.response?.data || err.message);
+        console.error('[DecomisoResumenPage] Status:', err?.response?.status);
         setError('No se pudo cargar el resumen del decomiso');
         setLoading(false);
       }

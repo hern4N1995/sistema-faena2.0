@@ -14,6 +14,7 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
 
   useEffect(() => {
     if (faena?.categorias?.length > 0) {
+      console.log('[DetalleFaenaForm] Categorías recibidas:', faena.categorias);
       // inicializamos como undefined para que el campo se muestre vacío
       const inicial = {};
       faena.categorias.forEach((cat) => {

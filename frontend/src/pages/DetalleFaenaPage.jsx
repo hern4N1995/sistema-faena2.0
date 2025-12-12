@@ -25,21 +25,40 @@ const DetableFaenaPage = () => {
         // Obtener datos generales de la tropa
         const tropaRes = await api.get(`/tropas/${idTropa}`);
         const tropa = tropaRes.data?.data || tropaRes.data || {};
+        console.log('[DetalleFaenaPage] Datos tropa:', tropa);
+        
         // Obtener detalle/categorías
         const detalleRes = await api.get(`/tropas/${idTropa}/detalle`);
         let detalleData = detalleRes.data;
+        console.log('[DetalleFaenaPage] Respuesta detalle raw:', detalleRes.data);
+        
         if (detalleData && typeof detalleData === 'object') {
           if (detalleData.data) detalleData = detalleData.data;
           if (!Array.isArray(detalleData)) {
             detalleData = detalleData.categorias || [];
           }
         }
+        
+        // Normalizar categorías: agregar campos faltantes
+        const categoriasNormalizadas = Array.isArray(detalleData) 
+          ? detalleData.map(cat => ({
+              ...cat,
+              id_tropa_detalle: cat.id_tropa_detalle || cat.id || null,
+              nombre: cat.nombre || cat.nombre_categoria || cat.nombre_cat || cat.categoria || 'Categoría sin nombre',
+              cantidad: cat.cantidad || 0,
+              remanente: cat.remanente ?? cat.remanente_total ?? (cat.cantidad || 0),
+              especie: cat.especie || cat.nombre_especie || '',
+            }))
+          : [];
+        
+        console.log('[DetalleFaenaPage] Categorías normalizadas:', categoriasNormalizadas);
+        
         // Normalizar especie
         let especie = tropa.especie || tropa.nombre_especie || '';
-        if (!especie && Array.isArray(detalleData) && detalleData.length > 0) {
-          const first = detalleData[0];
-          especie = first.especie || first.nombre_especie || '';
+        if (!especie && categoriasNormalizadas.length > 0) {
+          especie = categoriasNormalizadas[0].especie || '';
         }
+        
         // Construir objeto faena
         setFaena({
           id_tropa: idTropa,
@@ -47,7 +66,7 @@ const DetableFaenaPage = () => {
           dte_dtu: tropa.dte_dtu || tropa.dte || tropa.dtu || '',
           fecha: tropa.fecha || tropa.fecha_ingreso || new Date().toISOString(),
           especie: especie || 'Especie',
-          categorias: Array.isArray(detalleData) ? detalleData : [],
+          categorias: categoriasNormalizadas,
         });
         setError(null);
       } catch (err) {

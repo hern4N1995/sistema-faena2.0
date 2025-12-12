@@ -11,9 +11,6 @@ const {
   listarDecomisos,
 } = require('../controllers/decomisos.controller');
 
-// 🔍 Combinaciones ya registradas en parte_deco_afeccion
-router.get('/', verificarToken, permitirRoles(1), obtenerCombinaciones);
-
 // 📄 Info de faena por decomiso
 router.get(
   '/:id_decomiso/info-faena',
@@ -29,9 +26,15 @@ router.get(
   permitirRoles(1),
   obtenerDatosBaseDecomiso,
 );
+
+// 📋 Resumen de decomiso por ID
+router.get('/:id/resumen', verificarToken, obtenerResumenDecomiso);
+
+// 📝 Lista de todos los decomisos cargados
 router.get('/', verificarToken, listarDecomisos);
 
-router.get('/:id/resumen', verificarToken, obtenerResumenDecomiso);
+// 🔍 Combinaciones ya registradas en parte_deco_afeccion (DEPRECATED - usar /decomisos)
+// router.get('/', verificarToken, permitirRoles(1), obtenerCombinaciones);
 
 // 📝 Registrar decomiso
 router.post('/', verificarToken, permitirRoles(1), registrarDecomiso);

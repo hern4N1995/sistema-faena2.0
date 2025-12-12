@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 const useMediaQuery = (query) => {
   const [matches, setMatches] = useState(window.matchMedia(query).matches);
@@ -23,30 +24,23 @@ const DecomisosCargadosPage = () => {
   const rowsPerPage = isMobile ? 3 : 6;
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-
-    if (!token) {
-      setError('No hay token disponible. Iniciá sesión nuevamente.');
-      setLoading(false);
-      return;
-    }
-
-    fetch('/decomisos', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Error al obtener decomisos');
-        return res.json();
-      })
-      .then((data) => {
-        setDecomisos(data);
+    const fetchDecomisos = async () => {
+      try {
+        console.log('[DecomisosCargadosPage] Cargando decomisos');
+        const res = await api.get('/decomisos');
+        console.log('[DecomisosCargadosPage] Respuesta:', res.data);
+        
+        const data = res.data;
+        const arr = Array.isArray(data) ? data : Array.isArray(data?.decomisos) ? data.decomisos : [];
+        setDecomisos(arr);
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error('❌ Error al cargar decomisos:', err);
+      } catch (err) {
+        console.error('[DecomisosCargadosPage] Error al cargar decomisos:', err?.response?.data || err.message);
         setError('No se pudo cargar la lista de decomisos');
         setLoading(false);
-      });
+      }
+    };
+    fetchDecomisos();
   }, []);
 
   const formatFecha = (fecha) => {

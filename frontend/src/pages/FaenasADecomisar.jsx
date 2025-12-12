@@ -32,11 +32,14 @@ export default function FaenasADecomisar() {
   const fetchFaenas = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/faenas-sin-decomiso', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      const data = await res.json();
-      const arr = Array.isArray(data) ? data : [];
+      console.log('[FaenasADecomisar] Cargando faenas sin decomiso');
+      const res = await api.get('/faena/faenas-sin-decomiso');
+      console.log('[FaenasADecomisar] Respuesta:', res.data);
+      
+      const data = res.data;
+      const arr = Array.isArray(data) ? data : Array.isArray(data?.faenas) ? data.faenas : [];
+      console.log('[FaenasADecomisar] Array procesado:', arr);
+      
       const conFaenados = arr.filter((f) => Number(f.total_faenado) > 0);
       const ordenadas = [...conFaenados].sort(
         (a, b) => new Date(b.fecha_faena) - new Date(a.fecha_faena)
@@ -44,7 +47,7 @@ export default function FaenasADecomisar() {
       setFaenas(ordenadas);
       setCurrentPage(1);
     } catch (err) {
-      console.error('Error al cargar faenas:', err);
+      console.error('[FaenasADecomisar] Error al cargar faenas:', err?.response?.data || err.message);
       setFaenas([]);
       setCurrentPage(1);
     } finally {

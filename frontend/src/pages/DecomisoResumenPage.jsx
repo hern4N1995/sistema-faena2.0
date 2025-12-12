@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 // Hook para detectar si es móvil
 const useMediaQuery = (query) => {
@@ -28,24 +29,21 @@ const DecomisoResumenPage = () => {
       return;
     }
 
-    const token = localStorage.getItem('token');
-
-    fetch(`/decomisos/${id}/resumen`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Error al obtener resumen');
-        return res.json();
-      })
-      .then((data) => {
-        setResumen(data);
+    const fetchResumen = async () => {
+      try {
+        console.log('[DecomisoResumenPage] Cargando resumen para id:', id);
+        const res = await api.get(`/decomisos/${id}/resumen`);
+        console.log('[DecomisoResumenPage] Respuesta:', res.data);
+        setResumen(res.data);
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error('❌ Error al cargar resumen:', err);
+      } catch (err) {
+        console.error('[DecomisoResumenPage] Error al cargar resumen:', err?.response?.data || err.message);
         setError('No se pudo cargar el resumen del decomiso');
         setLoading(false);
-      });
+      }
+    };
+
+    fetchResumen();
   }, [id]);
 
   if (loading)

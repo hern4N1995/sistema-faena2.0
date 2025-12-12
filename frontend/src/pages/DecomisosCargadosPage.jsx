@@ -45,6 +45,10 @@ const DecomisosCargadosPage = () => {
         }
         
         console.log('[DecomisosCargadosPage] Array final:', arr, 'Cantidad:', arr.length);
+        if (arr.length > 0) {
+          console.log('[DecomisosCargadosPage] Primer elemento:', arr[0]);
+          console.log('[DecomisosCargadosPage] Campos del primer elemento:', Object.keys(arr[0]));
+        }
         setDecomisos(arr);
         setLoading(false);
       } catch (err) {
@@ -67,6 +71,7 @@ const DecomisosCargadosPage = () => {
   };
 
   const handleVerResumen = (id) => {
+    console.log('[DecomisosCargadosPage] Navigating to resumen con id:', id);
     navigate(`/decomisos/detalle/${id}`);
   };
 
@@ -232,7 +237,9 @@ const DecomisosCargadosPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedDecomisos.map((d) => (
+                    {paginatedDecomisos.map((d, idx) => {
+                      console.log(`[DecomisosCargadosPage] Fila ${idx}:`, d);
+                      return (
                       <tr
                         key={d.id_decomiso}
                         className="border-b last:border-b-0 bg-white hover:bg-green-50 transition"
@@ -260,7 +267,8 @@ const DecomisosCargadosPage = () => {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>

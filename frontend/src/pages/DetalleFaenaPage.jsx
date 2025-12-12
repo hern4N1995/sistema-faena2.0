@@ -12,6 +12,22 @@ const DetableFaenaPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Función para formatear fecha evitando desfase de zona horaria
+  const formatDate = (f) => {
+    if (!f) return '—';
+    try {
+      // Si viene como string "YYYY-MM-DD", parsearlo directamente sin New Date (que lo interpreta como UTC)
+      if (typeof f === 'string' && /^\d{4}-\d{2}-\d{2}/.test(f)) {
+        const [year, month, day] = f.split('T')[0].split('-');
+        const date = new Date(year, parseInt(month) - 1, day);
+        return date.toLocaleDateString('es-AR');
+      }
+      return new Date(f).toLocaleDateString('es-AR');
+    } catch (e) {
+      return '—';
+    }
+  };
+
   useEffect(() => {
     const fetchTropaYDetalle = async () => {
       if (!idTropa) {
@@ -172,7 +188,7 @@ const DetableFaenaPage = () => {
               <Card title="DTE / DTU" value={faena.dte_dtu} />
               <Card
                 title="Fecha de ingreso"
-                value={new Date(faena.fecha).toLocaleDateString('es-AR')}
+                value={formatDate(faena.fecha)}
               />
             </div>
 

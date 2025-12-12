@@ -13,13 +13,25 @@ const registrarFaena = async (req, res) => {
   }
 
   try {
+    // Normalizar fecha: si viene como "YYYY-MM-DD", convertir a timestamp con hora 00:00:00 en UTC
+    let fechaNormalizada = fecha_faena;
+    if (typeof fecha_faena === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha_faena)) {
+      // Es una fecha sin hora, convertir a timestamp UTC (T00:00:00Z)
+      fechaNormalizada = `${fecha_faena}T00:00:00Z`;
+    }
+    
+    console.log('[registrarFaena] Fecha recibida:', fecha_faena, 'Normalizada:', fechaNormalizada);
+    
     // Insertar faena principal
     const faenaRes = await pool.query(
-      `INSERT INTO faena (id_tropa, fecha_faena) VALUES ($1, $2) RETURNING id_faena`,
-      [id_tropa, fecha_faena],
+      `INSERT INTO faena (id_tropa, fecha_faena) VALUES ($1, $2) RETURNING id_faena, fecha_faena`,
+      [id_tropa, fechaNormalizada],
     );
 
     const id_faena = faenaRes.rows[0].id_faena;
+    const fechaGuardada = faenaRes.rows[0].fecha_faena;
+    console.log('[registrarFaena] Fecha guardada en BD:', fechaGuardada);
+    
     const detallesInsertados = [];
 
     for (const cat of categorias) {

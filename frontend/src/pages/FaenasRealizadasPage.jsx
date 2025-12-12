@@ -185,7 +185,22 @@ export default function FaenasRealizadasPage() {
 
   useEffect(() => setCurrentPage(1), [rowsPerPage, sortOrder]);
 
-  const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
+  // Función para formatear fecha evitando desfase de zona horaria
+  const formatDate = (f) => {
+    if (!f) return '—';
+    try {
+      // Si viene como string "YYYY-MM-DD", parsearlo directamente sin New Date (que lo interpreta como UTC)
+      if (typeof f === 'string' && /^\d{4}-\d{2}-\d{2}/.test(f)) {
+        const [year, month, day] = f.split('T')[0].split('-');
+        const date = new Date(year, parseInt(month) - 1, day);
+        return date.toLocaleDateString('es-AR');
+      }
+      return new Date(f).toLocaleDateString('es-AR');
+    } catch (e) {
+      return '—';
+    }
+  };
+
   const handleDecomisar = (id_faena) =>
     navigate(`/decomisos/nuevo/${id_faena}`);
 

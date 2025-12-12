@@ -29,8 +29,12 @@ const DecomisosCargadosPage = () => {
         console.log('[DecomisosCargadosPage] Cargando decomisos');
         const res = await api.get('/decomisos');
         console.log('[DecomisosCargadosPage] Respuesta completa:', res.data);
-        console.log('[DecomisosCargadosPage] Tipo de respuesta:', typeof res.data, Array.isArray(res.data));
-        
+        console.log(
+          '[DecomisosCargadosPage] Tipo de respuesta:',
+          typeof res.data,
+          Array.isArray(res.data)
+        );
+
         let arr = [];
         if (Array.isArray(res.data)) {
           arr = res.data;
@@ -43,25 +47,30 @@ const DecomisosCargadosPage = () => {
             arr = res.data.rows;
           }
         }
-        
-        console.log('[DecomisosCargadosPage] Array final:', arr, 'Cantidad:', arr.length);
+
+        console.log(
+          '[DecomisosCargadosPage] Array final:',
+          arr,
+          'Cantidad:',
+          arr.length
+        );
         if (arr.length > 0) {
-          console.log('[DecomisosCargadosPage] Primer elemento:', arr[0]);
-          console.log('[DecomisosCargadosPage] Campos del primer elemento:', Object.keys(arr[0]));
-          // Verificar qué campos tenemos disponibles
-          const firstRow = arr[0];
-          console.log('[DecomisosCargadosPage] id_decomiso:', firstRow.id_decomiso);
-          console.log('[DecomisosCargadosPage] fecha_faena:', firstRow.fecha_faena);
-          console.log('[DecomisosCargadosPage] n_tropa:', firstRow.n_tropa);
-          console.log('[DecomisosCargadosPage] dte_dtu:', firstRow.dte_dtu);
-          console.log('[DecomisosCargadosPage] cantidad_tropa:', firstRow.cantidad_tropa);
-          console.log('[DecomisosCargadosPage] cantidad_faena:', firstRow.cantidad_faena);
-          console.log('[DecomisosCargadosPage] cantidad_decomisada:', firstRow.cantidad_decomisada);
+          console.log(
+            '[DecomisosCargadosPage] Primer elemento COMPLETO:',
+            JSON.stringify(arr[0], null, 2)
+          );
+          console.log(
+            '[DecomisosCargadosPage] Campos disponibles:',
+            Object.keys(arr[0])
+          );
         }
         setDecomisos(arr);
         setLoading(false);
       } catch (err) {
-        console.error('[DecomisosCargadosPage] Error al cargar decomisos:', err?.response?.data || err.message);
+        console.error(
+          '[DecomisosCargadosPage] Error al cargar decomisos:',
+          err?.response?.data || err.message
+        );
         console.error('[DecomisosCargadosPage] Status:', err?.response?.status);
         setError('No se pudo cargar la lista de decomisos');
         setLoading(false);
@@ -265,34 +274,34 @@ const DecomisosCargadosPage = () => {
                     {paginatedDecomisos.map((d, idx) => {
                       console.log(`[DecomisosCargadosPage] Fila ${idx}:`, d);
                       return (
-                      <tr
-                        key={d.id_decomiso}
-                        className="border-b last:border-b-0 bg-white hover:bg-green-50 transition"
-                      >
-                        <td className="px-3 py-3">
-                          {formatFecha(d.fecha_faena)}
-                        </td>
-                        <td className="px-3 py-3 font-semibold text-green-800">
-                          {d.n_tropa}
-                        </td>
-                        <td className="px-3 py-3 truncate">
-                          {d.dte_dtu || '—'}
-                        </td>
-                        <td className="px-3 py-3">{d.cantidad_tropa}</td>
-                        <td className="px-3 py-3">{d.cantidad_faena}</td>
-                        <td className="px-3 py-3 font-semibold">
-                          {d.cantidad_decomisada}
-                        </td>
-                        <td className="px-3 py-3">
-                          <button
-                            onClick={() => handleVerResumen(d.id_decomiso)}
-                            className="px-3 py-1 bg-green-700 text-white rounded-lg hover:bg-green-800 transition text-xs font-semibold shadow"
-                          >
-                            Ver resumen
-                          </button>
-                        </td>
-                      </tr>
-                    );
+                        <tr
+                          key={d.id_decomiso}
+                          className="border-b last:border-b-0 bg-white hover:bg-green-50 transition"
+                        >
+                          <td className="px-3 py-3">
+                            {formatFecha(d.fecha_faena)}
+                          </td>
+                          <td className="px-3 py-3 font-semibold text-green-800">
+                            {d.n_tropa}
+                          </td>
+                          <td className="px-3 py-3 truncate">
+                            {d.dte_dtu || '—'}
+                          </td>
+                          <td className="px-3 py-3">{d.cantidad_tropa}</td>
+                          <td className="px-3 py-3">{d.cantidad_faena}</td>
+                          <td className="px-3 py-3 font-semibold">
+                            {d.cantidad_decomisada}
+                          </td>
+                          <td className="px-3 py-3">
+                            <button
+                              onClick={() => handleVerResumen(d.id_decomiso)}
+                              className="px-3 py-1 bg-green-700 text-white rounded-lg hover:bg-green-800 transition text-xs font-semibold shadow"
+                            >
+                              Ver resumen
+                            </button>
+                          </td>
+                        </tr>
+                      );
                     })}
                   </tbody>
                 </table>

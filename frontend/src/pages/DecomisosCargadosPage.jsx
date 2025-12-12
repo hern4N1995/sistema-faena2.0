@@ -48,6 +48,15 @@ const DecomisosCargadosPage = () => {
         if (arr.length > 0) {
           console.log('[DecomisosCargadosPage] Primer elemento:', arr[0]);
           console.log('[DecomisosCargadosPage] Campos del primer elemento:', Object.keys(arr[0]));
+          // Verificar qué campos tenemos disponibles
+          const firstRow = arr[0];
+          console.log('[DecomisosCargadosPage] id_decomiso:', firstRow.id_decomiso);
+          console.log('[DecomisosCargadosPage] fecha_faena:', firstRow.fecha_faena);
+          console.log('[DecomisosCargadosPage] n_tropa:', firstRow.n_tropa);
+          console.log('[DecomisosCargadosPage] dte_dtu:', firstRow.dte_dtu);
+          console.log('[DecomisosCargadosPage] cantidad_tropa:', firstRow.cantidad_tropa);
+          console.log('[DecomisosCargadosPage] cantidad_faena:', firstRow.cantidad_faena);
+          console.log('[DecomisosCargadosPage] cantidad_decomisada:', firstRow.cantidad_decomisada);
         }
         setDecomisos(arr);
         setLoading(false);
@@ -62,12 +71,28 @@ const DecomisosCargadosPage = () => {
   }, []);
 
   const formatFecha = (fecha) => {
-    const f = new Date(fecha);
-    return f.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
+    if (!fecha) return '—';
+    try {
+      // Si viene como string "YYYY-MM-DD", parsearlo directamente
+      if (typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fecha)) {
+        const [year, month, day] = fecha.split('T')[0].split('-');
+        const date = new Date(year, parseInt(month) - 1, day);
+        return date.toLocaleDateString('es-AR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        });
+      }
+      const f = new Date(fecha);
+      if (isNaN(f.getTime())) return '—';
+      return f.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    } catch (e) {
+      return '—';
+    }
   };
 
   const handleVerResumen = (id) => {

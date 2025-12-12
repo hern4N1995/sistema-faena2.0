@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
+import api from '../services/api';
 
 /* SelectField compatible con TropaForm (react-select) */
 function SelectField({
@@ -144,16 +145,21 @@ export default function FaenasRealizadasPage() {
       }
       if (filtro.n_tropa?.trim()) params.n_tropa = filtro.n_tropa;
 
-      const query = new URLSearchParams(params).toString();
-      const url = query ? `/faenas-realizadas?${query}` : `/faenas-realizadas`;
-      const res = await fetch(url);
-      const data = await res.json();
-
+      console.log('[FaenasRealizadasPage] Cargando con params:', params);
+      
+      const res = await api.get('/faena/faenas-realizadas', { params });
+      console.log('[FaenasRealizadasPage] Respuesta recibida:', res.data);
+      
+      const data = res.data;
       const arr = Array.isArray(data)
         ? data
         : Array.isArray(data?.faenas)
         ? data.faenas
+        : Array.isArray(data?.data)
+        ? data.data
         : [];
+      
+      console.log('[FaenasRealizadasPage] Array procesado:', arr);
       setFaenas(arr);
 
       const total = arr.reduce((acc, item) => {
@@ -163,7 +169,7 @@ export default function FaenasRealizadasPage() {
       setTotalFaenados(total);
       setCurrentPage(1);
     } catch (err) {
-      console.error('Error al cargar faenas realizadas:', err);
+      console.error('[FaenasRealizadasPage] Error al cargar faenas:', err?.response?.data || err.message);
       setFaenas([]);
       setTotalFaenados(0);
       setCurrentPage(1);

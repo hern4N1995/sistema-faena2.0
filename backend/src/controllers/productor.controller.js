@@ -6,7 +6,7 @@ const obtenerProductores = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        id_productor AS id,
+        id_productor,
         cuit,
         nombre
       FROM productor

@@ -441,9 +441,8 @@ export default function TitularAdmin() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Provincia</label>
-                  <Select
-                    styles={{}}
+                  <SelectField
+                    label="Provincia"
                     value={editingPayload.provincia}
                     onChange={(sel) => setEditingPayload((p) => ({ ...p, provincia: sel }))}
                     options={provinciasDB.map((p) => ({ value: p.id, label: p.descripcion }))}
@@ -516,26 +515,17 @@ export default function TitularAdmin() {
                     <p>DNI/CUIT: {t.documento}</p>
                   </div>
                   <div className="flex gap-2 ml-2">
-                    {editandoId === t.id ? (
-                      <button
-                        onClick={guardarEdicion}
-                        className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
-                      >
-                        💾
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => iniciarEdicion(t)}
-                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                      >
-                        ✏️
-                      </button>
-                    )}
+                    <button
+                      onClick={() => iniciarEdicion(t)}
+                      className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                    >
+                      ✏️ Editar
+                    </button>
                     <button
                       onClick={() => eliminarTitular(t.id)}
                       className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
                     >
-                      🗑️
+                      🗑️ Eliminar
                     </button>
                   </div>
                 </div>

@@ -244,7 +244,7 @@ export default function PlantaAdmin() {
   };
 
   const iniciarEdicion = (planta) => {
-    setEditandoId(planta.id);
+    // Use modal-only editing to avoid mutating UI of other rows
     // Normalizar estructura de provincia para el editor si viene como objeto o string
     const provinciaValue =
       planta.provincia?.id ??
@@ -274,14 +274,13 @@ export default function PlantaAdmin() {
     };
 
     try {
-      const { data, status } = await api.put(`/plantas/${editandoId}`, payload);
+      const targetId = editado?.id;
+      const { data, status } = await api.put(`/plantas/${targetId}`, payload);
 
-      const returnedId = data?.id ?? data?.id_planta ?? editandoId;
-      if (status >= 200 && status < 300 && String(returnedId) === String(editandoId)) {
+      const returnedId = data?.id ?? data?.id_planta ?? targetId;
+      if (status >= 200 && status < 300 && String(returnedId) === String(targetId)) {
         setPlantas((prev) =>
-          prev.map((p) =>
-            String(p.id) === String(editandoId) ? { ...p, ...data } : p
-          )
+          prev.map((p) => (String(p.id) === String(targetId) ? { ...p, ...data } : p))
         );
         setEditandoId(null);
         setEditado({});
@@ -466,13 +465,14 @@ export default function PlantaAdmin() {
               <div className="absolute inset-0 bg-black/40" onClick={() => setEditModalOpen(false)} />
               <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 z-10">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Editar Planta</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="mb-2 font-semibold text-gray-700 text-sm">Nombre</label>
                     <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm" value={editado.nombre || ''} onChange={(e) => setEditado((p) => ({ ...p, nombre: e.target.value }))} />
                   </div>
                   <div>
-                    <Select
+                    <SelectField
+                      label="Provincia"
                       value={editado.provincia ?? null}
                       onChange={(sel) => setEditado((p) => ({ ...p, provincia: sel }))}
                       options={provincias.map((p) => ({ value: p.id, label: p.descripcion }))}
@@ -569,21 +569,12 @@ export default function PlantaAdmin() {
                       </p>
                     </div>
                     <div className="flex gap-2 ml-2">
-                      {editandoId === p.id ? (
-                        <button
-                          onClick={guardarEdicion}
-                          className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
-                        >
-                          💾
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => iniciarEdicion(p)}
-                          className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                        >
-                          ✏️
-                        </button>
-                      )}
+                      <button
+                        onClick={() => iniciarEdicion(p)}
+                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                      >
+                        ✏️ Editar
+                      </button>
                       <button
                         onClick={() => deshabilitarPlanta(p.id)}
                         className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
@@ -622,137 +613,32 @@ export default function PlantaAdmin() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {plantasFiltradas.map((p) =>
-                    editandoId === p.id ? (
-                      <tr key={p.id} className="bg-yellow-50">
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={editado.nombre || ''}
-                            onChange={(e) =>
-                              setEditado({ ...editado, nombre: e.target.value })
-                            }
-                            className="w-full border-2 border-gray-200 rounded-lg px-2 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={editado.id_provincia || ''}
-                            onChange={(e) =>
-                              setEditado({
-                                ...editado,
-                                id_provincia: e.target.value,
-                              })
-                            }
-                            className="w-full border-2 border-gray-200 rounded-lg px-2 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                  {plantasFiltradas.map((p) => (
+                    <tr key={p.id} className="hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">{p.nombre}</td>
+                      <td className="px-4 py-3">{p.provincia || '—'}</td>
+                      <td className="px-4 py-3">{p.direccion || '—'}</td>
+                      <td className="px-4 py-3">{p.fecha_habilitacion || '—'}</td>
+                      <td className="px-4 py-3">{p.norma_legal || '—'}</td>
+                      <td className="px-4 py-3 text-center">{p.estado ? '✅' : '❌'}</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={() => iniciarEdicion(p)}
+                            className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
                           >
-                            <option value="">Seleccionar provincia</option>
-                            {provincias.map((prov) => (
-                              <option key={prov.id} value={prov.id}>
-                                {prov.descripcion ?? prov.nombre}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={editado.direccion || ''}
-                            onChange={(e) =>
-                              setEditado({
-                                ...editado,
-                                direccion: e.target.value,
-                              })
-                            }
-                            className="w-full border-2 border-gray-200 rounded-lg px-2 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="date"
-                            value={editado.fecha_habilitacion || ''}
-                            onChange={(e) =>
-                              setEditado({
-                                ...editado,
-                                fecha_habilitacion: e.target.value,
-                              })
-                            }
-                            className="w-full border-2 border-gray-200 rounded-lg px-2 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={editado.norma_legal || ''}
-                            onChange={(e) =>
-                              setEditado({
-                                ...editado,
-                                norma_legal: e.target.value,
-                              })
-                            }
-                            className="w-full border-2 border-gray-200 rounded-lg px-2 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <input
-                            type="checkbox"
-                            checked={!!editado.estado}
-                            onChange={(e) =>
-                              setEditado({
-                                ...editado,
-                                estado: e.target.checked,
-                              })
-                            }
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={guardarEdicion}
-                              className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
-                            >
-                              💾 Guardar
-                            </button>
-                            <button
-                              onClick={() => setEditandoId(null)}
-                              className="px-3 py-2 rounded-lg bg-gray-400 text-white text-sm hover:bg-gray-500 transition"
-                            >
-                              ❌ Cancelar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr key={p.id} className="hover:bg-gray-50 transition">
-                        <td className="px-4 py-3">{p.nombre}</td>
-                        <td className="px-4 py-3">{p.provincia || '—'}</td>
-                        <td className="px-4 py-3">{p.direccion || '—'}</td>
-                        <td className="px-4 py-3">
-                          {p.fecha_habilitacion || '—'}
-                        </td>
-                        <td className="px-4 py-3">{p.norma_legal || '—'}</td>
-                        <td className="px-4 py-3 text-center">
-                          {p.estado ? '✅' : '❌'}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => iniciarEdicion(p)}
-                              className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
-                            >
-                              ✏️ Editar
-                            </button>
-                            <button
-                              onClick={() => deshabilitarPlanta(p.id)}
-                              className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                            >
-                              🚫 Deshabilitar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  )}
+                            ✏️ Editar
+                          </button>
+                          <button
+                            onClick={() => deshabilitarPlanta(p.id)}
+                            className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                          >
+                            🚫 Deshabilitar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

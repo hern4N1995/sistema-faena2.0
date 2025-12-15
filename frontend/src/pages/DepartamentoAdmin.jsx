@@ -21,7 +21,7 @@ function SelectField({
       minHeight: '48px',
       paddingLeft: '16px',
       paddingRight: '16px',
-      backgroundColor: isDisabled ? '#f3f4f6' : '#f9fafb',
+      backgroundColor: '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
       boxShadow: isFocusing
@@ -29,7 +29,9 @@ function SelectField({
         : state.isFocused
         ? '0 0 0 4px #d1fae5'
         : 'none',
-      transition: 'all 50ms ease',
+      transition: 'all 100ms ease',
+      '&:hover': { borderColor: '#6ee7b7' },
+      '&:focus-within': { borderColor: '#10b981' },
       display: 'flex',
       alignItems: 'center',
       cursor: isDisabled ? 'not-allowed' : 'default',
@@ -38,8 +40,7 @@ function SelectField({
     }),
     valueContainer: (base) => ({
       ...base,
-      height: '48px',
-      padding: '0 8px',
+      padding: '0 0 0 2px',
       display: 'flex',
       alignItems: 'center',
     }),
@@ -58,11 +59,11 @@ function SelectField({
     option: (base, { isFocused }) => ({
       ...base,
       fontSize: '14px',
-      padding: '8px 12px',
+      padding: '10px 16px',
       backgroundColor: isFocused ? '#d1fae5' : '#fff',
       color: isFocused ? '#065f46' : '#111827',
     }),
-    indicatorSeparator: () => ({ display: 'none' }),
+    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
     menu: (base) => ({
       ...base,
       borderRadius: '0.5rem',
@@ -765,12 +766,9 @@ export default function DepartamentoAdmin() {
             <SelectField
               label="Provincia"
               value={
-                editing.id_provincia
-                  ? {
-                      value: editing.id_provincia,
-                      label: editing.provinciaLabel,
-                    }
-                  : null
+                provinciasOptions.find(
+                  (o) => String(o.value) === String(editing.id_provincia)
+                ) ?? null
               }
               onChange={() => {}}
               options={provinciasOptions}

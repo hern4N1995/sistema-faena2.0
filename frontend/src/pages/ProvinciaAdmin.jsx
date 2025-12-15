@@ -101,10 +101,9 @@ export default function ProvinciaAdmin() {
   const [modalPayload, setModalPayload] = useState({ id: null, descripcion: '' });
 
   const openAddModal = () => {
-    setNuevaDescripcion('');
-    setModalMode('add');
-    setModalPayload({ id: null, descripcion: '' });
-    setModalOpen(true);
+    // previous implementation opened an overlay for adding; keep add inline
+    // to match requested behavior: directly call agregarProvincia
+    agregarProvincia();
   };
 
   const openEditModal = (id, descripcion) => {
@@ -383,15 +382,15 @@ export default function ProvinciaAdmin() {
                       <div className="flex gap-2 justify-end">
                         <button
                           onClick={() => openEditModal(prov.id, prov.descripcion)}
-                          className="px-3 py-1 bg-white text-green-700 border border-green-700 rounded-md text-xs font-semibold hover:bg-green-50"
+                          className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
                         >
-                          Editar
+                          ✏️ Editar
                         </button>
                         <button
                           onClick={() => openDeleteModal(prov.id, prov.descripcion)}
-                          className="px-3 py-1 bg-red-600 text-white rounded-md text-xs font-semibold hover:bg-red-700"
+                          className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
                         >
-                          Eliminar
+                          🗑️ Eliminar
                         </button>
                       </div>
                     </td>
@@ -466,36 +465,10 @@ export default function ProvinciaAdmin() {
           {/* Overlay modal for add / edit / delete */}
           <ModalOverlay
             open={modalOpen}
-            title={
-              modalMode === 'add'
-                ? 'Agregar provincia'
-                : modalMode === 'edit'
-                ? 'Editar provincia'
-                : modalMode === 'delete'
-                ? 'Confirmar eliminación'
-                : ''
-            }
+            title={modalMode === 'edit' ? 'Editar provincia' : modalMode === 'delete' ? 'Confirmar eliminación' : ''}
             onClose={closeModal}
             actions={
-              modalMode === 'add' ? (
-                <>
-                  <button
-                    onClick={closeModal}
-                    className="px-3 py-1 bg-slate-200 text-slate-700 rounded-md text-sm"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await agregarProvincia();
-                      closeModal();
-                    }}
-                    className="px-3 py-1 bg-green-700 text-white rounded-md text-sm"
-                  >
-                    Agregar
-                  </button>
-                </>
-              ) : modalMode === 'edit' ? (
+              modalMode === 'edit' ? (
                 <>
                   <button
                     onClick={closeModal}
@@ -528,16 +501,6 @@ export default function ProvinciaAdmin() {
               ) : null
             }
           >
-            {modalMode === 'add' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de la provincia</label>
-                <input
-                  value={nuevaDescripcion}
-                  onChange={(e) => setNuevaDescripcion(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
-            )}
             {modalMode === 'edit' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>

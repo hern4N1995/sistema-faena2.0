@@ -267,6 +267,15 @@ export default function DepartamentoAdmin() {
       }));
   }, [provinciasDB]);
 
+  // helper: find option by label (case-insensitive)
+  const provincesOptionsByLabel = (opts, label) => {
+    if (!label) return null;
+    const norm = String(label || '').trim().toLowerCase();
+    return (opts || []).find(
+      (o) => String(o.label || '').trim().toLowerCase() === norm
+    );
+  };
+
   /* ---------- Paginación local ---------- */
   const paginatedRegistros = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -766,9 +775,9 @@ export default function DepartamentoAdmin() {
             <SelectField
               label="Provincia"
               value={
-                provinciasOptions.find(
+                (provinciasOptions.find(
                   (o) => String(o.value) === String(editing.id_provincia)
-                ) ?? null
+                ) || provincesOptionsByLabel(provinciasOptions, editing.provinciaLabel)) ?? null
               }
               onChange={() => {}}
               options={provinciasOptions}

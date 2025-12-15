@@ -256,25 +256,52 @@ export default function PlantaAdmin() {
       planta.provincia?.label ??
       planta.nombre_provincia ??
       null;
+
+    const idVal = planta.id ?? planta.id_planta ?? null;
+
+    // Normalize date to yyyy-MM-dd for <input type="date"> (remove timezone/time)
+    const formatDateForInput = (val) => {
+      if (!val) return '';
+      // If already in YYYY-MM-DD, return as-is
+      if (/^\d{4}-\d{2}-\d{2}$/.test(String(val))) return String(val);
+      // Try to parse ISO date or timestamp
+      const d = new Date(val);
+      if (isNaN(d.getTime())) {
+        // fallback: strip time portion if present
+        return String(val).split('T')[0] || '';
+      }
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
     setEditado({
       ...planta,
+      id: idVal,
       provincia:
         provinciaValue !== null
           ? { value: provinciaValue, label: provinciaLabel }
           : null,
+      fecha_habilitacion: formatDateForInput(planta.fecha_habilitacion),
     });
+    setEditandoId(idVal);
     setEditModalOpen(true);
   };
 
   const guardarEdicion = async () => {
+    const targetId = editado?.id ?? editandoId;
+
     const payload = {
       ...editado,
       estado: Boolean(editado.estado),
       id_provincia: editado?.provincia?.value ?? editado?.id_provincia ?? null,
+      // ensure date has no timezone/time part (yyyy-MM-dd)
+      fecha_habilitacion: editado?.fecha_habilitacion || null,
     };
 
     try {
-      const targetId = editado?.id;
+      if (!targetId) throw new Error('Missing planta id');
       const { data, status } = await api.put(`/plantas/${targetId}`, payload);
 
       const returnedId = data?.id ?? data?.id_planta ?? targetId;

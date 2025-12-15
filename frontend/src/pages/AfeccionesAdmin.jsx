@@ -489,9 +489,8 @@ const AfeccionesAdmin = () => {
               <h3 className="text-lg font-semibold text-gray-800 mb-3">Editar Afección</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Especie</label>
                   <SelectField
-                    label=""
+                    label="Especie"
                     value={
                       especies.find((e) => String(e.id_especie ?? e.id) === String(editingPayload.id_especie))
                         ? { value: String(editingPayload.id_especie), label: especies.find((e) => String(e.id_especie ?? e.id) === String(editingPayload.id_especie))?.descripcion }

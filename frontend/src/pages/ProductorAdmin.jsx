@@ -356,19 +356,21 @@ export default function ProductorAdmin() {
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Editar Productor</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">CUIT</label>
-                    <input
-                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                    <InputField
+                      label="CUIT"
+                      name="cuit"
                       value={editingPayload.cuit}
                       onChange={(e) => setEditingPayload((p) => ({ ...p, cuit: e.target.value }))}
+                      placeholder="Ej. 20-12345678-9"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Nombre</label>
-                    <input
-                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                    <InputField
+                      label="Nombre"
+                      name="nombre"
                       value={editingPayload.nombre}
                       onChange={(e) => setEditingPayload((p) => ({ ...p, nombre: e.target.value }))}
+                      placeholder="Ej. Juan Pérez"
                     />
                   </div>
                 </div>

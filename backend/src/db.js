@@ -18,7 +18,7 @@ if (connectionString) {
 } else {
   // Desarrollo local: usar variables individuales SIN SSL
   console.log('[DB] Conectando con variables individuales (desarrollo local)');
-
+  
   const poolConfig = {
     host: process.env.PGHOST || 'localhost',
     port: (process.env.PGPORT && Number(process.env.PGPORT)) || 5432,

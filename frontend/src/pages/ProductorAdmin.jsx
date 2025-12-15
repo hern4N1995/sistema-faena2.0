@@ -35,9 +35,6 @@ export default function ProductorAdmin() {
   });
   const [productores, setProductores] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editingPayload, setEditingPayload] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
   const [filtro, setFiltro] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
@@ -103,53 +100,30 @@ export default function ProductorAdmin() {
   };
 
   const handleEditar = (p) => {
-    setEditingPayload({
-      id: p.id_productor,
-      cuit: p.cuit || '',
-      nombre: p.nombre || '',
-    });
-    setEditModalOpen(true);
+    setNuevoProductor({ cuit: p.cuit, nombre: p.nombre });
+    setEditandoId(p.id_productor);
     setMensaje('');
     setError('');
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleEliminar = (id) => {
-    setConfirmDelete({ open: true, id });
-  };
-
-  const performDelete = async (id) => {
+  const handleEliminar = async (id) => {
+    if (!window.confirm('¿Seguro que deseas eliminar este productor?')) return;
     try {
+      console.log(`[ProductorAdmin] Eliminando productor ID: ${id}`);
       const res = await api.delete(`/productores/${id}`, { timeout: 10000 });
+      console.log(`[ProductorAdmin] Respuesta DELETE:`, res.status, res.data);
       if (!(res && res.status >= 200 && res.status < 300))
         throw new Error('Error al eliminar productor');
-      setProductores((prev) => (Array.isArray(prev) ? prev.filter((p) => p.id_productor !== id) : []));
+      console.log(`[ProductorAdmin] Productor eliminado exitosamente`);
       setPaginaActual(1);
-      setMensaje('Productor eliminado ✅');
-      setTimeout(() => setMensaje(''), 3000);
+      await fetchProductores();
     } catch (err) {
       console.error('[ProductorAdmin] Error deleting productor:', err);
       const errorMsg = err?.response?.data?.details || err?.response?.data?.message || err.message || 'Error al eliminar productor';
+      console.error('[ProductorAdmin] Error detallado:', errorMsg);
       setError(errorMsg);
-    } finally {
-      setConfirmDelete({ open: false, id: null });
-    }
-  };
-
-  const guardarEdicion = async () => {
-    if (!editingPayload?.id) return;
-    try {
-      const { id, cuit, nombre } = editingPayload;
-      const res = await api.put(`/productores/${id}`, { cuit, nombre }, { timeout: 10000 });
-      if (!(res && res.status >= 200 && res.status < 300)) throw new Error('Error al guardar productor');
-      const updated = res.data ?? { id_productor: id, cuit, nombre };
-      setProductores((prev) => (Array.isArray(prev) ? prev.map((p) => (p.id_productor === id ? { ...p, ...updated } : p)) : prev));
-      setEditModalOpen(false);
-      setEditingPayload(null);
-      setMensaje('Productor modificado ✅');
-      setTimeout(() => setMensaje(''), 3000);
-    } catch (err) {
-      console.error('Error saving productor (modal):', err);
-      setError(err?.response?.data?.message || err.message || 'Error al guardar productor');
     }
   };
 
@@ -347,55 +321,6 @@ export default function ProductorAdmin() {
               </p>
             )}
           </div>
-
-          {/* Edit modal overlay */}
-          {editModalOpen && editingPayload && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center">
-              <div className="absolute inset-0 bg-black/40" onClick={() => { setEditModalOpen(false); setEditingPayload(null); }} />
-              <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg p-6 z-10">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Editar Productor</h3>
-                <div className="space-y-3">
-                  <div>
-                    <InputField
-                      label="CUIT"
-                      name="cuit"
-                      value={editingPayload.cuit}
-                      onChange={(e) => setEditingPayload((p) => ({ ...p, cuit: e.target.value }))}
-                      placeholder="Ej. 20-12345678-9"
-                    />
-                  </div>
-                  <div>
-                    <InputField
-                      label="Nombre"
-                      name="nombre"
-                      value={editingPayload.nombre}
-                      onChange={(e) => setEditingPayload((p) => ({ ...p, nombre: e.target.value }))}
-                      placeholder="Ej. Juan Pérez"
-                    />
-                  </div>
-                </div>
-                <div className="mt-6 flex justify-end gap-2">
-                  <button onClick={() => { setEditModalOpen(false); setEditingPayload(null); }} className="px-4 py-2 border rounded">Cancelar</button>
-                  <button onClick={guardarEdicion} className="px-4 py-2 bg-green-600 text-white rounded">Guardar</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Delete confirm modal */}
-          {confirmDelete.open && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center">
-              <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmDelete({ open: false, id: null })} />
-              <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Confirmar eliminación</h3>
-                <div className="text-sm text-gray-700 mb-6">¿Estás seguro que querés eliminar este productor?</div>
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => setConfirmDelete({ open: false, id: null })} className="px-4 py-2 border rounded">Cancelar</button>
-                  <button onClick={() => performDelete(confirmDelete.id)} className="px-4 py-2 bg-red-600 text-white rounded">Eliminar</button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Paginación externa */}

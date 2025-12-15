@@ -106,6 +106,8 @@ const AfeccionesAdmin = () => {
   const [descripcion, setDescripcion] = useState('');
   const [idEspecie, setIdEspecie] = useState('');
   const [editandoId, setEditandoId] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingPayload, setEditingPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const descripcionRef = useRef(null);
@@ -161,18 +163,40 @@ const AfeccionesAdmin = () => {
   }, [idEspecie, editandoId]);
 
   const iniciarEdicion = (a) => {
-    setDescripcion(a.descripcion || '');
-    const especieId =
-      a.id_especie ?? especies.find((e) => e.descripcion === a.especie)?.id;
-    setIdEspecie(String(especieId || ''));
-    setEditandoId(a.id_afeccion ?? a.id);
-    setTimeout(() => descripcionRef.current?.focus(), 100);
+    // Open modal editor with isolated payload to avoid mutating top form
+    const especieId = a.id_especie ?? especies.find((e) => e.descripcion === a.especie)?.id;
+    setEditingPayload({
+      id: a.id_afeccion ?? a.id,
+      descripcion: a.descripcion || '',
+      id_especie: String(especieId ?? ''),
+    });
+    setEditModalOpen(true);
   };
 
   const cancelarEdicion = () => {
     setDescripcion('');
     setIdEspecie('');
     setEditandoId(null);
+  };
+
+  const guardarEdicionModal = async () => {
+    if (!editingPayload?.id) return;
+    if (!editingPayload.id_especie || !editingPayload.descripcion?.trim()) return;
+    const payload = {
+      descripcion: editingPayload.descripcion.trim(),
+      id_especie: parseInt(editingPayload.id_especie, 10),
+    };
+    try {
+      const res = await api.put(`/afecciones/${editingPayload.id}`, payload, { timeout: 10000 });
+      if (!(res && res.status >= 200 && res.status < 300)) throw new Error('Error al guardar');
+      await fetchAfecciones();
+      setEditModalOpen(false);
+      setEditingPayload(null);
+      alert('Afección actualizada');
+    } catch (err) {
+      console.error('No se pudo guardar la afección (modal):', err);
+      alert('No se pudo guardar la afección');
+    }
   };
 
   const handleGuardar = async () => {
@@ -455,6 +479,43 @@ const AfeccionesAdmin = () => {
             >
               Siguiente →
             </button>
+          </div>
+        )}
+        {/* Edit modal overlay */}
+        {editModalOpen && editingPayload && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => { setEditModalOpen(false); setEditingPayload(null); }} />
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Editar Afección</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Especie</label>
+                  <SelectField
+                    label=""
+                    value={
+                      especies.find((e) => String(e.id_especie ?? e.id) === String(editingPayload.id_especie))
+                        ? { value: String(editingPayload.id_especie), label: especies.find((e) => String(e.id_especie ?? e.id) === String(editingPayload.id_especie))?.descripcion }
+                        : null
+                    }
+                    onChange={(sel) => setEditingPayload((p) => ({ ...p, id_especie: sel?.value || '' }))}
+                    options={especies.map((e) => ({ value: String(e.id_especie ?? e.id), label: e.descripcion ?? e.nombre || '' }))}
+                    placeholder="Seleccionar especie"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Descripción</label>
+                  <input
+                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                    value={editingPayload.descripcion}
+                    onChange={(e) => setEditingPayload((p) => ({ ...p, descripcion: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <button onClick={() => { setEditModalOpen(false); setEditingPayload(null); }} className="px-4 py-2 border rounded">Cancelar</button>
+                <button onClick={guardarEdicionModal} className="px-4 py-2 bg-green-600 text-white rounded">Guardar</button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -40,6 +40,10 @@ export default function ProductorAdmin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Modal edit state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingPayload, setEditingPayload] = useState(null);
+
   const [paginaActual, setPaginaActual] = useState(1);
   const itemsPorPagina = window.innerWidth < 768 ? 2 : 4;
 
@@ -67,26 +71,14 @@ export default function ProductorAdmin() {
     e.preventDefault();
     setMensaje('');
     setError('');
-    const url = editandoId ? `/productores/${editandoId}` : '/productores';
-    const method = editandoId ? 'PUT' : 'POST';
     try {
-      let res;
-      if (editandoId) {
-        res = await api.put(`/productores/${editandoId}`, nuevoProductor, {
-          timeout: 10000,
-        });
-      } else {
-        res = await api.post('/productores', nuevoProductor, {
-          timeout: 10000,
-        });
-      }
+      const res = await api.post('/productores', nuevoProductor, {
+        timeout: 10000,
+      });
       if (!(res && res.status >= 200 && res.status < 300))
         throw new Error('Error al guardar productor');
-      setMensaje(
-        editandoId ? 'Productor modificado ✅' : 'Productor creado ✅'
-      );
+      setMensaje('Productor creado ✅');
       setNuevoProductor({ cuit: '', nombre: '' });
-      setEditandoId(null);
       setPaginaActual(1);
       await fetchProductores();
     } catch (err) {
@@ -100,12 +92,33 @@ export default function ProductorAdmin() {
   };
 
   const handleEditar = (p) => {
-    setNuevoProductor({ cuit: p.cuit, nombre: p.nombre });
-    setEditandoId(p.id_productor);
+    // Open modal with producer data
+    setEditingPayload({ id_productor: p.id_productor, cuit: p.cuit, nombre: p.nombre });
+    setEditModalOpen(true);
+  };
+
+  const guardarEdicion = async () => {
+    if (!editingPayload?.id_productor) return;
     setMensaje('');
     setError('');
-    // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      const res = await api.put(`/productores/${editingPayload.id_productor}`, {
+        cuit: editingPayload.cuit,
+        nombre: editingPayload.nombre,
+      }, { timeout: 10000 });
+      if (!(res && res.status >= 200 && res.status < 300)) throw new Error('Error al guardar productor');
+      // Update list directly
+      setProductores((prev) =>
+        prev.map((p) => (p.id_productor === editingPayload.id_productor ? { ...p, ...editingPayload } : p))
+      );
+      setMensaje('✅ Productor modificado');
+      setTimeout(() => setMensaje(''), 3000);
+      setEditModalOpen(false);
+      setEditingPayload(null);
+    } catch (err) {
+      console.error('Error saving productor:', err);
+      setError(err?.response?.data?.message || err.message || 'Error al guardar productor');
+    }
   };
 
   const handleEliminar = async (id) => {
@@ -223,7 +236,7 @@ export default function ProductorAdmin() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
       <div className="max-w-6xl mx-auto space-y-10">
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
-          {editandoId ? '👤 Modificar Productor' : '👤 Agregar Productor'}
+          👤 Agregar Productor
         </h1>
         {/* Formulario */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
@@ -252,7 +265,7 @@ export default function ProductorAdmin() {
                 type="submit"
                 className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition shadow"
               >
-                {editandoId ? 'Guardar Cambios' : 'Guardar'}
+                Guardar
               </button>
             </div>
           </form>
@@ -270,6 +283,36 @@ export default function ProductorAdmin() {
             </div>
           )}
         </div>
+
+        {/* Edit modal overlay */}
+        {editModalOpen && editingPayload && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setEditModalOpen(false)} />
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Editar Productor</h3>
+              <div className="space-y-4">
+                <InputField
+                  label="CUIT"
+                  name="cuit"
+                  value={editingPayload.cuit}
+                  onChange={(e) => setEditingPayload((p) => ({ ...p, cuit: e.target.value }))}
+                  placeholder="Ej. 20-12345678-9"
+                />
+                <InputField
+                  label="Nombre"
+                  name="nombre"
+                  value={editingPayload.nombre}
+                  onChange={(e) => setEditingPayload((p) => ({ ...p, nombre: e.target.value }))}
+                  placeholder="Ej. Juan Pérez"
+                />
+              </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <button onClick={() => setEditModalOpen(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</button>
+                <button onClick={guardarEdicion} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Listado */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">

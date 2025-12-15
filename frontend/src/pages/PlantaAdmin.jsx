@@ -151,7 +151,10 @@ export default function PlantaAdmin() {
       try {
         const { data } = await api.get('/plantas'); // baseURL ya incluye /api si está configurado
         if (!mounted) return;
-        setPlantas(Array.isArray(data) ? data : []);
+        const normalized = Array.isArray(data)
+          ? data.map((p) => ({ ...p, id: p.id ?? p.id_planta }))
+          : [];
+        setPlantas(normalized);
       } catch (err) {
         if (!mounted) return;
         console.error('Error al cargar plantas:', err);
@@ -233,8 +236,10 @@ export default function PlantaAdmin() {
 
       const { data } = await api.post('/plantas', payload);
 
+      // Ensure created item has normalized id field
+      const created = { ...data, id: data.id ?? data.id_planta };
       // Actualización segura del estado (no mutar el array original)
-      setPlantas((prev) => (Array.isArray(prev) ? [...prev, data] : [data]));
+      setPlantas((prev) => (Array.isArray(prev) ? [...prev, created] : [created]));
 
       // Reset del formulario de manera explícita
       setNuevaPlanta({
@@ -280,17 +285,17 @@ export default function PlantaAdmin() {
     // Normalize date to yyyy-MM-dd for <input type="date"> (remove timezone/time)
     const formatDateForInput = (val) => {
       if (!val) return '';
+      const s = String(val);
       // If already in YYYY-MM-DD, return as-is
-      if (/^\d{4}-\d{2}-\d{2}$/.test(String(val))) return String(val);
-      // Try to parse ISO date or timestamp
-      const d = new Date(val);
-      if (isNaN(d.getTime())) {
-        // fallback: strip time portion if present
-        return String(val).split('T')[0] || '';
-      }
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      // If ISO with T, take left side (already yyyy-mm-dd)
+      if (s.includes('T')) return s.split('T')[0];
+      // Try to parse ISO/date and use UTC to avoid local timezone shifts
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return '';
+      const yyyy = d.getUTCFullYear();
+      const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(d.getUTCDate()).padStart(2, '0');
       return `${yyyy}-${mm}-${dd}`;
     };
 
@@ -324,9 +329,20 @@ export default function PlantaAdmin() {
 
       const returnedId = data?.id ?? data?.id_planta ?? targetId;
       if (status >= 200 && status < 300 && String(returnedId) === String(targetId)) {
-        setPlantas((prev) =>
-          prev.map((p) => (String(p.id) === String(targetId) ? { ...p, ...data } : p))
-        );
+        setPlantas((prev) => {
+          if (!Array.isArray(prev)) return prev;
+          return prev.map((p) => {
+            const pId = p.id ?? p.id_planta ?? null;
+            if (String(pId) === String(targetId)) {
+              // merge returned data but preserve both id fields if present
+              const merged = { ...p, ...data };
+              if (!merged.id && merged.id_planta) merged.id = merged.id_planta;
+              if (!merged.id_planta && merged.id) merged.id_planta = merged.id;
+              return merged;
+            }
+            return p;
+          });
+        });
         setEditandoId(null);
         setEditado({});
         setEditModalOpen(false);

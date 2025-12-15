@@ -191,6 +191,24 @@ export default function PlantaAdmin() {
     };
   }, []);
 
+  // Helper: display date as dd/mm/yyyy (strip time if present)
+  const formatDateForDisplay = (val) => {
+    if (!val && val !== 0) return '—';
+    const s = String(val);
+    // If ISO with T, take left side
+    const left = s.includes('T') ? s.split('T')[0] : s;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(left)) {
+      const [y, m, d] = left.split('-');
+      return `${d}/${m}/${y}`;
+    }
+    const dObj = new Date(s);
+    if (isNaN(dObj.getTime())) return s;
+    const dd = String(dObj.getDate()).padStart(2, '0');
+    const mm = String(dObj.getMonth() + 1).padStart(2, '0');
+    const yyyy = dObj.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const val = type === 'checkbox' ? checked : value;
@@ -495,7 +513,7 @@ export default function PlantaAdmin() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="mb-2 font-semibold text-gray-700 text-sm">Nombre</label>
-                    <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm" value={editado.nombre || ''} onChange={(e) => setEditado((p) => ({ ...p, nombre: e.target.value }))} />
+                    <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50" value={editado.nombre || ''} onChange={(e) => setEditado((p) => ({ ...p, nombre: e.target.value }))} />
                   </div>
                   <div>
                     <SelectField
@@ -508,15 +526,15 @@ export default function PlantaAdmin() {
                   </div>
                   <div>
                     <label className="mb-2 font-semibold text-gray-700 text-sm">Dirección</label>
-                    <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm" value={editado.direccion || ''} onChange={(e) => setEditado((p) => ({ ...p, direccion: e.target.value }))} />
+                    <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50" value={editado.direccion || ''} onChange={(e) => setEditado((p) => ({ ...p, direccion: e.target.value }))} />
                   </div>
                   <div>
                     <label className="mb-2 font-semibold text-gray-700 text-sm">Fecha habilitación</label>
-                    <input type="date" className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm" value={editado.fecha_habilitacion || ''} onChange={(e) => setEditado((p) => ({ ...p, fecha_habilitacion: e.target.value }))} />
+                    <input type="date" className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50" value={editado.fecha_habilitacion || ''} onChange={(e) => setEditado((p) => ({ ...p, fecha_habilitacion: e.target.value }))} />
                   </div>
                   <div className="sm:col-span-2">
                     <label className="mb-2 font-semibold text-gray-700 text-sm">Norma legal</label>
-                    <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm" value={editado.norma_legal || ''} onChange={(e) => setEditado((p) => ({ ...p, norma_legal: e.target.value }))} />
+                    <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50" value={editado.norma_legal || ''} onChange={(e) => setEditado((p) => ({ ...p, norma_legal: e.target.value }))} />
                   </div>
                 </div>
                 <div className="mt-6 flex justify-end gap-2">
@@ -588,7 +606,7 @@ export default function PlantaAdmin() {
                       <p className="font-semibold text-gray-800">{p.nombre}</p>
                       <p>{p.provincia || '—'}</p>
                       <p>{p.direccion || '—'}</p>
-                      <p>Fecha: {p.fecha_habilitacion || '—'}</p>
+                      <p>Fecha: {formatDateForDisplay(p.fecha_habilitacion)}</p>
                       <p>Norma: {p.norma_legal || '—'}</p>
                       <p>
                         Estado:{' '}
@@ -645,7 +663,7 @@ export default function PlantaAdmin() {
                       <td className="px-4 py-3">{p.nombre}</td>
                       <td className="px-4 py-3">{p.provincia || '—'}</td>
                       <td className="px-4 py-3">{p.direccion || '—'}</td>
-                      <td className="px-4 py-3">{p.fecha_habilitacion || '—'}</td>
+                        <td className="px-4 py-3">{formatDateForDisplay(p.fecha_habilitacion)}</td>
                       <td className="px-4 py-3">{p.norma_legal || '—'}</td>
                       <td className="px-4 py-3 text-center">{p.estado ? '✅' : '❌'}</td>
                       <td className="px-4 py-3 text-center">

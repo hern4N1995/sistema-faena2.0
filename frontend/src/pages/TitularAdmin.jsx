@@ -110,6 +110,10 @@ export default function TitularAdmin() {
   const [esMovil, setEsMovil] = useState(window.innerWidth < 768);
 
   const [mensajeFeedback, setMensajeFeedback] = useState('');
+  // Modal state for edit and confirm
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingPayload, setEditingPayload] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
   const [paginaActual, setPaginaActual] = useState(1);
   const itemsPorPagina = esMovil ? 4 : 6;
 
@@ -250,139 +254,68 @@ export default function TitularAdmin() {
   };
 
   const iniciarEdicion = (t) => {
-    setEditandoId(t.id);
-    // Populate top form with selected titular
+    // open overlay modal for editing
     const provinciaOption = provinciasDB.find(
-      (p) =>
-        String(p.id) === String(t.id_provincia) || p.descripcion === t.provincia
+      (p) => String(p.id) === String(t.id_provincia) || p.descripcion === t.provincia
     );
-    setNuevoTitular({
+    const payload = {
+      id: t.id,
       nombre: t.nombre || '',
-      provincia: provinciaOption
-        ? { value: provinciaOption.id, label: provinciaOption.descripcion }
-        : null,
+      provincia: provinciaOption ? { value: provinciaOption.id, label: provinciaOption.descripcion } : null,
       localidad: t.localidad || '',
       direccion: t.direccion || '',
       documento: t.documento || '',
-    });
-    setEditado({ ...t });
-
-    // Scroll so the form's top is at the top of the viewport (account for fixed header if any)
-    if (formRef?.current) {
-      try {
-        const rect = formRef.current.getBoundingClientRect();
-        const top = window.pageYOffset + rect.top;
-        // If there's a fixed header, avoid hiding the form under it
-        const header = document.querySelector('header');
-        const isHeaderFixed = header
-          ? window.getComputedStyle(header).position === 'fixed'
-          : false;
-        const headerOffset = isHeaderFixed ? header.offsetHeight : 0;
-        // Keep a small margin from top (8px)
-        const scrollTo = Math.max(0, top - headerOffset - 8);
-        window.scrollTo({ top: scrollTo, behavior: 'smooth' });
-      } catch (e) {
-        // fallback to element scrollIntoView if anything fails
-        formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    // Focus first input in the form when we scroll to it
-    setTimeout(() => {
-      try {
-        const firstInput = formRef.current?.querySelector(
-          'input[name="nombre"]'
-        );
-        if (firstInput) firstInput.focus();
-      } catch (e) {
-        // ignore
-      }
-    }, 500);
+    };
+    setEditingPayload(payload);
+    setEditModalOpen(true);
   };
 
   /* ---------- Guardar edición de titular (usando el formulario superior) ---------- */
   const guardarEdicion = async () => {
-    if (!editandoId) return;
-
+    if (!editingPayload?.id) return;
     try {
       const payload = {
-        nombre: nuevoTitular.nombre,
-        id_provincia:
-          Number.parseInt(
-            nuevoTitular.provincia?.value ?? nuevoTitular.provincia,
-            10
-          ) || null,
-        localidad: nuevoTitular.localidad,
-        direccion: nuevoTitular.direccion || '',
-        documento: nuevoTitular.documento || '',
+        nombre: editingPayload.nombre,
+        id_provincia: Number.parseInt(editingPayload.provincia?.value ?? editingPayload.provincia, 10) || null,
+        localidad: editingPayload.localidad,
+        direccion: editingPayload.direccion || '',
+        documento: editingPayload.documento || '',
       };
 
-      const res = await api.put(`/titulares-faena/${editandoId}`, payload, {
-        timeout: 10000,
-      });
-      let updated = res?.data ?? { ...payload, id: editandoId };
-      // Ensure provincia description for list
-      const provinciaDesc2 = provinciasDB.find(
-        (p) => String(p.id) === String(updated.id_provincia)
-      )?.descripcion;
-      updated = {
-        ...updated,
-        provincia:
-          updated.provincia ??
-          provinciaDesc2 ??
-          (nuevoTitular.provincia?.label || ''),
-      };
+      const res = await api.put(`/titulares-faena/${editingPayload.id}`, payload, { timeout: 10000 });
+      let updated = res?.data ?? { ...payload, id: editingPayload.id };
+      const provinciaDesc2 = provinciasDB.find((p) => String(p.id) === String(updated.id_provincia))?.descripcion;
+      updated = { ...updated, provincia: updated.provincia ?? provinciaDesc2 ?? (editingPayload.provincia?.label || '') };
 
-      // actualizar lista local (reemplaza el elemento por el actualizado)
-      setTitulares((prev) =>
-        Array.isArray(prev)
-          ? prev.map((t) =>
-              String(t.id) === String(editandoId) ? { ...t, ...updated } : t
-            )
-          : prev
-      );
-
-      setEditandoId(null);
-      setEditado({});
-      setNuevoTitular({
-        nombre: '',
-        provincia: null,
-        localidad: '',
-        direccion: '',
-        documento: '',
-      });
+      setTitulares((prev) => (Array.isArray(prev) ? prev.map((t) => (String(t.id) === String(editingPayload.id) ? { ...t, ...updated } : t)) : prev));
+      setEditModalOpen(false);
+      setEditingPayload(null);
+      setMensajeFeedback('✅ Cambios guardados.');
+      setTimeout(() => setMensajeFeedback(''), 3000);
     } catch (error) {
       console.error('Error al guardar edición:', error);
-      // openErrorModal('No se pudo guardar', error?.response?.data?.message || error.message);
     }
   };
 
   /* ---------- Eliminar titular ---------- */
-  const eliminarTitular = async (id) => {
-    if (!window.confirm('¿Eliminar este titular?')) return;
+  const eliminarTitular = (id) => {
+    setConfirmDelete({ open: true, id });
+  };
 
+  const performDeleteTitular = async (id) => {
     try {
-      const res = await api.delete(`/titulares-faena/${id}`, {
-        timeout: 10000,
-      });
+      const res = await api.delete(`/titulares-faena/${id}`, { timeout: 10000 });
       const status = res?.status ?? 0;
-
       if (status >= 200 && status < 300) {
-        setTitulares((prev) =>
-          Array.isArray(prev)
-            ? prev.filter((t) => String(t.id) !== String(id))
-            : []
-        );
+        setTitulares((prev) => (Array.isArray(prev) ? prev.filter((t) => String(t.id) !== String(id)) : []));
         setPaginaActual(1);
-      } else {
-        const data = res?.data ?? {};
-        console.error('Error al eliminar titular:', data);
-        // setMensajeFeedback(`❌ ${data?.message || data?.error || 'Error al eliminar.'}`);
+        setMensajeFeedback('✅ Titular eliminado.');
+        setTimeout(() => setMensajeFeedback(''), 3000);
       }
     } catch (error) {
       console.error('Error al eliminar titular:', error);
-      // setMensajeFeedback(`❌ ${error?.response?.data?.message || error.message || 'Error de conexión.'}`);
+    } finally {
+      setConfirmDelete({ open: false, id: null });
     }
   };
 
@@ -492,6 +425,78 @@ export default function TitularAdmin() {
             </div>
           </div>
         </div>
+        {/* Edit modal overlay */}
+        {editModalOpen && editingPayload && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setEditModalOpen(false)} />
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg p-6 z-10">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Editar Titular</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Nombre</label>
+                  <input
+                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    value={editingPayload.nombre}
+                    onChange={(e) => setEditingPayload((p) => ({ ...p, nombre: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Provincia</label>
+                  <Select
+                    styles={{}}
+                    value={editingPayload.provincia}
+                    onChange={(sel) => setEditingPayload((p) => ({ ...p, provincia: sel }))}
+                    options={provinciasDB.map((p) => ({ value: p.id, label: p.descripcion }))}
+                    placeholder="Seleccione..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Localidad</label>
+                  <input
+                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    value={editingPayload.localidad}
+                    onChange={(e) => setEditingPayload((p) => ({ ...p, localidad: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Dirección</label>
+                  <input
+                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    value={editingPayload.direccion}
+                    onChange={(e) => setEditingPayload((p) => ({ ...p, direccion: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">DNI/CUIT</label>
+                  <input
+                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    value={editingPayload.documento}
+                    onChange={(e) => setEditingPayload((p) => ({ ...p, documento: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <button onClick={() => setEditModalOpen(false)} className="px-4 py-2 border rounded">Cancelar</button>
+                <button onClick={guardarEdicion} className="px-4 py-2 bg-green-600 text-white rounded">Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete confirm modal */}
+        {confirmDelete.open && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmDelete({ open: false, id: null })} />
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Confirmar eliminación</h3>
+              <div className="text-sm text-gray-700 mb-6">¿Estás seguro que querés eliminar este titular?</div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setConfirmDelete({ open: false, id: null })} className="px-4 py-2 border rounded">Cancelar</button>
+                <button onClick={() => performDeleteTitular(confirmDelete.id)} className="px-4 py-2 bg-red-600 text-white rounded">Eliminar</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Listado */}
         {esMovil ? (

@@ -132,6 +132,8 @@ export default function PlantaAdmin() {
 
   // Mensajes de feedback
   const [mensajeFeedback, setMensajeFeedback] = useState('');
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
 
   useEffect(() => {
     const handleResize = () => setEsMovil(window.innerWidth < 768);
@@ -261,6 +263,7 @@ export default function PlantaAdmin() {
           ? { value: provinciaValue, label: provinciaLabel }
           : null,
     });
+    setEditModalOpen(true);
   };
 
   const guardarEdicion = async () => {
@@ -274,11 +277,7 @@ export default function PlantaAdmin() {
       const { data, status } = await api.put(`/plantas/${editandoId}`, payload);
 
       const returnedId = data?.id ?? data?.id_planta ?? editandoId;
-      if (
-        status >= 200 &&
-        status < 300 &&
-        String(returnedId) === String(editandoId)
-      ) {
+      if (status >= 200 && status < 300 && String(returnedId) === String(editandoId)) {
         setPlantas((prev) =>
           prev.map((p) =>
             String(p.id) === String(editandoId) ? { ...p, ...data } : p
@@ -286,6 +285,7 @@ export default function PlantaAdmin() {
         );
         setEditandoId(null);
         setEditado({});
+        setEditModalOpen(false);
         setMensajeFeedback('✅ Cambios guardados.');
         setTimeout(() => setMensajeFeedback(''), 3000);
       } else {
@@ -308,36 +308,31 @@ export default function PlantaAdmin() {
     }
   };
 
-  const deshabilitarPlanta = async (id) => {
-    if (!window.confirm('¿Está seguro de deshabilitar esta planta?')) return;
+  const deshabilitarPlanta = (id) => {
+    setConfirmDelete({ open: true, id });
+  };
 
+  const performDisablePlanta = async (id) => {
     try {
       const { status, data } = await api.delete(`/plantas/${id}`);
 
       if (status >= 200 && status < 300) {
-        setPlantas((prev) =>
-          prev.map((p) =>
-            String(p.id) === String(id) ? { ...p, estado: false } : p
-          )
-        );
+        setPlantas((prev) => prev.map((p) => (String(p.id) === String(id) ? { ...p, estado: false } : p)));
         setMensajeFeedback('✅ Planta deshabilitada.');
         setTimeout(() => setMensajeFeedback(''), 3000);
       } else {
-        const msg =
-          data?.message || data?.error || 'Error al deshabilitar la planta.';
+        const msg = data?.message || data?.error || 'Error al deshabilitar la planta.';
         console.warn('Delete responded with non-2xx:', status, msg);
         setMensajeFeedback(`❌ ${msg}`);
         setTimeout(() => setMensajeFeedback(''), 3000);
       }
     } catch (err) {
       console.error('Error al deshabilitar planta:', err);
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        'Error de conexión con el servidor.';
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Error de conexión con el servidor.';
       setMensajeFeedback(`❌ ${msg}`);
       setTimeout(() => setMensajeFeedback(''), 4000);
+    } finally {
+      setConfirmDelete({ open: false, id: null });
     }
   };
 
@@ -464,6 +459,61 @@ export default function PlantaAdmin() {
               </label>
             </div>
           </div>
+
+          {/* Edit modal overlay */}
+          {editModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setEditModalOpen(false)} />
+              <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 z-10">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Editar Planta</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-2 font-semibold text-gray-700 text-sm">Nombre</label>
+                    <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm" value={editado.nombre || ''} onChange={(e) => setEditado((p) => ({ ...p, nombre: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Select
+                      value={editado.provincia ?? null}
+                      onChange={(sel) => setEditado((p) => ({ ...p, provincia: sel }))}
+                      options={provincias.map((p) => ({ value: p.id, label: p.descripcion }))}
+                      placeholder="Seleccione..."
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 font-semibold text-gray-700 text-sm">Dirección</label>
+                    <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm" value={editado.direccion || ''} onChange={(e) => setEditado((p) => ({ ...p, direccion: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="mb-2 font-semibold text-gray-700 text-sm">Fecha habilitación</label>
+                    <input type="date" className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm" value={editado.fecha_habilitacion || ''} onChange={(e) => setEditado((p) => ({ ...p, fecha_habilitacion: e.target.value }))} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="mb-2 font-semibold text-gray-700 text-sm">Norma legal</label>
+                    <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm" value={editado.norma_legal || ''} onChange={(e) => setEditado((p) => ({ ...p, norma_legal: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end gap-2">
+                  <button onClick={() => setEditModalOpen(false)} className="px-4 py-2 border rounded">Cancelar</button>
+                  <button onClick={guardarEdicion} className="px-4 py-2 bg-green-600 text-white rounded">Guardar</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Confirm delete modal for planta */}
+          {confirmDelete.open && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmDelete({ open: false, id: null })} />
+              <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Confirmar deshabilitación</h3>
+                <div className="text-sm text-gray-700 mb-6">¿Estás seguro que querés deshabilitar esta planta?</div>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setConfirmDelete({ open: false, id: null })} className="px-4 py-2 border rounded">Cancelar</button>
+                  <button onClick={() => performDisablePlanta(confirmDelete.id)} className="px-4 py-2 bg-red-600 text-white rounded">Deshabilitar</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end">
             <button

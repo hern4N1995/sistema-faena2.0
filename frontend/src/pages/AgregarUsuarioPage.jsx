@@ -342,6 +342,28 @@ const AgregarUsuarioPage = () => {
     e.preventDefault();
     if (!validateFormBeforeSubmit()) return;
 
+    // Validación: email único (case-insensitive). Permitir si estamos editando el mismo usuario.
+    try {
+      const emailNormalized = String(form.email || '').trim().toLowerCase();
+      if (emailNormalized) {
+        const exists = usuarios.some((u) =>
+          String(u.email || '').trim().toLowerCase() === emailNormalized &&
+          // si editando, ignorar el propio registro
+          String(u.id_usuario) !== String(editandoId ?? '')
+        );
+        if (exists) {
+          openErrorModal(
+            'Email duplicado',
+            'Ya existe un usuario registrado con ese correo electrónico.'
+          );
+          return;
+        }
+      }
+    } catch (e) {
+      // Si por alguna razón falla la validación local, no bloquear el envío
+      console.warn('Validación de email duplicado falló:', e);
+    }
+
     const url = editandoId ? `/usuarios/${editandoId}` : '/usuarios';
     const method = editandoId ? 'put' : 'post';
 

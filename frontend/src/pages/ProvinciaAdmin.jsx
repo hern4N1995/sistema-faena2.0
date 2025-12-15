@@ -28,6 +28,21 @@ const InputField = ({
   </div>
 );
 
+// Simple modal overlay component
+const ModalOverlay = ({ open, title, children, onClose, actions }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg p-6 z-10">
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">{title}</h3>
+        <div className="text-sm text-gray-700 mb-4">{children}</div>
+        <div className="flex justify-end gap-2">{actions}</div>
+      </div>
+    </div>
+  );
+};
+
 const todasLasProvincias = [
   'Buenos Aires',
   'Catamarca',
@@ -79,6 +94,40 @@ export default function ProvinciaAdmin() {
     document.addEventListener('mousedown', manejarClickFuera);
     return () => document.removeEventListener('mousedown', manejarClickFuera);
   }, []);
+
+  // Modal overlay state for add/edit/delete confirmations
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | 'delete'
+  const [modalPayload, setModalPayload] = useState({ id: null, descripcion: '' });
+
+  const openAddModal = () => {
+    setNuevaDescripcion('');
+    setModalMode('add');
+    setModalPayload({ id: null, descripcion: '' });
+    setModalOpen(true);
+  };
+
+  const openEditModal = (id, descripcion) => {
+    setEditandoId(id);
+    setDescripcionEditada(descripcion ?? '');
+    setModalMode('edit');
+    setModalPayload({ id, descripcion: descripcion ?? '' });
+    setModalOpen(true);
+  };
+
+  const openDeleteModal = (id, descripcion) => {
+    setModalMode('delete');
+    setModalPayload({ id, descripcion });
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalMode(null);
+    setModalPayload({ id: null, descripcion: '' });
+    setEditandoId(null);
+    setDescripcionEditada('');
+  };
 
   const fetchProvincias = async () => {
     try {
@@ -151,23 +200,21 @@ export default function ProvinciaAdmin() {
     }
   };
 
-  const eliminarProvincia = async (id) => {
-    const confirmar = window.confirm(
-      '¿Seguro que querés eliminar esta provincia?'
-    );
-    if (!confirmar) return;
+  // abrir overlay para pedir confirmación de borrado
+  const eliminarProvincia = (id) => {
+    const prov = provincias.find((p) => String(p.id) === String(id));
+    openDeleteModal(id, prov?.descripcion || '');
+  };
 
+  const performDelete = async (id) => {
     try {
       const { status, data } = await api.delete(`/provincias/${id}`);
 
       if (status >= 200 && status < 300) {
-        setProvincias((prev) =>
-          prev.filter((p) => String(p.id) !== String(id))
-        );
+        setProvincias((prev) => prev.filter((p) => String(p.id) !== String(id)));
         setMensajeFeedback('✅ Provincia eliminada correctamente.');
       } else {
-        const msg =
-          data?.message || data?.error || 'Error al eliminar provincia.';
+        const msg = data?.message || data?.error || 'Error al eliminar provincia.';
         setMensajeFeedback(`❌ ${msg}`);
         console.warn('Eliminar provincia no 2xx:', status, msg);
       }
@@ -181,30 +228,21 @@ export default function ProvinciaAdmin() {
       setMensajeFeedback(`❌ ${msg}`);
     } finally {
       setTimeout(() => setMensajeFeedback(''), 4000);
+      closeModal();
     }
   };
 
   const iniciarEdicion = (id, descripcionActual) => {
-    setEditandoId(id);
-    setDescripcionEditada(descripcionActual ?? '');
-    setMensajeFeedback('');
+    openEditModal(id, descripcionActual);
   };
 
   const guardarEdicion = async () => {
     const nuevaDesc = (descripcionEditada || '').trim();
     if (!nuevaDesc) return;
 
-    const confirmar = window.confirm(
-      `¿Estás seguro de que querés guardar los cambios en la provincia "${nuevaDesc}"?`
-    );
-    if (!confirmar) return;
-
     try {
       const payload = { descripcion: nuevaDesc };
-      const { status, data } = await api.put(
-        `/provincias/${editandoId}`,
-        payload
-      );
+      const { status, data } = await api.put(`/provincias/${editandoId}`, payload);
 
       if (status >= 200 && status < 300) {
         setProvincias((prev) =>
@@ -217,9 +255,9 @@ export default function ProvinciaAdmin() {
         setEditandoId(null);
         setDescripcionEditada('');
         setMensajeFeedback('✅ Provincia modificada correctamente.');
+        closeModal();
       } else {
-        const msg =
-          data?.message || data?.error || 'Error al editar provincia.';
+        const msg = data?.message || data?.error || 'Error al editar provincia.';
         setMensajeFeedback(`❌ ${msg}`);
         console.warn('Editar provincia no 2xx:', status, msg);
       }
@@ -287,7 +325,7 @@ export default function ProvinciaAdmin() {
             </div>
             <div className="flex items-end">
               <button
-                onClick={agregarProvincia}
+                onClick={openAddModal}
                 className="w-full bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 transition shadow"
               >
                 Agregar
@@ -339,48 +377,23 @@ export default function ProvinciaAdmin() {
                   >
                     <td className="px-4 py-3 font-bold">{prov.id}</td>
                     <td className="px-4 py-3">
-                      {editandoId === prov.id ? (
-                        <input
-                          value={descripcionEditada}
-                          onChange={(e) => setDescripcionEditada(e.target.value)}
-                          className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
-                        />
-                      ) : (
-                        <span>{prov.descripcion}</span>
-                      )}
+                      <span>{prov.descripcion}</span>
                     </td>
                     <td className="px-4 py-3">
-                      {editandoId === prov.id ? (
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={guardarEdicion}
-                            className="px-3 py-1 bg-green-700 text-white rounded-md text-xs font-semibold hover:bg-green-800"
-                          >
-                            Guardar
-                          </button>
-                          <button
-                            onClick={() => setEditandoId(null)}
-                            className="px-3 py-1 bg-slate-200 text-slate-700 rounded-md text-xs font-semibold hover:bg-slate-300"
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => iniciarEdicion(prov.id, prov.descripcion)}
-                            className="px-3 py-1 bg-white text-green-700 border border-green-700 rounded-md text-xs font-semibold hover:bg-green-50"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => eliminarProvincia(prov.id)}
-                            className="px-3 py-1 bg-red-600 text-white rounded-md text-xs font-semibold hover:bg-red-700"
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => openEditModal(prov.id, prov.descripcion)}
+                          className="px-3 py-1 bg-white text-green-700 border border-green-700 rounded-md text-xs font-semibold hover:bg-green-50"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => openDeleteModal(prov.id, prov.descripcion)}
+                          className="px-3 py-1 bg-red-600 text-white rounded-md text-xs font-semibold hover:bg-red-700"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -449,6 +462,98 @@ export default function ProvinciaAdmin() {
               </button>
             </div>
           )}
+
+          {/* Overlay modal for add / edit / delete */}
+          <ModalOverlay
+            open={modalOpen}
+            title={
+              modalMode === 'add'
+                ? 'Agregar provincia'
+                : modalMode === 'edit'
+                ? 'Editar provincia'
+                : modalMode === 'delete'
+                ? 'Confirmar eliminación'
+                : ''
+            }
+            onClose={closeModal}
+            actions={
+              modalMode === 'add' ? (
+                <>
+                  <button
+                    onClick={closeModal}
+                    className="px-3 py-1 bg-slate-200 text-slate-700 rounded-md text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await agregarProvincia();
+                      closeModal();
+                    }}
+                    className="px-3 py-1 bg-green-700 text-white rounded-md text-sm"
+                  >
+                    Agregar
+                  </button>
+                </>
+              ) : modalMode === 'edit' ? (
+                <>
+                  <button
+                    onClick={closeModal}
+                    className="px-3 py-1 bg-slate-200 text-slate-700 rounded-md text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={async () => await guardarEdicion()}
+                    className="px-3 py-1 bg-green-700 text-white rounded-md text-sm"
+                  >
+                    Guardar
+                  </button>
+                </>
+              ) : modalMode === 'delete' ? (
+                <>
+                  <button
+                    onClick={closeModal}
+                    className="px-3 py-1 bg-slate-200 text-slate-700 rounded-md text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={async () => await performDelete(modalPayload.id)}
+                    className="px-3 py-1 bg-red-600 text-white rounded-md text-sm"
+                  >
+                    Eliminar
+                  </button>
+                </>
+              ) : null
+            }
+          >
+            {modalMode === 'add' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de la provincia</label>
+                <input
+                  value={nuevaDescripcion}
+                  onChange={(e) => setNuevaDescripcion(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+            {modalMode === 'edit' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+                <input
+                  value={descripcionEditada}
+                  onChange={(e) => setDescripcionEditada(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+            {modalMode === 'delete' && (
+              <div className="text-sm text-gray-700">
+                ¿Estás seguro de que querés eliminar la provincia "{modalPayload.descripcion}"?
+              </div>
+            )}
+          </ModalOverlay>
 
         </div>
       </div>

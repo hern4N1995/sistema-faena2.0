@@ -103,26 +103,40 @@ const obtenerResumenDecomiso = async (req, res) => {
 
 const listarDecomisos = async (req, res) => {
   try {
+    // Limitar a 100 decomisos para evitar timeouts (paginación en frontend)
+    const limit = 100;
     const result = await pool.query(`
       SELECT 
         d.id_decomiso,
+        f.id_faena,
         f.fecha_faena,
+        f.fecha_faena AS fecha,
         t.n_tropa,
         t.dte_dtu,
+        t.id_planta,
         td.cantidad AS cantidad_tropa,
         fd.cantidad_faena,
-        (
-          SELECT COALESCE(SUM(dd.animales_afectados), 0)
-          FROM decomiso_detalle dd
-          WHERE dd.id_decomiso = d.id_decomiso
-        ) AS cantidad_decomisada
+        dd.id_decomiso_detalle,
+        dd.cantidad,
+        dd.peso_kg,
+        dd.animales_afectados,
+        dd.destino_decomiso,
+        dd.observaciones,
+        tp.nombre_tipo_parte,
+        pd.nombre_parte,
+        a.descripcion AS afeccion
       FROM decomiso d
       JOIN faena_detalle fd ON d.id_faena_detalle = fd.id_faena_detalle
       JOIN faena f ON fd.id_faena = f.id_faena
       JOIN tropa_detalle td ON fd.id_tropa_detalle = td.id_tropa_detalle
       JOIN tropa t ON td.id_tropa = t.id_tropa
-      ORDER BY d.id_decomiso DESC;
-    `);
+      LEFT JOIN decomiso_detalle dd ON d.id_decomiso = dd.id_decomiso
+      LEFT JOIN parte_decomisada pd ON dd.id_parte_decomisada = pd.id_parte_decomisada
+      LEFT JOIN tipo_parte_deco tp ON pd.id_tipo_parte_deco = tp.id_tipo_parte_deco
+      LEFT JOIN afeccion a ON dd.id_afeccion = a.id_afeccion
+      ORDER BY f.fecha_faena DESC, d.id_decomiso DESC
+      LIMIT $1;
+    `, [limit]);
 
     res.json(result.rows);
   } catch (err) {

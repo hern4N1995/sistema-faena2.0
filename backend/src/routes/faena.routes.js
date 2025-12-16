@@ -29,7 +29,7 @@ router.get('/:id_faena/decomiso-datos', obtenerDatosParaDecomiso);
 router.get(
   '/faenas-realizadas',
   verificarToken,
-  permitirRoles(1, 2),
+  permitirRoles(1, 2, 3),
   obtenerFaenasRealizadas,
 );
 
@@ -47,12 +47,12 @@ router.get('/tropas', obtenerFaenas);
 router.get(
   '/remanente',
   verificarToken,
-  permitirRoles(1, 2),
+  permitirRoles(1, 2, 3),
   obtenerRemanentePorTropa,
 );
 
 /* Operaciones CRUD / listados generales */
-router.get('/', verificarToken, permitirRoles(1, 2), obtenerFaenas);
+router.get('/', verificarToken, permitirRoles(1, 2, 3), obtenerFaenas);
 router.post('/', verificarToken, permitirRoles(2), crearFaena);
 
 /* Registrar faena (acción distinta a crearFaena) */

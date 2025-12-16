@@ -32,6 +32,10 @@ import CategoriaEspecieAdmin from './pages/CategoriaEspecieAdmin';
 import DecomisoResumenPage from './pages/DecomisoResumenPage';
 import DecomisosCargadosPage from './pages/DecomisosCargadosPage.jsx';
 import PerfilPage from './pages/PerfilPage.jsx';
+import InformesPage from './pages/InformesPage.jsx';
+import InformeTropaPage from './pages/InformeTropaPage.jsx';
+import InformeFaenaPage from './pages/InformeFaenaPage.jsx';
+import InformeDecomisosPage from './pages/InformeDecomisosPage.jsx';
 
 function App() {
   return (
@@ -73,6 +77,14 @@ function App() {
               path="faenas-realizadas"
               element={<FaenasRealizadasPage />}
             />
+          </Route>
+
+          {/* Informes y sus subrutas */}
+          <Route path="informes">
+            <Route index element={<InformesPage />} />
+            <Route path="tropa" element={<InformeTropaPage />} />
+            <Route path="faena" element={<InformeFaenaPage />} />
+            <Route path="decomisos" element={<InformeDecomisosPage />} />
           </Route>
 
           <Route

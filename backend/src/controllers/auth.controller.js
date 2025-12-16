@@ -43,6 +43,7 @@ exports.login = async (req, res) => {
         nombre: usuario.nombre,
         apellido: usuario.apellido,
         rol: usuario.id_rol,
+        id_planta: usuario.id_planta,
       },
     });
 

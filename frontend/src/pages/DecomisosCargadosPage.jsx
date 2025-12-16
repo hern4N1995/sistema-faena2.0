@@ -18,10 +18,31 @@ const DecomisosCargadosPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [rol, setRol] = useState(null);
+  const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
 
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const rowsPerPage = isMobile ? 3 : 6;
+
+  // Obtener rol y planta del usuario desde localStorage
+  useEffect(() => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData) {
+        const userRol = userData.id_rol || userData.rol;
+        setRol(parseInt(userRol));
+        
+        // Usar id_planta del usuario (viene del backend)
+        if (parseInt(userRol) !== 1) {
+          setPlantaDelUsuario(userData.id_planta);
+        }
+      }
+    } catch (err) {
+      console.error('[DecomisosCargadosPage] Error al obtener usuario:', err);
+      setRol(1); // Default a admin para mostrar datos
+    }
+  }, []);
 
   useEffect(() => {
     const fetchDecomisos = async () => {
@@ -29,11 +50,6 @@ const DecomisosCargadosPage = () => {
         console.log('[DecomisosCargadosPage] Cargando decomisos');
         const res = await api.get('/decomisos');
         console.log('[DecomisosCargadosPage] Respuesta completa:', res.data);
-        console.log(
-          '[DecomisosCargadosPage] Tipo de respuesta:',
-          typeof res.data,
-          Array.isArray(res.data)
-        );
 
         let arr = [];
         if (Array.isArray(res.data)) {
@@ -48,22 +64,20 @@ const DecomisosCargadosPage = () => {
           }
         }
 
-        console.log(
-          '[DecomisosCargadosPage] Array final:',
-          arr,
-          'Cantidad:',
-          arr.length
-        );
-        if (arr.length > 0) {
-          console.log(
-            '[DecomisosCargadosPage] Primer elemento COMPLETO:',
-            JSON.stringify(arr[0], null, 2)
+        console.log('[DecomisosCargadosPage] Array final:', arr.length, 'decomisos');
+
+        // Filtrar por planta del usuario (si no es admin)
+        if (rol !== 1 && plantaDelUsuario) {
+          console.log('[DecomisosCargadosPage] Filtrando por planta del usuario:', plantaDelUsuario);
+          arr = arr.filter(
+            (d) =>
+              String(d.id_planta) === String(plantaDelUsuario)
           );
-          console.log(
-            '[DecomisosCargadosPage] Campos disponibles:',
-            Object.keys(arr[0])
-          );
+          console.log('[DecomisosCargadosPage] Después de filtrar:', arr.length, 'decomisos');
+        } else if (rol === 1) {
+          console.log('[DecomisosCargadosPage] Admin - mostrando todos los decomisos');
         }
+
         setDecomisos(arr);
         setLoading(false);
       } catch (err) {
@@ -71,13 +85,16 @@ const DecomisosCargadosPage = () => {
           '[DecomisosCargadosPage] Error al cargar decomisos:',
           err?.response?.data || err.message
         );
-        console.error('[DecomisosCargadosPage] Status:', err?.response?.status);
         setError('No se pudo cargar la lista de decomisos');
         setLoading(false);
       }
     };
-    fetchDecomisos();
-  }, []);
+
+    // Solo cargar cuando tengamos rol definido
+    if (rol !== null) {
+      fetchDecomisos();
+    }
+  }, [rol, plantaDelUsuario]);
 
   const formatFecha = (fecha) => {
     if (!fecha) return '—';

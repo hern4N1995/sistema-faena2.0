@@ -118,6 +118,7 @@ const obtenerFaenasRealizadas = async (req, res) => {
         t.dte_dtu,
         t.guia_policial,
         t.n_tropa,
+        t.id_planta,
         prod.nombre AS productor,
         depto.nombre_departamento AS departamento,
         tf.nombre AS titular_faena,
@@ -133,7 +134,7 @@ const obtenerFaenasRealizadas = async (req, res) => {
       JOIN departamento depto ON t.id_departamento = depto.id_departamento
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
       ${where}
-      GROUP BY f.id_faena, f.fecha_faena, t.dte_dtu, t.guia_policial, t.n_tropa,
+      GROUP BY f.id_faena, f.fecha_faena, t.dte_dtu, t.guia_policial, t.n_tropa, t.id_planta,
                prod.nombre, depto.nombre_departamento, tf.nombre, esp.descripcion, t.id_tropa
       ORDER BY f.fecha_faena DESC, f.id_faena DESC
       LIMIT $${valores.length + 1} OFFSET $${valores.length + 2};
@@ -282,6 +283,7 @@ const obtenerFaenasSinDecomiso = async (req, res) => {
         t.dte_dtu,
         t.guia_policial,
         t.n_tropa,
+        t.id_planta,
         prod.nombre AS productor,
         depto.nombre_departamento AS departamento,
         tf.nombre AS titular_faena,
@@ -303,7 +305,7 @@ const obtenerFaenasSinDecomiso = async (req, res) => {
         JOIN faena_detalle fd2 ON d.id_faena_detalle = fd2.id_faena_detalle
         WHERE fd2.id_faena = f.id_faena
         )
-      GROUP BY f.id_faena, f.fecha_faena, t.dte_dtu, t.guia_policial, t.n_tropa,
+      GROUP BY f.id_faena, f.fecha_faena, t.dte_dtu, t.guia_policial, t.n_tropa, t.id_planta,
                prod.nombre, depto.nombre_departamento, tf.nombre, esp.descripcion, t.id_tropa
       ORDER BY f.fecha_faena DESC, f.id_faena DESC
       LIMIT $${valores.length + 1} OFFSET $${valores.length + 2};

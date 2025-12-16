@@ -53,6 +53,7 @@ export default function Header() {
     { to: '/tropa', label: 'Tropa', show: isAdmin || isUsuario },
     { to: '/faena', label: 'Faena', show: isAdmin || isUsuario },
     { to: '/decomisos', label: 'Decomisos', show: isAdmin || isUsuario },
+    { to: '/informes', label: 'Informes', show: isAdmin || isUsuario },
     { to: '/admin/usuarios', label: 'Admin', show: isAdmin },
   ];
 

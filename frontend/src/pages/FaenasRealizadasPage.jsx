@@ -113,6 +113,8 @@ export default function FaenasRealizadasPage() {
   const [faenas, setFaenas] = useState([]);
   const [filtro, setFiltro] = useState({ desde: '', hasta: '', n_tropa: '' });
   const [loading, setLoading] = useState(true);
+  const [rol, setRol] = useState(null);
+  const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
@@ -128,6 +130,25 @@ export default function FaenasRealizadasPage() {
   const [sortOrder, setSortOrder] = useState(sortOptions[0]); // objeto {value,label}
   const [currentPage, setCurrentPage] = useState(1);
   const [totalFaenados, setTotalFaenados] = useState(0);
+
+  // Obtener rol y planta del usuario desde localStorage
+  useEffect(() => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData) {
+        const userRol = userData.id_rol || userData.rol;
+        setRol(parseInt(userRol));
+        
+        // Usar id_planta del usuario (viene del backend)
+        if (parseInt(userRol) !== 1) {
+          setPlantaDelUsuario(userData.id_planta);
+        }
+      }
+    } catch (err) {
+      console.error('[FaenasRealizadasPage] Error al obtener usuario:', err);
+      setRol(1); // Default a admin para mostrar datos
+    }
+  }, []);
 
   const fetchFaenas = async () => {
     setLoading(true);
@@ -151,7 +172,7 @@ export default function FaenasRealizadasPage() {
       console.log('[FaenasRealizadasPage] Respuesta recibida:', res.data);
       
       const data = res.data;
-      const arr = Array.isArray(data)
+      let arr = Array.isArray(data)
         ? data
         : Array.isArray(data?.faenas)
         ? data.faenas
@@ -159,7 +180,41 @@ export default function FaenasRealizadasPage() {
         ? data.data
         : [];
       
-      console.log('[FaenasRealizadasPage] Array procesado:', arr);
+      console.log('[FaenasRealizadasPage] Array procesado:', arr.length, 'faenas');
+
+      // Log para debug: mostrar id_planta de las faenas
+      if (arr.length > 0) {
+        console.log('[FaenasRealizadasPage] Primeras faenas con id_planta:', arr.slice(0, 3).map(f => ({
+          id_faena: f.id_faena,
+          n_tropa: f.n_tropa,
+          id_planta: f.id_planta,
+          fecha: f.fecha_faena
+        })));
+      }
+
+      // Filtrar por planta del usuario (si no es admin)
+      if (rol !== 1 && plantaDelUsuario) {
+        console.log('[FaenasRealizadasPage] Filtrando por planta del usuario:', plantaDelUsuario, 'Tipo:', typeof plantaDelUsuario);
+        console.log('[FaenasRealizadasPage] Faenas ANTES de filtrar:', arr.length);
+        arr = arr.filter((f) => {
+          const match = String(f.id_planta) === String(plantaDelUsuario);
+          if (!match) {
+            console.log('[FaenasRealizadasPage] Faena RECHAZADA:', {
+              id_faena: f.id_faena,
+              id_planta: f.id_planta,
+              plantaDelUsuario: plantaDelUsuario,
+              match: match
+            });
+          }
+          return match;
+        });
+        console.log('[FaenasRealizadasPage] Después de filtrar:', arr.length, 'faenas');
+      } else if (rol === 1) {
+        console.log('[FaenasRealizadasPage] Admin - mostrando todas las faenas');
+      } else {
+        console.log('[FaenasRealizadasPage] Warning - Rol no es admin pero no hay plantaDelUsuario. Rol:', rol, 'Planta:', plantaDelUsuario);
+      }
+
       setFaenas(arr);
 
       const total = arr.reduce((acc, item) => {
@@ -179,9 +234,11 @@ export default function FaenasRealizadasPage() {
   };
 
   useEffect(() => {
-    fetchFaenas();
+    if (rol !== null) {
+      fetchFaenas();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtro]);
+  }, [filtro, rol, plantaDelUsuario]);
 
   useEffect(() => setCurrentPage(1), [rowsPerPage, sortOrder]);
 

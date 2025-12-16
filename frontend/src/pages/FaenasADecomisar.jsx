@@ -19,6 +19,8 @@ export default function FaenasADecomisar() {
   const [faenas, setFaenas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [redirigiendoId, setRedirigiendoId] = useState(null);
+  const [rol, setRol] = useState(null);
+  const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
@@ -28,17 +30,46 @@ export default function FaenasADecomisar() {
   // filtro por día relativo: 'actual' | 'anterior' | 'siguiente' | 'todas'
   const [dayFilterMode, setDayFilterMode] = useState('todas');
 
+  // Obtener rol y planta del usuario desde localStorage
+  useEffect(() => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData) {
+        const userRol = userData.id_rol || userData.rol;
+        setRol(parseInt(userRol));
+        
+        // Usar id_planta del usuario (viene del backend)
+        if (parseInt(userRol) !== 1) {
+          setPlantaDelUsuario(userData.id_planta);
+        }
+      }
+    } catch (err) {
+      console.error('[FaenasADecomisar] Error al obtener usuario:', err);
+      setRol(1); // Default a admin para mostrar datos
+    }
+  }, []);
+
   // fetch inicial
   const fetchFaenas = async () => {
     setLoading(true);
     try {
       console.log('[FaenasADecomisar] Cargando faenas sin decomiso');
       const res = await api.get('/faena/faenas-sin-decomiso');
-      console.log('[FaenasADecomisar] Respuesta:', res.data);
       
       const data = res.data;
-      const arr = Array.isArray(data) ? data : Array.isArray(data?.faenas) ? data.faenas : [];
-      console.log('[FaenasADecomisar] Array procesado:', arr);
+      let arr = Array.isArray(data) ? data : Array.isArray(data?.faenas) ? data.faenas : [];
+      
+      // Filtrar por planta del usuario (si no es admin)
+      if (rol !== 1 && plantaDelUsuario) {
+        console.log('[FaenasADecomisar] Filtrando por planta del usuario:', plantaDelUsuario);
+        arr = arr.filter(
+          (f) =>
+            String(f.id_planta) === String(plantaDelUsuario)
+        );
+        console.log('[FaenasADecomisar] Después de filtrar:', arr.length, 'faenas');
+      } else if (rol === 1) {
+        console.log('[FaenasADecomisar] Admin - mostrando todas las faenas');
+      }
       
       const conFaenados = arr.filter((f) => Number(f.total_faenado) > 0);
       const ordenadas = [...conFaenados].sort(
@@ -56,7 +87,9 @@ export default function FaenasADecomisar() {
   };
 
   useEffect(() => {
-    fetchFaenas();
+    if (rol !== null) {
+      fetchFaenas();
+    }
 
     const handleResize = () => {
       setRowsPerPage(window.matchMedia('(max-width: 767px)').matches ? 3 : 6);
@@ -64,7 +97,7 @@ export default function FaenasADecomisar() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [rol, plantaDelUsuario]);
 
   const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
 

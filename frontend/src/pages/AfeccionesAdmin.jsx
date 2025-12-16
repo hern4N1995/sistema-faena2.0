@@ -108,7 +108,13 @@ const AfeccionesAdmin = () => {
   const [editandoId, setEditandoId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [mensaje, setMensaje] = useState('');
   const descripcionRef = useRef(null);
+
+  // Modal edit state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingPayload, setEditingPayload] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
 
   const [paginaActual, setPaginaActual] = useState(1);
   const itemsPorPagina = window.innerWidth < 768 ? 2 : 4;
@@ -161,18 +167,48 @@ const AfeccionesAdmin = () => {
   }, [idEspecie, editandoId]);
 
   const iniciarEdicion = (a) => {
-    setDescripcion(a.descripcion || '');
-    const especieId =
-      a.id_especie ?? especies.find((e) => e.descripcion === a.especie)?.id;
-    setIdEspecie(String(especieId || ''));
-    setEditandoId(a.id_afeccion ?? a.id);
-    setTimeout(() => descripcionRef.current?.focus(), 100);
+    const id = a.id_afeccion ?? a.id;
+    const especieId = a.id_especie ?? especies.find((e) => e.descripcion === a.especie)?.id;
+    setEditingPayload({
+      id,
+      descripcion: a.descripcion || '',
+      id_especie: especieId ? String(especieId) : '',
+      especie: a.especie ?? a.nombre_especie ?? '',
+    });
+    setEditModalOpen(true);
   };
 
   const cancelarEdicion = () => {
     setDescripcion('');
     setIdEspecie('');
     setEditandoId(null);
+  };
+
+  const guardarEdicion = async () => {
+    if (!editingPayload?.id_especie || !editingPayload?.descripcion.trim()) return;
+    setError('');
+    setMensaje('');
+    const payload = {
+      descripcion: editingPayload.descripcion.trim(),
+      id_especie: parseInt(editingPayload.id_especie, 10),
+    };
+    try {
+      const res = await api.put(`/afecciones/${editingPayload.id}`, payload, { timeout: 10000 });
+      if (!(res && res.status >= 200 && res.status < 300)) throw new Error('Error al guardar');
+      setAfecciones((prev) =>
+        prev.map((a) => {
+          const aId = a.id_afeccion ?? a.id;
+          return aId === editingPayload.id ? { ...a, ...payload } : a;
+        })
+      );
+      setMensaje('✅ Afección actualizada');
+      setTimeout(() => setMensaje(''), 3000);
+      setEditModalOpen(false);
+      setEditingPayload(null);
+    } catch (err) {
+      console.error('Error saving afección:', err);
+      setError('❌ No se pudo guardar la afección');
+    }
   };
 
   const handleGuardar = async () => {
@@ -184,30 +220,35 @@ const AfeccionesAdmin = () => {
     };
 
     try {
-      let res;
-      if (editandoId) {
-        res = await api.put(`/afecciones/${editandoId}`, payload, { timeout: 10000 });
-      } else {
-        res = await api.post('/afecciones', payload, { timeout: 10000 });
-      }
+      const res = await api.post('/afecciones', payload, { timeout: 10000 });
       if (!(res && res.status >= 200 && res.status < 300)) throw new Error('Error al guardar');
       await fetchAfecciones();
+      setMensaje('✅ Afección registrada');
+      setTimeout(() => setMensaje(''), 3000);
       cancelarEdicion();
-      alert(editandoId ? 'Afección actualizada' : 'Afección registrada');
-    } catch {
-      alert('No se pudo guardar la afección');
+    } catch (err) {
+      console.error('Error saving afección:', err);
+      setError('❌ No se pudo guardar la afección');
     }
   };
 
   const handleEliminar = async (id) => {
-    if (!window.confirm('¿Eliminar esta afección?')) return;
+    setConfirmDelete({ open: true, id });
+  };
+
+  const performDeleteAfeccion = async (id) => {
+    setError('');
     try {
       const res = await api.delete(`/afecciones/${id}`, { timeout: 10000 });
       if (!(res && res.status >= 200 && res.status < 300)) throw new Error('Error al eliminar');
-      await fetchAfecciones();
-      alert('Afección eliminada correctamente');
-    } catch {
-      alert('No se pudo eliminar la afección');
+      setAfecciones((prev) => prev.filter((a) => (a.id_afeccion ?? a.id) !== id));
+      setMensaje('✅ Afección eliminada');
+      setTimeout(() => setMensaje(''), 3000);
+    } catch (err) {
+      console.error('Error deleting afección:', err);
+      setError('❌ No se pudo eliminar la afección');
+    } finally {
+      setConfirmDelete({ open: false, id: null });
     }
   };
 
@@ -231,7 +272,7 @@ const AfeccionesAdmin = () => {
         {/* Formulario institucional con sombra visible */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4 mt-6 relative z-10">
           <h2 className="text-lg font-semibold text-gray-800">
-            {editandoId ? 'Modificar afección' : 'Registrar nueva afección'}
+            Registrar nueva afección
           </h2>
 
           <SelectField
@@ -286,7 +327,7 @@ const AfeccionesAdmin = () => {
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {editandoId ? 'Actualizar' : 'Guardar Afección'}
+              Guardar Afección
             </button>
 
             {editandoId && (
@@ -299,8 +340,72 @@ const AfeccionesAdmin = () => {
             )}
           </div>
 
+          {mensaje && (
+            <div className="text-sm text-green-700 font-medium">
+              {mensaje}
+            </div>
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
+
+        {/* Edit modal overlay */}
+        {editModalOpen && editingPayload && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setEditModalOpen(false)} />
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Editar Afección</h3>
+              <div className="space-y-4">
+                <SelectField
+                  label="Especie"
+                  value={
+                    especies.find((e) => String(e.id_especie ?? e.id) === editingPayload.id_especie)
+                      ? {
+                          value: editingPayload.id_especie,
+                          label: especies.find((e) => String(e.id_especie ?? e.id) === editingPayload.id_especie)?.descripcion ?? 'Especie',
+                        }
+                      : null
+                  }
+                  onChange={(selected) => setEditingPayload((p) => ({ ...p, id_especie: selected?.value || '' }))}
+                  options={especies.map((e) => ({
+                    value: String(e.id_especie ?? e.id),
+                    label: e.descripcion ?? e.nombre ?? '',
+                  }))}
+                  placeholder="Seleccionar especie"
+                />
+                <div className="flex flex-col">
+                  <label className="mb-2 font-semibold text-gray-700 text-sm">Descripción</label>
+                  <input
+                    type="text"
+                    value={editingPayload.descripcion}
+                    onChange={(e) => setEditingPayload((p) => ({ ...p, descripcion: e.target.value }))}
+                    placeholder="Descripción de la afección"
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <button onClick={() => setEditModalOpen(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</button>
+                <button onClick={guardarEdicion} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete confirmation modal */}
+        {confirmDelete.open && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmDelete({ open: false, id: null })} />
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Confirmar eliminación</h3>
+              <div className="text-sm text-gray-700 mb-6">¿Estás seguro que querés eliminar esta afección?</div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setConfirmDelete({ open: false, id: null })} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancelar</button>
+                <button onClick={() => performDeleteAfeccion(confirmDelete.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Eliminar</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tarjetas responsivas en móvil */}
         <div className="sm:hidden space-y-4">
@@ -330,7 +435,7 @@ const AfeccionesAdmin = () => {
                     onClick={() => iniciarEdicion(a)}
                     className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
                   >
-                    ✏️ Modificar
+                    ✏️ Editar
                   </button>
                   <button
                     onClick={() => handleEliminar(id)}
@@ -375,7 +480,7 @@ const AfeccionesAdmin = () => {
                           onClick={() => iniciarEdicion(a)}
                           className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
                         >
-                          ✏️ Modificar
+                          ✏️ Editar
                         </button>
                         <button
                           onClick={() => handleEliminar(id)}

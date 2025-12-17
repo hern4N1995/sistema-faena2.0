@@ -167,13 +167,103 @@ const obtenerFaenasRealizadas = async (req, res) => {
 
     const faenas = resultado.rows || [];
 
-    // Calcular total faenados en el conjunto retornado (puede ser optimizado con otro query si necesitás total global)
-    const totalFaenados = faenas.reduce(
-      (acc, r) => acc + Number(r.total_faenado ?? 0),
-      0,
-    );
+    // Calcular total faenados de todas las faenas filtradas
+    const totalFaenadosQuery = `
+      SELECT SUM(fd.cantidad_faena)::int as total
+      FROM faena f
+      JOIN faena_detalle fd ON f.id_faena = fd.id_faena
+      JOIN tropa t ON f.id_tropa = t.id_tropa
+      LEFT JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
+      LEFT JOIN departamento depto ON t.id_departamento = depto.id_departamento
+      ${where}
+    `;
+    const totalFaenadosResult = await pool.query(totalFaenadosQuery, valores);
+    const totalFaenados = parseInt(totalFaenadosResult.rows[0].total || 0);
 
-    res.status(200).json({ faenas, total_faenados: totalFaenados });
+    // Obtener total de tropas filtrado
+    const filtrosTropa = [];
+    const valoresTropa = [];
+
+    if (desde.trim()) {
+      valoresTropa.push(desde);
+      filtrosTropa.push(`tropa.fecha_ingreso::date >= $${valoresTropa.length}`);
+    }
+    if (hasta.trim()) {
+      valoresTropa.push(hasta);
+      filtrosTropa.push(`tropa.fecha_ingreso::date <= $${valoresTropa.length}`);
+    }
+    if (n_tropa.trim()) {
+      valoresTropa.push(`%${n_tropa}%`);
+      filtrosTropa.push(`tropa.n_tropa::text ILIKE $${valoresTropa.length}`);
+    }
+    if (id_especie.trim()) {
+      valoresTropa.push(id_especie);
+      filtrosTropa.push(`EXISTS (SELECT 1 FROM tropa_detalle td WHERE td.id_tropa = tropa.id_tropa AND td.id_especie = $${valoresTropa.length})`);
+    }
+    if (id_provincia.trim()) {
+      valoresTropa.push(id_provincia);
+      filtrosTropa.push(`EXISTS (SELECT 1 FROM departamento d WHERE d.id_departamento = tropa.id_departamento AND d.id_provincia = $${valoresTropa.length})`);
+    }
+    if (id_planta.trim()) {
+      valoresTropa.push(id_planta);
+      filtrosTropa.push(`tropa.id_planta = $${valoresTropa.length}`);
+    }
+
+    const whereTropa = filtrosTropa.length > 0 ? `WHERE ${filtrosTropa.join(' AND ')}` : '';
+    const totalTropasQuery = `SELECT COUNT(*) as total FROM tropa ${whereTropa}`;
+    const totalTropasResult = await pool.query(totalTropasQuery, valoresTropa);
+    const totalTropas = parseInt(totalTropasResult.rows[0].total);
+
+    // Calcular sum_faenado por tropa de las faenas filtradas
+    const sumFaenadoPerTropaQuery = `
+      SELECT t.id_tropa, SUM(fd.cantidad_faena)::int as sum_faenado
+      FROM faena f
+      JOIN faena_detalle fd ON f.id_faena = fd.id_faena
+      JOIN tropa t ON f.id_tropa = t.id_tropa
+      LEFT JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
+      LEFT JOIN departamento depto ON t.id_departamento = depto.id_departamento
+      ${where}
+      GROUP BY t.id_tropa
+    `;
+    const sumFaenadoResult = await pool.query(sumFaenadoPerTropaQuery, valores);
+    const sumFaenadoByTropa = sumFaenadoResult.rows.reduce((acc, row) => {
+      acc[row.id_tropa] = Number(row.sum_faenado);
+      return acc;
+    }, {});
+    const tropaIds = Object.keys(sumFaenadoByTropa);
+
+    let fullyFaenadaCount = 0;
+    let totalCantidadByTropa = {};
+    if (tropaIds.length > 0) {
+      const totalCantidadQuery = `SELECT id_tropa, SUM(cantidad) as total_cantidad FROM tropa_detalle WHERE id_tropa = ANY($1) GROUP BY id_tropa`;
+      const totalCantidadResult = await pool.query(totalCantidadQuery, [tropaIds]);
+      totalCantidadByTropa = totalCantidadResult.rows.reduce((acc, row) => {
+        acc[row.id_tropa] = Number(row.total_cantidad);
+        return acc;
+      }, {});
+      for (const idTropa of tropaIds) {
+        const sumFaenado = sumFaenadoByTropa[idTropa];
+        const totalCantidad = totalCantidadByTropa[idTropa];
+        if (sumFaenado === totalCantidad) {
+          fullyFaenadaCount++;
+        }
+      }
+    }
+
+    // Total unidades de todas las tropas filtradas
+    const whereTropaDetalle = whereTropa.replace(/tropa\./g, 't.');
+    const totalUnidadesQuery = `SELECT SUM(td.cantidad)::int as total_unidades FROM tropa_detalle td JOIN tropa t ON td.id_tropa = t.id_tropa ${whereTropaDetalle}`;
+    const totalUnidadesResult = await pool.query(totalUnidadesQuery, valoresTropa);
+    const totalUnidades = parseInt(totalUnidadesResult.rows[0].total_unidades || 0);
+
+    res.status(200).json({ 
+      faenas, 
+      total_faenados: totalFaenados, 
+      total_tropas: totalTropas, 
+      tropas_faenadas_completas: fullyFaenadaCount,
+      total_unidades: totalUnidades,
+      total_por_tropa: totalCantidadByTropa
+    });
   } catch (error) {
     console.error('Error al obtener faenas realizadas:', error.message);
     res.status(500).json({ error: 'Error al obtener faenas realizadas' });

@@ -27,10 +27,16 @@ export default function InformeFaenaPage() {
   const [plantas, setPlantas] = useState([]);
 
   const [period, setPeriod] = useState('6'); // meses
+  const [distribucionMode, setDistribucionMode] = useState('animales'); // 'animales', 'tropas'
 
   const [faenas, setFaenas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [totalTropas, setTotalTropas] = useState(0);
+  const [tropasFaenadasCompletas, setTropasFaenadasCompletas] = useState(0);
+  const [totalUnidades, setTotalUnidades] = useState(0);
+  const [totalFaenados, setTotalFaenados] = useState(0);
+  const [totalPorTropa, setTotalPorTropa] = useState({});
 
   useEffect(() => {
     // cargar especies, provincias y plantas al montar
@@ -52,7 +58,9 @@ export default function InformeFaenaPage() {
           if (userStr) {
             const user = JSON.parse(userStr);
             if (user.id_planta) {
-              plantasData = plantasData.filter(p => p.id_planta === user.id_planta);
+              plantasData = plantasData.filter(
+                (p) => p.id_planta === user.id_planta
+              );
               // Si solo hay una planta, seleccionarla por defecto
               if (plantasData.length === 1) {
                 setIdPlanta(plantasData[0].id_planta.toString());
@@ -86,9 +94,20 @@ export default function InformeFaenaPage() {
       if (idPlanta) params.id_planta = idPlanta;
 
       const res = await api.get('/faena/faenas-realizadas', { params });
-      // respuesta: { faenas, total_faenados }
+      // respuesta: { faenas, total_faenados, total_tropas, tropas_faenadas_completas, total_unidades }
       const payload = res.data?.faenas ?? res.data ?? [];
+      const totalFaenados = res.data?.total_faenados ?? 0;
+      const totalTropasRes = res.data?.total_tropas ?? 0;
+      const tropasFaenadasCompletasRes =
+        res.data?.tropas_faenadas_completas ?? 0;
+      const totalUnidadesRes = res.data?.total_unidades ?? 0;
+      const totalPorTropaRes = res.data?.total_por_tropa ?? {};
       setFaenas(payload);
+      setTotalFaenados(totalFaenados);
+      setTotalTropas(totalTropasRes);
+      setTropasFaenadasCompletas(tropasFaenadasCompletasRes);
+      setTotalUnidades(totalUnidadesRes);
+      setTotalPorTropa(totalPorTropaRes);
     } catch (err) {
       console.error(
         'Error al obtener faenas realizadas:',
@@ -106,6 +125,8 @@ export default function InformeFaenaPage() {
     fetchData();
   }, [desde, hasta, idEspecie, idProvincia, idPlanta, initialLoad]);
 
+  const estadosOrden = ['pendiente', 'finalizada'];
+
   // Totales calculados a partir de faenas
   const totals = useMemo(() => {
     const total = faenas.length;
@@ -114,16 +135,54 @@ export default function InformeFaenaPage() {
       acc[est] = (acc[est] || 0) + 1;
       return acc;
     }, {});
+
+    // Calcular sum_faenado por tropa
+    const sumFaenadoByTropa = faenas.reduce((acc, f) => {
+      acc[f.tropa_id] = (acc[f.tropa_id] || 0) + Number(f.total_faenado || 0);
+      return acc;
+    }, {});
+
+    // Calcular byEstadoAnimales con caso especial para 'pendiente'
+    const byEstadoAnimales = {};
+    estadosOrden.forEach((estado) => {
+      if (estado === 'pendiente') {
+        const uniqueTropasPendiente = new Set(
+          faenas
+            .filter(
+              (f) => (f.estado || f.estado_faena || 'finalizada') === estado
+            )
+            .map((f) => f.tropa_id)
+        );
+        byEstadoAnimales[estado] = Array.from(uniqueTropasPendiente).reduce(
+          (sum, tropa) => sum + (totalPorTropa[tropa] || 0),
+          0
+        );
+      } else {
+        byEstadoAnimales[estado] = faenas
+          .filter(
+            (f) => (f.estado || f.estado_faena || 'finalizada') === estado
+          )
+          .reduce((sum, f) => sum + Number(f.total_faenado || 0), 0);
+      }
+    });
+
+    const uniqueTropasByEstado = faenas.reduce((acc, f) => {
+      const est = (f.estado || f.estado_faena || 'finalizada').toString();
+      if (!acc[est]) acc[est] = new Set();
+      acc[est].add(f.tropa_id);
+      return acc;
+    }, {});
+    const byEstadoTropas = Object.fromEntries(
+      Object.entries(uniqueTropasByEstado).map(([est, set]) => [est, set.size])
+    );
     const byPlanta = faenas.reduce((acc, f) => {
       const planta = f.nombre_planta || `Planta ${f.id_planta || ''}`;
       acc[planta] = (acc[planta] || 0) + 1;
       return acc;
     }, {});
 
-    return { total, byEstado, byPlanta };
-  }, [faenas]);
-
-  const estadosOrden = ['pendiente', 'en proceso', 'finalizada'];
+    return { total, byEstado, byEstadoAnimales, byEstadoTropas, byPlanta };
+  }, [faenas, totalPorTropa]);
 
   // datos de tendencia (construidos a partir de faenas - simple agrupación por mes)
   const tendencia = useMemo(() => {
@@ -157,86 +216,86 @@ export default function InformeFaenaPage() {
           </p>
         </div>
 
-          {/* Barra de navegación y filtros */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 mb-4">
-            <button
-              onClick={() => navigate('/informes')}
-              className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700 shadow-sm"
-              aria-label="Volver a informes"
-            >
-              <HiArrowLeft size={20} />
-            </button>
+        {/* Barra de navegación y filtros */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 mb-4">
+          <button
+            onClick={() => navigate('/informes')}
+            className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700 shadow-sm"
+            aria-label="Volver a informes"
+          >
+            <HiArrowLeft size={20} />
+          </button>
 
-            {/* Filtros principales */}
-            <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:flex-1 lg:justify-center">
-              <div className="flex items-center gap-1">
-                <input
-                  type="date"
-                  value={desde}
-                  onChange={(e) => setDesde(e.target.value)}
-                  className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  aria-label="Desde"
-                />
-                <span className="text-xs text-gray-500">a</span>
-                <input
-                  type="date"
-                  value={hasta}
-                  onChange={(e) => setHasta(e.target.value)}
-                  className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  aria-label="Hasta"
-                />
-              </div>
-
-              <select
-                value={idEspecie}
-                onChange={(e) => setIdEspecie(e.target.value)}
+          {/* Filtros principales */}
+          <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:flex-1 lg:justify-center">
+            <div className="flex items-center gap-1">
+              <input
+                type="date"
+                value={desde}
+                onChange={(e) => setDesde(e.target.value)}
                 className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                aria-label="Especie"
-              >
-                <option value="">Especie</option>
-                {especies.map((s) => (
-                  <option key={s.id_especie} value={s.id_especie}>
-                    {s.descripcion}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={idProvincia}
-                onChange={(e) => setIdProvincia(e.target.value)}
+                aria-label="Desde"
+              />
+              <span className="text-xs text-gray-500">a</span>
+              <input
+                type="date"
+                value={hasta}
+                onChange={(e) => setHasta(e.target.value)}
                 className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                aria-label="Provincia"
-              >
-                <option value="">Provincia</option>
-                {provincias.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.descripcion}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={idPlanta}
-                onChange={(e) => setIdPlanta(e.target.value)}
-                className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                aria-label="Planta"
-              >
-                <option value="">Planta</option>
-                {plantas.map((p) => (
-                  <option key={p.id_planta} value={p.id_planta}>
-                    {p.nombre}
-                  </option>
-                ))}
-              </select>
-
-              <button
-                onClick={fetchData}
-                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors text-sm font-medium shadow-sm"
-              >
-                {loading ? '...' : 'Filtrar'}
-              </button>
+                aria-label="Hasta"
+              />
             </div>
+
+            <select
+              value={idEspecie}
+              onChange={(e) => setIdEspecie(e.target.value)}
+              className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              aria-label="Especie"
+            >
+              <option value="">Especie</option>
+              {especies.map((s) => (
+                <option key={s.id_especie} value={s.id_especie}>
+                  {s.descripcion}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={idProvincia}
+              onChange={(e) => setIdProvincia(e.target.value)}
+              className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              aria-label="Provincia"
+            >
+              <option value="">Provincia</option>
+              {provincias.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.descripcion}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={idPlanta}
+              onChange={(e) => setIdPlanta(e.target.value)}
+              className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              aria-label="Planta"
+            >
+              <option value="">Planta</option>
+              {plantas.map((p) => (
+                <option key={p.id_planta} value={p.id_planta}>
+                  {p.nombre}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={fetchData}
+              className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors text-sm font-medium shadow-sm"
+            >
+              {loading ? '...' : 'Filtrar'}
+            </button>
           </div>
+        </div>
 
         {/* Main card */}
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 sm:p-6">
@@ -244,24 +303,33 @@ export default function InformeFaenaPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <div className="bg-green-600 text-white rounded-lg p-3 shadow-sm">
               <div className="text-xs font-medium uppercase tracking-wide">
-                Total faenas
+                Total tropas
               </div>
-              <div className="text-2xl font-bold mt-1">{totals.total}</div>
+              <div className="text-2xl font-bold mt-1">{totalTropas}</div>
             </div>
 
-            {estadosOrden.map((e) => (
-              <div
-                key={e}
-                className="bg-white rounded-lg p-3 shadow-sm border border-gray-200"
-              >
-                <div className="text-xs font-medium text-gray-600 capitalize">
-                  {e.replace('-', ' ')}
-                </div>
-                <div className="text-xl font-semibold mt-1 text-gray-900">
-                  {totals.byEstado[e] || 0}
-                </div>
+            <div className="bg-green-600 text-white rounded-lg p-3 shadow-sm">
+              <div className="text-xs font-medium uppercase tracking-wide">
+                Cantidad animales tropa
               </div>
-            ))}
+              <div className="text-2xl font-bold mt-1">{totalUnidades}</div>
+            </div>
+
+            <div className="bg-green-600 text-white rounded-lg p-3 shadow-sm">
+              <div className="text-xs font-medium uppercase tracking-wide">
+                Total tropas faenadas
+              </div>
+              <div className="text-2xl font-bold mt-1">
+                {tropasFaenadasCompletas}
+              </div>
+            </div>
+
+            <div className="bg-green-600 text-white rounded-lg p-3 shadow-sm">
+              <div className="text-xs font-medium uppercase tracking-wide">
+                Total animales faenados
+              </div>
+              <div className="text-2xl font-bold mt-1">{totalFaenados}</div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -270,11 +338,35 @@ export default function InformeFaenaPage() {
               <h3 className="text-base font-semibold mb-3 text-gray-900">
                 Distribución por estado
               </h3>
+              <div className="flex gap-2 mb-3">
+                <select
+                  value={distribucionMode}
+                  onChange={(e) => setDistribucionMode(e.target.value)}
+                  className="px-3 py-1 text-sm border rounded"
+                >
+                  <option value="animales">Animales</option>
+                  <option value="tropas">Tropas</option>
+                </select>
+              </div>
               <div className="space-y-2">
                 {estadosOrden.map((estado) => {
-                  const count = totals.byEstado[estado] || 0;
-                  const pct = totals.total
-                    ? Math.round((count / totals.total) * 100)
+                  const distribucionData =
+                    distribucionMode === 'animales'
+                      ? totals.byEstadoAnimales
+                      : totals.byEstadoTropas;
+                  const count = distribucionData[estado] || 0;
+                  const totalForPct =
+                    distribucionMode === 'animales'
+                      ? Object.values(totals.byEstadoAnimales).reduce(
+                          (a, b) => a + b,
+                          0
+                        )
+                      : Object.values(totals.byEstadoTropas).reduce(
+                          (a, b) => a + b,
+                          0
+                        );
+                  const pct = totalForPct
+                    ? Math.round((count / totalForPct) * 100)
                     : 0;
                   return (
                     <div key={estado} className="flex items-center gap-3">
@@ -299,7 +391,9 @@ export default function InformeFaenaPage() {
             {/* Tendencias (sparkline simple) */}
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold text-gray-900">Tendencia mensual</h3>
+                <h3 className="text-base font-semibold text-gray-900">
+                  Tendencia mensual
+                </h3>
                 <select
                   value={period}
                   onChange={(e) => setPeriod(e.target.value)}

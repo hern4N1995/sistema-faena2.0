@@ -362,6 +362,33 @@ const obtenerDatosParaDecomiso = async (req, res) => {
   }
 };
 
+// Obtener detalles de faena con categorías para informe
+const obtenerDetallesFaenaConCategoria = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        f.id_faena,
+        f.fecha_faena,
+        t.id_planta,
+        esp.descripcion AS especie,
+        ce.descripcion AS categoria_especie,
+        fd.cantidad_faena
+      FROM faena f
+      JOIN faena_detalle fd ON f.id_faena = fd.id_faena
+      JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
+      JOIN especie esp ON td.id_especie = esp.id_especie
+      JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
+      JOIN tropa t ON f.id_tropa = t.id_tropa
+      ORDER BY f.fecha_faena DESC;
+    `);
+    
+    res.status(200).json(result.rows || []);
+  } catch (error) {
+    console.error('Error al obtener detalles de faena con categoría:', error.message);
+    res.status(500).json({ error: 'Error al obtener detalles de faena' });
+  }
+};
+
 module.exports = {
   obtenerFaenas,
   crearFaena,
@@ -369,4 +396,5 @@ module.exports = {
   obtenerRemanentePorTropa,
   obtenerDatosParaDecomiso,
   obtenerFaenasSinDecomiso,
+  obtenerDetallesFaenaConCategoria,
 };

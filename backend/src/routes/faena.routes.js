@@ -9,6 +9,7 @@ const {
   obtenerFaenasSinDecomiso,
   obtenerFaenasRealizadas,
   obtenerDatosParaDecomiso,
+  obtenerDetallesFaenaConCategoria,
 } = require('../controllers/faena.controller');
 
 const { verificarToken } = require('../middleware/auth');
@@ -31,6 +32,13 @@ router.get(
   verificarToken,
   permitirRoles(1, 2, 3),
   obtenerFaenasRealizadas,
+);
+
+router.get(
+  '/detalles-categorias',
+  verificarToken,
+  permitirRoles(1, 2, 3),
+  obtenerDetallesFaenaConCategoria,
 );
 
 router.get(

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 
 export default function InformesPage() {
@@ -85,9 +85,11 @@ export default function InformesPage() {
     try {
       // Obtener decomisos y faenas
       const decomisosRes = await api.get('/decomisos');
-      const faenasRes = await api.get('/faena');
+      const faenasRes = await api.get('/faena/faenas-realizadas');
+      const detallesRes = await api.get('/faena/detalles-categorias');
       let decomisosData = decomisosRes.data || [];
-      let faenasData = faenasRes.data || [];
+      let faenasData = faenasRes.data?.faenas || faenasRes.data || [];
+      let detallesFaenaData = detallesRes.data || [];
 
       console.log('[InformesPage] Decomisos crudos:', decomisosData);
       console.log('[InformesPage] Rol:', rol, 'Planta seleccionada:', plantaSeleccionada, 'Planta del usuario:', plantaDelUsuario);
@@ -124,14 +126,18 @@ export default function InformesPage() {
       });
 
       console.log('[InformesPage] Decomisos después de filtro:', decomisosData);
+      console.log('[InformesPage] Faenas datos crudos:', faenasData);
 
       // Procesar faenas para obtener animales faenados por día
       const animalesPorDia = {};
       
       faenasData.forEach((f) => {
         try {
-          const fecha = new Date(f.fecha_ingreso || f.fecha);
-          if (isNaN(fecha.getTime())) return;
+          const fecha = new Date(f.fecha_faena);
+          if (isNaN(fecha.getTime())) {
+            console.log('[InformesPage] Faena sin fecha válida:', f);
+            return;
+          }
           
           const esMesAño =
             fecha.getMonth() + 1 === parseInt(mes) &&
@@ -147,40 +153,31 @@ export default function InformesPage() {
           }
 
           const dia = String(fecha.getDate()).padStart(2, '0');
+          const cantidad = parseInt(f.total_faenado) || 0;
+          
+          console.log(`[InformesPage] Faena día ${dia}: cantidad=${cantidad}, faena:`, f);
           
           if (!animalesPorDia[dia]) {
             animalesPorDia[dia] = 0;
           }
           
-          if (f.cantidad_animales) {
-            animalesPorDia[dia] += parseInt(f.cantidad_animales) || 0;
+          if (cantidad > 0) {
+            animalesPorDia[dia] += cantidad;
           }
         } catch (err) {
           console.error('[InformesPage] Error procesando faena:', err);
         }
       });
       
+      console.log('[InformesPage] Animales por día:', animalesPorDia);
       setAnimalesFaenados(animalesPorDia);
 
-      // Procesar faenas para obtener categorías por especie
-      const categoriasAnimales = {
-        Bovinos: {
-          'Vacas y Vaquillas': 0,
-          'Novillos': 0,
-          'Toros y Torunos': 0,
-          'Terneros': 0,
-        },
-        Bubalinos: {
-          'Vacas y Vaquillas': 0,
-          'Novillos': 0,
-          'Toros y Torunos': 0,
-          'Terneros': 0,
-        }
-      };
+      // Procesar faenas para obtener categorías por especie (dinámico)
+      const categoriasAnimales = {};
 
-      faenasData.forEach((f) => {
+      detallesFaenaData.forEach((detalle) => {
         try {
-          const fecha = new Date(f.fecha_ingreso || f.fecha);
+          const fecha = new Date(detalle.fecha_faena);
           if (isNaN(fecha.getTime())) return;
           
           const esMesAño =
@@ -191,18 +188,29 @@ export default function InformesPage() {
 
           // Filtrar por planta según rol
           if (rol !== 1) {
-            if (String(plantaDelUsuario) !== String(f.id_planta)) return;
+            if (String(plantaDelUsuario) !== String(detalle.id_planta)) return;
           } else if (plantaSeleccionada && plantaSeleccionada !== '') {
-            if (String(plantaSeleccionada) !== String(f.id_planta)) return;
+            if (String(plantaSeleccionada) !== String(detalle.id_planta)) return;
           }
 
           // Procesar categoría de animal
-          const especie = f.nombre_especie || 'Bovinos';
-          const categoria = f.categoria_especie || 'Terneros'; // categoría_especie del detalle
+          const especie = detalle.especie || 'Bovinos';
+          const categoria = detalle.categoria_especie || 'Sin categoría';
+          const cantidad = parseInt(detalle.cantidad_faena) || 0;
           
-          if (categoriasAnimales[especie] && categoriasAnimales[especie][categoria] !== undefined) {
-            categoriasAnimales[especie][categoria] += parseInt(f.cantidad_animales) || 0;
+          console.log(`[InformesPage] Detalle faena - Especie: ${especie}, Categoría: ${categoria}, Cantidad: ${cantidad}`);
+          
+          // Crear entrada de especie si no existe
+          if (!categoriasAnimales[especie]) {
+            categoriasAnimales[especie] = {};
           }
+          
+          // Crear entrada de categoría si no existe
+          if (!categoriasAnimales[especie][categoria]) {
+            categoriasAnimales[especie][categoria] = 0;
+          }
+          
+          categoriasAnimales[especie][categoria] += cantidad;
         } catch (err) {
           console.error('[InformesPage] Error procesando categoría:', err);
         }
@@ -323,7 +331,7 @@ export default function InformesPage() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 no-print">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-2">
             Resumen Mensual de Faenas y Decomisos
           </h1>
@@ -333,7 +341,7 @@ export default function InformesPage() {
         </div>
 
         {/* Filtros */}
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 no-print">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {/* Establecimiento */}
             <div>
@@ -414,56 +422,73 @@ export default function InformesPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 no-print">
             {error}
           </div>
         )}
 
         {/* Contenedor principal del reporte */}
-        <div className="bg-white rounded-lg shadow-md p-6 sm:p-8 overflow-x-auto">
-          {diasOrdenados.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">
-              No hay datos registrados para este período
-            </p>
-          ) : (
-            <>
+        <div id="report-content" className="bg-white rounded-lg shadow-md overflow-hidden">
+          {/* Botón de impresión */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-green-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+            <h2 className="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2">📋 Informe Mensual</h2>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-all duration-200 font-medium shadow-md hover:shadow-lg active:scale-95 text-sm sm:text-base print:hidden whitespace-nowrap"
+              title="Imprimir informe"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Imprimir
+            </button>
+          </div>
+
+          {/* Contenido del reporte */}
+          <div className="p-4 sm:p-8 overflow-x-auto">
+            {diasOrdenados.length === 0 ? (
+              <p className="text-gray-500 text-center py-8 text-xs sm:text-sm">
+                No hay datos registrados para este período
+              </p>
+            ) : (
+              <>
               {/* 1. ENCABEZADO DE METADATOS */}
-              <div className="text-center mb-8 pb-6 border-b-2 border-gray-300">
-                <h1 className="text-lg font-bold text-gray-800 mb-3">INFORME MENSUAL DE FAENAS Y DECOMISOS</h1>
-                <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-700">
-                  <div><span className="font-semibold">Establecimiento:</span> {getNombrePlanta()}</div>
-                  <div><span className="font-semibold">Mes:</span> {meses[parseInt(mes) - 1]} {año}</div>
+              <div className="text-center mb-8 pb-6 border-b-2 border-gray-300 print:break-after-avoid">
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-800 mb-3">INFORME MENSUAL DE FAENAS Y DECOMISOS</h1>
+                <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-700">
+                  <div><span className="font-semibold">Establecimiento:</span> <span className="text-gray-600">{getNombrePlanta()}</span></div>
+                  <div><span className="font-semibold">Mes:</span> <span className="text-gray-600">{meses[parseInt(mes) - 1]} {año}</span></div>
                 </div>
-                <div className="mt-3 text-sm text-gray-600">
+                <div className="mt-3 text-xs sm:text-sm text-gray-600">
                   <span className="font-semibold">Total Tasa por Servicio:</span> <span className="text-gray-500">[Valor a calcular]</span>
                 </div>
               </div>
 
               {/* 2. TABLA DE FAENAS DIARIAS Y CAUSALES - LADO A LADO */}
-              <div className="grid grid-cols-2 gap-8 mb-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 {/* COLUMNA 1: FAENAS DIARIAS */}
-                <div>
-                  <h2 className="text-sm font-bold text-gray-800 mb-3">FAENAS DIARIAS</h2>
-                  <table className="w-full text-sm border-collapse">
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                  <h2 className="text-sm font-bold text-gray-800 mb-3 px-4 pt-4">FAENAS DIARIAS</h2>
+                  <table className="w-full text-xs sm:text-sm border-collapse">
                     <thead>
-                      <tr className="bg-gray-100">
-                        <th className="px-4 py-2 text-left font-semibold text-gray-700 border">Día</th>
-                        <th className="px-4 py-2 text-center font-semibold text-gray-700 border">Animales Faenados</th>
+                      <tr className="bg-green-100">
+                        <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">Día</th>
+                        <th className="px-3 sm:px-4 py-2 text-center font-semibold text-gray-700 border border-gray-300">Animales Faenados</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {diasOrdenados.map((dia) => (
-                        <tr key={dia} className="border hover:bg-gray-50">
-                          <td className="px-4 py-2 text-left text-gray-800">{dia}</td>
-                          <td className="px-4 py-2 text-center text-gray-800 font-medium">{animalesFaenados[dia] || 0}</td>
+                      {Object.keys(animalesFaenados).sort((a, b) => parseInt(a) - parseInt(b)).map((dia) => (
+                        <tr key={dia} className="border-b hover:bg-gray-50">
+                          <td className="px-3 sm:px-4 py-2 text-left text-gray-800 border border-gray-300">{dia}</td>
+                          <td className="px-3 sm:px-4 py-2 text-center text-gray-800 font-medium border border-gray-300">{animalesFaenados[dia]}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr className="bg-gray-200 font-bold">
-                        <td className="px-4 py-2 text-left text-gray-800 border">TOTAL</td>
-                        <td className="px-4 py-2 text-center text-gray-800 border">
-                          {diasOrdenados.reduce((sum, dia) => sum + (animalesFaenados[dia] || 0), 0)}
+                      <tr className="bg-green-200 font-bold">
+                        <td className="px-3 sm:px-4 py-2 text-left text-gray-800 border border-gray-300">TOTAL</td>
+                        <td className="px-3 sm:px-4 py-2 text-center text-gray-800 border border-gray-300">
+                          {Object.values(animalesFaenados).reduce((sum, cantidad) => sum + cantidad, 0)}
                         </td>
                       </tr>
                     </tfoot>
@@ -471,16 +496,16 @@ export default function InformesPage() {
                 </div>
 
                 {/* COLUMNA 2: CAUSALES DE DECOMISOS */}
-                <div>
-                  <div className="bg-gray-200 px-4 py-2 mb-3">
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                  <div className="bg-green-100 px-4 py-2">
                     <h2 className="text-sm font-bold text-gray-800">CAUSALES DE DECOMISOS</h2>
                   </div>
-                  <table className="w-full text-sm border-collapse">
+                  <table className="w-full text-xs sm:text-sm border-collapse">
                     <thead>
-                      <tr className="bg-gray-100">
-                        <th className="px-4 py-2 text-left font-semibold text-gray-700 border">Causa</th>
-                        <th className="px-4 py-2 text-left font-semibold text-gray-700 border">Detalle</th>
-                        <th className="px-4 py-2 text-center font-semibold text-gray-700 border">Cantidad</th>
+                      <tr className="bg-green-100">
+                        <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">Causa</th>
+                        <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">Detalle</th>
+                        <th className="px-3 sm:px-4 py-2 text-center font-semibold text-gray-700 border border-gray-300">Cantidad</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -509,35 +534,49 @@ export default function InformesPage() {
                         return (
                           <React.Fragment key={enfermedad}>
                             {detalles.map((detalle, idx) => (
-                              <tr key={`${enfermedad}-${idx}`} className="border hover:bg-gray-50">
+                              <tr key={`${enfermedad}-${idx}`} className="border-b hover:bg-gray-50">
                                 {idx === 0 && (
                                   <td 
                                     rowSpan={detalles.length + 1} 
-                                    className="px-4 py-2 text-left font-semibold text-gray-800 bg-blue-50 border align-top"
+                                    className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-800 bg-blue-50 border border-gray-300 align-top"
                                   >
                                     {enfermedad}
                                   </td>
                                 )}
-                                <td className="px-4 py-2 text-left text-gray-700 border">
+                                <td className="px-3 sm:px-4 py-2 text-left text-gray-700 border border-gray-300 text-xs sm:text-sm">
                                   {detalle.tipo} - {detalle.parte}
                                 </td>
-                                <td className="px-4 py-2 text-center text-gray-800 border">{detalle.cantidad}</td>
+                                <td className="px-3 sm:px-4 py-2 text-center text-gray-800 border border-gray-300 font-medium">{detalle.cantidad}</td>
                               </tr>
                             ))}
                             {/* Fila de subtotal por causa */}
-                            <tr className="bg-green-100 font-bold border">
-                              <td className="px-4 py-2 text-right text-green-800 border">Subtotal {enfermedad}:</td>
-                              <td className="px-4 py-2 text-center text-green-800 border">{totalEnfermedad}</td>
+                            <tr className="bg-green-100 font-bold border-b">
+                              <td className="px-3 sm:px-4 py-2 text-right text-green-800 border border-gray-300">Subtotal {enfermedad}:</td>
+                              <td className="px-3 sm:px-4 py-2 text-center text-green-800 border border-gray-300">{totalEnfermedad}</td>
                             </tr>
                           </React.Fragment>
                         );
                       })}
                     </tbody>
                     <tfoot>
-                      <tr className="bg-gray-300 font-bold">
-                        <td colSpan="2" className="px-4 py-2 text-right text-gray-800 border">TOTAL DECOMISOS</td>
-                        <td className="px-4 py-2 text-center text-gray-800 border">
-                          {diasOrdenados.reduce((sum, dia) => sum + (dataByDay[dia].totalAnimales || 0), 0)}
+                      <tr className="bg-green-200 font-bold border-t-2">
+                        <td colSpan="2" className="px-3 sm:px-4 py-2 text-right text-gray-800 border border-gray-300">TOTAL DECOMISOS</td>
+                        <td className="px-3 sm:px-4 py-2 text-center text-gray-800 border border-gray-300">
+                          {Array.from(enfermedades).sort().reduce((sum, enfermedad) => {
+                            let totalEnfermedad = 0;
+                            diasOrdenados.forEach((dia) => {
+                              const dayData = dataByDay[dia];
+                              if (dayData.decomisos[enfermedad]) {
+                                const tiposParteDelEnf = Object.keys(dayData.decomisos[enfermedad]);
+                                tiposParteDelEnf.forEach((tipoParte) => {
+                                  Object.entries(dayData.decomisos[enfermedad][tipoParte]).forEach(([, cantidad]) => {
+                                    totalEnfermedad += cantidad;
+                                  });
+                                });
+                              }
+                            });
+                            return sum + totalEnfermedad;
+                          }, 0)}
                         </td>
                       </tr>
                     </tfoot>
@@ -548,7 +587,7 @@ export default function InformesPage() {
               {/* 4. OBSERVACIONES */}
               <div className="mb-8">
                 <div className="border-t-2 border-gray-300 pt-4">
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">OBSERVACIONES</h3>
+                  <h3 className="text-sm font-bold text-gray-800 mb-3 print:text-lg">OBSERVACIONES</h3>
                   <div className="mb-2">
                     <textarea
                       value={observaciones}
@@ -558,11 +597,11 @@ export default function InformesPage() {
                         localStorage.setItem(`informe-observaciones-${mes}-${año}-${plantaSeleccionada || 'todas'}`, texto);
                       }}
                       placeholder="Escriba observaciones adicionales (máximo 500 caracteres)..."
-                      className="w-full p-4 border border-gray-300 bg-white text-gray-700 text-sm rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-3 sm:p-4 border-2 border-gray-300 bg-white text-gray-700 text-xs sm:text-sm rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-green-500 transition-all hover:border-green-300 print:border-black"
                       rows="4"
                     />
                   </div>
-                  <div className="text-right text-xs text-gray-500">
+                  <div className="text-right text-xs text-gray-500 print:hidden">
                     {observaciones.length} / 500 caracteres
                   </div>
                 </div>
@@ -570,57 +609,193 @@ export default function InformesPage() {
 
               {/* 5. TABLA FINAL DE TITULARES - ANCHO COMPLETO */}
               <div className="mb-8">
-                <div className="bg-gray-200 px-4 py-2 mb-3">
-                  <h2 className="text-sm font-bold text-gray-800">TITULARES DE FAENA POR CATEGORÍA</h2>
+                <div className="bg-green-100 px-3 sm:px-4 py-2 mb-3 rounded-t-lg">
+                  <h2 className="text-xs sm:text-sm font-bold text-gray-800">TITULARES DE FAENA POR CATEGORÍA</h2>
                 </div>
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="px-4 py-2 text-left font-semibold text-gray-700 border">Titular de Faena</th>
-                      <th className="px-4 py-2 text-center font-semibold text-gray-700 border">Vacas y Vaquillas</th>
-                      <th className="px-4 py-2 text-center font-semibold text-gray-700 border">Novillos</th>
-                      <th className="px-4 py-2 text-center font-semibold text-gray-700 border">Toros y Torunos</th>
-                      <th className="px-4 py-2 text-center font-semibold text-gray-700 border">Terneros</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border hover:bg-gray-50">
-                      <td className="px-4 py-2 text-left text-gray-800">Bovinos</td>
-                      <td className="px-4 py-2 text-center text-gray-700 font-medium">{titularesPorCategoria.Bovinos?.['Vacas y Vaquillas'] || 0}</td>
-                      <td className="px-4 py-2 text-center text-gray-700 font-medium">{titularesPorCategoria.Bovinos?.['Novillos'] || 0}</td>
-                      <td className="px-4 py-2 text-center text-gray-700 font-medium">{titularesPorCategoria.Bovinos?.['Toros y Torunos'] || 0}</td>
-                      <td className="px-4 py-2 text-center text-gray-700 font-medium">{titularesPorCategoria.Bovinos?.['Terneros'] || 0}</td>
-                    </tr>
-                    <tr className="border hover:bg-gray-50">
-                      <td className="px-4 py-2 text-left text-gray-800">Bubalinos</td>
-                      <td className="px-4 py-2 text-center text-gray-700 font-medium">{titularesPorCategoria.Bubalinos?.['Vacas y Vaquillas'] || 0}</td>
-                      <td className="px-4 py-2 text-center text-gray-700 font-medium">{titularesPorCategoria.Bubalinos?.['Novillos'] || 0}</td>
-                      <td className="px-4 py-2 text-center text-gray-700 font-medium">{titularesPorCategoria.Bubalinos?.['Toros y Torunos'] || 0}</td>
-                      <td className="px-4 py-2 text-center text-gray-700 font-medium">{titularesPorCategoria.Bubalinos?.['Terneros'] || 0}</td>
-                    </tr>
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gray-200 font-bold">
-                      <td className="px-4 py-2 text-left text-gray-800 border">TOTALES</td>
-                      <td className="px-4 py-2 text-center text-gray-800 border">
-                        {(titularesPorCategoria.Bovinos?.['Vacas y Vaquillas'] || 0) + (titularesPorCategoria.Bubalinos?.['Vacas y Vaquillas'] || 0)}
-                      </td>
-                      <td className="px-4 py-2 text-center text-gray-800 border">
-                        {(titularesPorCategoria.Bovinos?.['Novillos'] || 0) + (titularesPorCategoria.Bubalinos?.['Novillos'] || 0)}
-                      </td>
-                      <td className="px-4 py-2 text-center text-gray-800 border">
-                        {(titularesPorCategoria.Bovinos?.['Toros y Torunos'] || 0) + (titularesPorCategoria.Bubalinos?.['Toros y Torunos'] || 0)}
-                      </td>
-                      <td className="px-4 py-2 text-center text-gray-800 border">
-                        {(titularesPorCategoria.Bovinos?.['Terneros'] || 0) + (titularesPorCategoria.Bubalinos?.['Terneros'] || 0)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                {(() => {
+                  // Obtener todas las especies y categorías únicas del objeto dinámico
+                  const especies = Object.keys(titularesPorCategoria).sort();
+                  const todasLasCategorias = new Set();
+                  
+                  especies.forEach(especie => {
+                    Object.keys(titularesPorCategoria[especie] || {}).forEach(cat => {
+                      todasLasCategorias.add(cat);
+                    });
+                  });
+                  
+                  const categoriasOrdenadas = Array.from(todasLasCategorias).sort();
+                  
+                  if (categoriasOrdenadas.length === 0) {
+                    return <p className="text-gray-500 text-center py-4 text-xs sm:text-sm">No hay faenas registradas</p>;
+                  }
+
+                  return (
+                    <div className="overflow-x-auto rounded-b-lg border border-t-0 border-gray-200">
+                      <table className="w-full text-xs sm:text-sm border-collapse">
+                        <thead>
+                          <tr className="bg-green-100">
+                            <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">Titular de Faena</th>
+                            {categoriasOrdenadas.map((cat) => (
+                              <th key={cat} className="px-3 sm:px-4 py-2 text-center font-semibold text-gray-700 border border-gray-300 whitespace-nowrap">
+                                {cat}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {especies.map((especie, idx) => {
+                            const tieneItems = categoriasOrdenadas.some(cat => (titularesPorCategoria[especie]?.[cat] || 0) > 0);
+                            return tieneItems ? (
+                              <tr key={especie} className={idx % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}>
+                                <td className="px-3 sm:px-4 py-2 text-left text-gray-800 font-medium border border-gray-300">{especie}</td>
+                                {categoriasOrdenadas.map((cat) => (
+                                  <td key={`${especie}-${cat}`} className="px-3 sm:px-4 py-2 text-center text-gray-700 font-medium border border-gray-300">
+                                    {titularesPorCategoria[especie]?.[cat] || 0}
+                                  </td>
+                                ))}
+                              </tr>
+                            ) : null;
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-green-200 font-bold">
+                            <td className="px-3 sm:px-4 py-2 text-left text-gray-800 border border-gray-300">TOTALES</td>
+                            {categoriasOrdenadas.map((cat) => (
+                              <td key={`total-${cat}`} className="px-3 sm:px-4 py-2 text-center text-gray-800 border border-gray-300">
+                                {especies.reduce((sum, esp) => sum + (titularesPorCategoria[esp]?.[cat] || 0), 0)}
+                              </td>
+                            ))}
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  );
+                })()}
               </div>
             </>
           )}
+          </div>
         </div>
       </div>
+
+      {/* Estilos de impresión */}
+      <style>{`
+        @media print {
+          /* Ocultar elementos específicos que no queremos imprimir */
+          .no-print {
+            display: none !important;
+          }
+          
+          /* Configuración general de página */
+          body {
+            background: white;
+            margin: 0;
+            padding: 0;
+          }
+          
+          /* Contenedor del reporte */
+          #report-content {
+            width: 100%;
+            box-shadow: none;
+            border-radius: 0;
+            page-break-inside: avoid;
+            margin: 0;
+            padding: 0;
+          }
+          
+          /* Botón de impresión oculto */
+          .print\\:hidden {
+            display: none !important;
+          }
+          
+          /* Estilos para tablas de impresión */
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: avoid;
+            margin-bottom: 10px;
+          }
+          
+          thead {
+            page-break-inside: avoid;
+            background-color: #dcfce7 !important;
+            color: #1f2937;
+          }
+          
+          thead th {
+            border: 1px solid #000 !important;
+            padding: 6pt;
+            text-align: left;
+            font-weight: bold;
+            font-size: 10pt;
+          }
+          
+          tbody tr {
+            page-break-inside: avoid;
+            border: 1px solid #000 !important;
+          }
+          
+          tbody td {
+            border: 1px solid #000 !important;
+            padding: 4pt;
+            font-size: 9pt;
+          }
+          
+          tfoot {
+            background-color: #bbf7d0 !important;
+            font-weight: bold;
+            page-break-inside: avoid;
+          }
+          
+          tfoot td {
+            border: 1px solid #000 !important;
+            padding: 6pt;
+            font-size: 10pt;
+          }
+          
+          /* Estilos para encabezados */
+          h1 {
+            page-break-after: avoid;
+            font-size: 16pt;
+            margin-bottom: 10px;
+          }
+          
+          h2, h3 {
+            page-break-after: avoid;
+            margin-top: 8px;
+            margin-bottom: 6px;
+          }
+          
+          h2 {
+            font-size: 12pt;
+          }
+          
+          h3 {
+            font-size: 11pt;
+          }
+          
+          /* Estilos para contenido */
+          div {
+            page-break-inside: avoid;
+          }
+          
+          /* Bordes */
+          .border-b, .border-t-2, .border {
+            border-color: #000 !important;
+          }
+          
+          /* Márgenes de impresión */
+          @page {
+            margin: 0.4in;
+            size: A4 landscape;
+          }
+          
+          /* Scroll */
+          .overflow-x-auto {
+            overflow: visible !important;
+          }
+        }
+      `}</style>
     </div>
-  );}
+  );
+}

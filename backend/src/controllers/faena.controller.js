@@ -84,6 +84,9 @@ const obtenerFaenasRealizadas = async (req, res) => {
     desde = '',
     hasta = '',
     n_tropa = '',
+    id_especie = '',
+    id_provincia = '',
+    id_planta = '',
     limit = '100', // por defecto mayor para permitir sumar en backend
     offset = '0',
   } = req.query;
@@ -104,6 +107,19 @@ const obtenerFaenasRealizadas = async (req, res) => {
     filtros.push(`t.n_tropa::text ILIKE $${valores.length}`);
   }
 
+  if (id_especie.trim()) {
+    valores.push(id_especie);
+    filtros.push(`esp.id_especie = $${valores.length}`);
+  }
+  if (id_provincia.trim()) {
+    valores.push(id_provincia);
+    filtros.push(`prov.id_provincia = $${valores.length}`);
+  }
+  if (id_planta.trim()) {
+    valores.push(id_planta);
+    filtros.push(`t.id_planta = $${valores.length}`);
+  }
+
   const where = filtros.length > 0 ? `WHERE ${filtros.join(' AND ')}` : '';
 
   const limitNum = parseInt(limit, 10) || 100;
@@ -119,6 +135,7 @@ const obtenerFaenasRealizadas = async (req, res) => {
         t.guia_policial,
         t.n_tropa,
         t.id_planta,
+        p.nombre AS nombre_planta,
         prod.nombre AS productor,
         depto.nombre_departamento AS departamento,
         tf.nombre AS titular_faena,
@@ -133,9 +150,11 @@ const obtenerFaenasRealizadas = async (req, res) => {
       JOIN productor prod ON t.id_productor = prod.id_productor
       JOIN departamento depto ON t.id_departamento = depto.id_departamento
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      LEFT JOIN provincia prov ON depto.id_provincia = prov.id_provincia
+      LEFT JOIN planta p ON t.id_planta = p.id_planta
       ${where}
-      GROUP BY f.id_faena, f.fecha_faena, t.dte_dtu, t.guia_policial, t.n_tropa, t.id_planta,
-               prod.nombre, depto.nombre_departamento, tf.nombre, esp.descripcion, t.id_tropa
+      GROUP BY f.id_faena, f.fecha_faena, t.dte_dtu, t.guia_policial, t.n_tropa, t.id_planta, p.nombre,
+               prod.nombre, depto.nombre_departamento, tf.nombre, esp.descripcion, t.id_tropa, prov.id_provincia
       ORDER BY f.fecha_faena DESC, f.id_faena DESC
       LIMIT $${valores.length + 1} OFFSET $${valores.length + 2};
     `;

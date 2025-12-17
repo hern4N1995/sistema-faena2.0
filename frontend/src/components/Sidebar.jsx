@@ -64,7 +64,7 @@ export default function Sidebar() {
       title: 'Gestión de Informe',
       roles: ['1', '2', '3'],
       menu: [
-        { to: '/informes', label: 'Informe de Tropa', end: true },
+        { to: '/informes', label: 'Informe Mensual', end: true },
         { to: '/informes/faena', label: 'Informe de Faena' },
         { to: '/informes/decomisos', label: 'Informe de Decomisos' },
       ],

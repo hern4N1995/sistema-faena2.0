@@ -439,7 +439,7 @@ export default function DetalleTropa() {
 
       try {
         const r = await api.get(
-          `/especies/${especieSeleccionada.value}/categorias`,
+          `/categorias-especie/${especieSeleccionada.value}/categorias`,
           { headers: getTokenHeaders() }
         );
 
@@ -563,9 +563,9 @@ export default function DetalleTropa() {
 
   const fetchCategoriasByEspecie = async (especieId) => {
     if (!especieId) return [];
-    // Primero intentar endpoint específico: /especies/:id/categorias
+    // Primero intentar endpoint específico: /categorias-especie/:id/categorias
     try {
-      const res = await api.get(`/especies/${especieId}/categorias`, {
+      const res = await api.get(`/categorias-especie/${especieId}/categorias`, {
         headers: getTokenHeaders(),
       });
       const rows = Array.isArray(res.data)

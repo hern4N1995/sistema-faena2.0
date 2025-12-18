@@ -5,6 +5,7 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
   const [fecha, setFecha] = useState('');
   const [faenaPorCategoria, setFaenaPorCategoria] = useState({});
   const [feedback, setFeedback] = useState('');
+  const [erroresPorCategoria, setErroresPorCategoria] = useState({});
   const [resumenFaena, setResumenFaena] = useState(null);
   const navigate = useNavigate();
 
@@ -30,6 +31,26 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
     const cleaned = s.replace(/\D+/g, ''); // elimina no-dígitos
     const cant =
       cleaned === '' ? undefined : Math.max(0, parseInt(cleaned, 10));
+    
+    // Encontrar el remanente de esta categoría
+    const categoria = faena.categorias?.find(cat => cat.id_tropa_detalle === id_tropa_detalle);
+    const remanente = categoria?.remanente || 0;
+    
+    // Validar si la cantidad excede el remanente
+    if (cant !== undefined && cant > remanente) {
+      setErroresPorCategoria(prev => ({
+        ...prev,
+        [id_tropa_detalle]: `⚠️ Excede el remanente de ${remanente} animales`
+      }));
+    } else {
+      // Limpiar error si es válido
+      setErroresPorCategoria(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[id_tropa_detalle];
+        return newErrors;
+      });
+    }
+    
     setFaenaPorCategoria((prev) => ({
       ...prev,
       [id_tropa_detalle]: cant,
@@ -40,6 +61,11 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
     e.preventDefault();
 
     if (!fecha) return setFeedback('⚠️ La fecha es obligatoria');
+
+    // Verificar si hay errores de validación
+    if (Object.keys(erroresPorCategoria).length > 0) {
+      return setFeedback('⚠️ Hay errores en las cantidades. Revisa los valores ingresados');
+    }
 
     const detalles = (faena.categorias || [])
       .filter((cat) => {
@@ -158,29 +184,40 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
                             {cat.remanente}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              pattern="\d*"
-                              min={0}
-                              max={cat.remanente}
-                              value={
-                                faenaPorCategoria[cat.id_tropa_detalle] !==
-                                undefined
-                                  ? String(
-                                      faenaPorCategoria[cat.id_tropa_detalle]
-                                    )
-                                  : ''
-                              }
-                              onKeyDown={preventDotAndMinus}
-                              onChange={(e) =>
-                                handleCantidadChange(
-                                  cat.id_tropa_detalle,
-                                  e.target.value
-                                )
-                              }
-                              className="w-24 rounded-lg border-2 border-gray-200 px-4 py-3 text-right text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
-                            />
+                            <div>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="\d*"
+                                min={0}
+                                max={cat.remanente}
+                                value={
+                                  faenaPorCategoria[cat.id_tropa_detalle] !==
+                                  undefined
+                                    ? String(
+                                        faenaPorCategoria[cat.id_tropa_detalle]
+                                      )
+                                    : ''
+                                }
+                                onKeyDown={preventDotAndMinus}
+                                onChange={(e) =>
+                                  handleCantidadChange(
+                                    cat.id_tropa_detalle,
+                                    e.target.value
+                                  )
+                                }
+                                className={`w-24 rounded-lg border-2 px-4 py-3 text-right text-sm bg-gray-50 transition-all duration-200 focus:ring-4 focus:outline-none hover:border-green-300 ${
+                                  erroresPorCategoria[cat.id_tropa_detalle]
+                                    ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
+                                    : 'border-gray-200 focus:border-green-500 focus:ring-green-100'
+                                }`}
+                              />
+                              {erroresPorCategoria[cat.id_tropa_detalle] && (
+                                <p className="text-xs text-red-600 mt-1">
+                                  {erroresPorCategoria[cat.id_tropa_detalle]}
+                                </p>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -223,8 +260,17 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
                             e.target.value
                           )
                         }
-                        className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                        className={`w-full rounded-lg border-2 px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:ring-4 focus:outline-none hover:border-green-300 ${
+                          erroresPorCategoria[cat.id_tropa_detalle]
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
+                            : 'border-gray-200 focus:border-green-500 focus:ring-green-100'
+                        }`}
                       />
+                      {erroresPorCategoria[cat.id_tropa_detalle] && (
+                        <p className="text-xs text-red-600 mt-2 font-semibold">
+                          {erroresPorCategoria[cat.id_tropa_detalle]}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>

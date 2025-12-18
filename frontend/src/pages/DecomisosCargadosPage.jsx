@@ -20,6 +20,7 @@ const DecomisosCargadosPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rol, setRol] = useState(null);
   const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
+  const [expandedDecomiso, setExpandedDecomiso] = useState(null);
 
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -66,19 +67,59 @@ const DecomisosCargadosPage = () => {
 
         console.log('[DecomisosCargadosPage] Array final:', arr.length, 'decomisos');
 
+        // Agrupar detalles por id_decomiso (un decomiso puede tener múltiples detalles)
+        const detallesMap = new Map();
+        arr.forEach((row) => {
+          if (!detallesMap.has(row.id_decomiso)) {
+            detallesMap.set(row.id_decomiso, {
+              id_decomiso: row.id_decomiso,
+              id_faena: row.id_faena,
+              fecha_faena: row.fecha_faena || row.fecha,
+              n_tropa: row.n_tropa,
+              dte_dtu: row.dte_dtu,
+              id_planta: row.id_planta,
+              cantidad_tropa: row.cantidad_tropa,
+              cantidad_faena: row.cantidad_faena,
+              cantidad_decomisada: 0,
+              detalles: [],
+            });
+          }
+          
+          const decomiso = detallesMap.get(row.id_decomiso);
+          if (row.id_decomiso_detalle) {
+            decomiso.detalles.push({
+              id_decomiso_detalle: row.id_decomiso_detalle,
+              cantidad: row.cantidad,
+              peso_kg: row.peso_kg,
+              animales_afectados: row.animales_afectados,
+              destino_decomiso: row.destino_decomiso,
+              observaciones: row.observaciones,
+              nombre_tipo_parte: row.nombre_tipo_parte,
+              nombre_parte: row.nombre_parte,
+              afeccion: row.afeccion,
+            });
+            decomiso.cantidad_decomisada += row.cantidad ? Number(row.cantidad) : 0;
+          }
+        });
+
+        // Convertir map a array
+        const agrupados = Array.from(detallesMap.values());
+
         // Filtrar por planta del usuario (si no es admin)
         if (rol !== 1 && plantaDelUsuario) {
           console.log('[DecomisosCargadosPage] Filtrando por planta del usuario:', plantaDelUsuario);
-          arr = arr.filter(
+          const filtrados = agrupados.filter(
             (d) =>
               String(d.id_planta) === String(plantaDelUsuario)
           );
-          console.log('[DecomisosCargadosPage] Después de filtrar:', arr.length, 'decomisos');
+          console.log('[DecomisosCargadosPage] Después de filtrar:', filtrados.length, 'decomisos');
+          setDecomisos(filtrados);
         } else if (rol === 1) {
           console.log('[DecomisosCargadosPage] Admin - mostrando todos los decomisos');
+          setDecomisos(agrupados);
+        } else {
+          setDecomisos(agrupados);
         }
-
-        setDecomisos(arr);
         setLoading(false);
       } catch (err) {
         console.error(
@@ -229,6 +270,29 @@ const DecomisosCargadosPage = () => {
           <strong>Decomisados:</strong> {d.cantidad_decomisada}
         </p>
       </div>
+
+      {/* Detalles del decomiso */}
+      {d.detalles && d.detalles.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-200">
+          <p className="text-xs font-semibold text-slate-600 mb-2">Detalles del decomiso:</p>
+          <div className="space-y-2">
+            {d.detalles.map((det, idx) => (
+              <div key={idx} className="bg-slate-50 rounded p-2 text-xs">
+                <p className="font-semibold text-slate-700">{det.nombre_parte || '—'}</p>
+                <p className="text-slate-600">
+                  {det.nombre_tipo_parte && <span>{det.nombre_tipo_parte} • </span>}
+                  {det.afeccion && <span>{det.afeccion}</span>}
+                </p>
+                <p className="text-slate-600 mt-1">
+                  Cantidad: <span className="font-semibold">{det.cantidad}</span>
+                  {det.peso_kg && <span> • Peso: {det.peso_kg}kg</span>}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 flex justify-end">
         <button
           onClick={() => handleVerResumen(d.id_decomiso)}
@@ -290,34 +354,86 @@ const DecomisosCargadosPage = () => {
                   <tbody>
                     {paginatedDecomisos.map((d, idx) => {
                       console.log(`[DecomisosCargadosPage] Fila ${idx}:`, d);
+                      const isExpanded = expandedDecomiso === d.id_decomiso;
                       return (
-                        <tr
-                          key={d.id_decomiso}
-                          className="border-b last:border-b-0 bg-white hover:bg-green-50 transition"
-                        >
-                          <td className="px-3 py-3">
-                            {formatFecha(d.fecha_faena)}
-                          </td>
-                          <td className="px-3 py-3 font-semibold text-green-800">
-                            {d.n_tropa}
-                          </td>
-                          <td className="px-3 py-3 truncate">
-                            {d.dte_dtu || '—'}
-                          </td>
-                          <td className="px-3 py-3">{d.cantidad_tropa}</td>
-                          <td className="px-3 py-3">{d.cantidad_faena}</td>
-                          <td className="px-3 py-3 font-semibold">
-                            {d.cantidad_decomisada}
-                          </td>
-                          <td className="px-3 py-3">
-                            <button
-                              onClick={() => handleVerResumen(d.id_decomiso)}
-                              className="px-3 py-1 bg-green-700 text-white rounded-lg hover:bg-green-800 transition text-xs font-semibold shadow"
-                            >
-                              Ver resumen
-                            </button>
-                          </td>
-                        </tr>
+                        <React.Fragment key={d.id_decomiso}>
+                          <tr
+                            className="border-b bg-white hover:bg-green-50 transition cursor-pointer"
+                            onClick={() => setExpandedDecomiso(isExpanded ? null : d.id_decomiso)}
+                          >
+                            <td className="px-3 py-3">
+                              {formatFecha(d.fecha_faena)}
+                            </td>
+                            <td className="px-3 py-3 font-semibold text-green-800">
+                              {d.n_tropa}
+                            </td>
+                            <td className="px-3 py-3 truncate">
+                              {d.dte_dtu || '—'}
+                            </td>
+                            <td className="px-3 py-3">{d.cantidad_tropa}</td>
+                            <td className="px-3 py-3">{d.cantidad_faena}</td>
+                            <td className="px-3 py-3 font-semibold">
+                              {d.cantidad_decomisada}
+                            </td>
+                            <td className="px-3 py-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleVerResumen(d.id_decomiso);
+                                }}
+                                className="px-3 py-1 bg-green-700 text-white rounded-lg hover:bg-green-800 transition text-xs font-semibold shadow"
+                              >
+                                Ver resumen
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* Fila expandida con detalles */}
+                          {isExpanded && d.detalles && d.detalles.length > 0 && (
+                            <tr className="bg-slate-50 border-b">
+                              <td colSpan="7" className="px-6 py-4">
+                                <div className="bg-white rounded-lg p-4 border border-slate-200">
+                                  <p className="font-semibold text-slate-700 mb-3 text-sm">
+                                    📋 Detalles del Decomiso ({d.detalles.length})
+                                  </p>
+                                  <div className="space-y-2">
+                                    {d.detalles.map((det, detIdx) => (
+                                      <div
+                                        key={detIdx}
+                                        className="bg-slate-100 rounded p-3 text-sm grid grid-cols-2 gap-3"
+                                      >
+                                        <div>
+                                          <p className="font-semibold text-slate-800">
+                                            {det.nombre_parte || '—'}
+                                          </p>
+                                          <p className="text-xs text-slate-600 mt-1">
+                                            {det.nombre_tipo_parte && <span>{det.nombre_tipo_parte} • </span>}
+                                            {det.afeccion && <span>{det.afeccion}</span>}
+                                          </p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="text-slate-700">
+                                            <span className="font-semibold">Cant: {det.cantidad}</span>
+                                          </p>
+                                          {det.peso_kg && (
+                                            <p className="text-xs text-slate-600">
+                                              Peso: {det.peso_kg}kg
+                                            </p>
+                                          )}
+                                          {det.destino_decomiso && (
+                                            <p className="text-xs text-slate-600">
+                                              Destino: {det.destino_decomiso}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>

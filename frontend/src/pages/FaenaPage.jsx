@@ -183,11 +183,13 @@ const FaenaPage = () => {
           (t.total_a_faenar == null ? true : t.total_a_faenar > 0)
       );
 
-      // ordenar por fecha desc
+      // ordenar por fecha desc, y si la fecha es igual, por id_tropa descendente (última creada primero)
       const ordenadas = disponibles.slice().sort((a, b) => {
         const da = a.fecha ? new Date(a.fecha) : new Date(0);
         const db = b.fecha ? new Date(b.fecha) : new Date(0);
-        return db - da;
+        const dateCompare = db - da;
+        if (dateCompare !== 0) return dateCompare;
+        return (b.id_tropa || 0) - (a.id_tropa || 0);
       });
 
       const totalGeneral = ordenadas.reduce(

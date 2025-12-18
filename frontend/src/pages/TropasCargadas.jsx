@@ -201,7 +201,11 @@ export default function TropasCargadas() {
         }
 
         const ordenadas = arr
-          .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+          .sort((a, b) => {
+            const dateCompare = new Date(b.fecha) - new Date(a.fecha);
+            if (dateCompare !== 0) return dateCompare;
+            return (b.id_tropa || 0) - (a.id_tropa || 0);
+          })
           .map((t) => ({
             // Normalizar identificador: asegurar `id_tropa` esté disponible
             id_tropa: t.id_tropa ?? t.id ?? t.id_tropa ?? null,
@@ -278,9 +282,11 @@ export default function TropasCargadas() {
       });
     }
 
-    const ordenadas = filtered.sort(
-      (a, b) => new Date(b.fecha) - new Date(a.fecha)
-    );
+    const ordenadas = filtered.sort((a, b) => {
+      const dateCompare = new Date(b.fecha) - new Date(a.fecha);
+      if (dateCompare !== 0) return dateCompare;
+      return (b.id_tropa || 0) - (a.id_tropa || 0);
+    });
     setTropas(ordenadas);
     setCurrentPage(1);
   };
@@ -478,7 +484,6 @@ export default function TropasCargadas() {
                 >
                   <thead className="bg-green-700 text-white uppercase tracking-wide text-[10px] sm:text-xs">
                     <tr>
-                      <th className="px-2 sm:px-3 py-2 text-left">#</th>
                       <th className="px-2 sm:px-3 py-2 text-left">N° Tropa</th>
                       <th className="px-2 sm:px-3 py-2 text-left">Fecha</th>
                       <th className="px-2 sm:px-3 py-2 text-left">Productor</th>
@@ -495,9 +500,6 @@ export default function TropasCargadas() {
                         key={tropa.id_tropa}
                         className="hover:bg-green-50 transition"
                       >
-                        <td className="px-2 sm:px-3 py-2">
-                          {(currentPage - 1) * pageSize + (i + 1)}
-                        </td>
                         <td className="px-2 sm:px-3 py-2 font-semibold text-green-700">
                           {tropa.n_tropa}
                         </td>

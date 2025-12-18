@@ -573,14 +573,14 @@ export default function InformesPage() {
           className="bg-white rounded-lg shadow-md overflow-hidden"
         >
           {/* Botón de impresión */}
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-green-200 flex flex-col sm:flex-row justify-end items-end gap-3 sm:gap-4 no-print">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-2 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 border-b border-green-200 flex flex-col sm:flex-row justify-end items-end gap-2 sm:gap-3 md:gap-4 no-print">
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-all duration-200 font-medium shadow-md hover:shadow-lg active:scale-95 text-sm sm:text-base print:hidden whitespace-nowrap"
+              className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-all duration-200 font-medium shadow-md hover:shadow-lg active:scale-95 text-xs sm:text-sm print:hidden whitespace-nowrap\"
               title="Imprimir informe"
             >
               <svg
-                className="w-4 h-4 sm:w-5 sm:h-5"
+                className="w-4 h-4\"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -597,7 +597,7 @@ export default function InformesPage() {
           </div>
 
           {/* Contenido del reporte */}
-          <div className="p-4 sm:p-8 overflow-x-auto">
+          <div className="p-2 sm:p-4 md:p-8 overflow-x-auto w-full">
             {diasOrdenados.length === 0 ? (
               <p className="text-gray-500 text-center py-8 text-xs sm:text-sm">
                 No hay datos registrados para este período
@@ -605,11 +605,11 @@ export default function InformesPage() {
             ) : (
               <>
                 {/* 1. ENCABEZADO DE METADATOS */}
-                <div className="text-center mb-8 pb-6 border-b-2 border-gray-300 print:break-after-avoid">
-                  <h1 className="text-lg sm:text-2xl font-bold text-gray-800 mb-3">
+                <div className="text-center mb-4 sm:mb-8 pb-3 sm:pb-6 border-b-2 border-gray-300 print:break-after-avoid">
+                  <h1 className="text-sm sm:text-lg md:text-2xl font-bold text-gray-800 mb-2 sm:mb-3">
                     INFORME MENSUAL DE FAENAS Y DECOMISOS
                   </h1>
-                  <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-700">
+                  <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4 md:gap-6 text-[10px] sm:text-xs md:text-sm text-gray-700">
                     <div>
                       <span className="font-semibold">Establecimiento:</span>{' '}
                       <span className="text-gray-600">{getNombrePlanta()}</span>
@@ -621,7 +621,7 @@ export default function InformesPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="mt-3 text-xs sm:text-sm text-gray-600">
+                  <div className="mt-2 text-[10px] sm:text-xs md:text-sm text-gray-600">
                     <span className="font-semibold">
                       Total Tasa por Servicio:
                     </span>{' '}
@@ -630,22 +630,22 @@ export default function InformesPage() {
                 </div>
 
                 {/* 2. TABLA DE FAENAS DIARIAS Y CAUSALES - LADO A LADO */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-8">
                   {/* COLUMNA 1: FAENAS DIARIAS */}
                   <div className="overflow-x-auto rounded-lg border border-gray-200">
-                    <div className="bg-green-100 px-4 py-2">
-                      <h2 className="text-sm font-bold text-gray-800">
+                    <div className="bg-green-100 px-2 sm:px-4 py-1 sm:py-2">
+                      <h2 className="text-xs sm:text-sm font-bold text-gray-800">
                         FAENAS DIARIAS
                       </h2>
                     </div>
-                    <table className="w-full text-xs sm:text-sm border-collapse">
+                    <table className="w-full text-[10px] sm:text-xs md:text-sm border-collapse">
                       <thead>
                         <tr className="bg-green-100">
-                          <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">
+                          <th className="px-2 sm:px-3 py-1 text-left font-semibold text-gray-700 border border-gray-300">
                             Día
                           </th>
-                          <th className="px-3 sm:px-4 py-2 text-center font-semibold text-gray-700 border border-gray-300">
-                            Animales Faenados
+                          <th className="px-2 sm:px-3 py-1 text-center font-semibold text-gray-700 border border-gray-300">
+                            Animales
                           </th>
                         </tr>
                       </thead>
@@ -654,10 +654,10 @@ export default function InformesPage() {
                           .sort((a, b) => parseInt(a) - parseInt(b))
                           .map((dia) => (
                             <tr key={dia} className="border-b hover:bg-gray-50">
-                              <td className="px-3 sm:px-4 py-2 text-left text-gray-800 border border-gray-300">
+                              <td className="px-2 sm:px-3 py-1 text-left text-gray-800 border border-gray-300">
                                 {dia}
                               </td>
-                              <td className="px-3 sm:px-4 py-2 text-center text-gray-800 font-medium border border-gray-300">
+                              <td className="px-2 sm:px-3 py-1 text-center text-gray-800 font-medium border border-gray-300">
                                 {animalesFaenados[dia]}
                               </td>
                             </tr>
@@ -665,10 +665,10 @@ export default function InformesPage() {
                       </tbody>
                       <tfoot>
                         <tr className="bg-green-200 font-bold">
-                          <td className="px-3 sm:px-4 py-2 text-left text-gray-800 border border-gray-300">
+                          <td className="px-2 sm:px-3 py-1 text-left text-gray-800 border border-gray-300">
                             TOTAL
                           </td>
-                          <td className="px-3 sm:px-4 py-2 text-center text-gray-800 border border-gray-300">
+                          <td className="px-2 sm:px-3 py-1 text-center text-gray-800 border border-gray-300">
                             {Object.values(animalesFaenados).reduce(
                               (sum, cantidad) => sum + cantidad,
                               0
@@ -681,22 +681,22 @@ export default function InformesPage() {
 
                   {/* COLUMNA 2: CAUSALES DE DECOMISOS */}
                   <div className="overflow-x-auto rounded-lg border border-gray-200">
-                    <div className="bg-green-100 px-4 py-2">
-                      <h2 className="text-sm font-bold text-gray-800">
+                    <div className="bg-green-100 px-2 sm:px-4 py-1 sm:py-2">
+                      <h2 className="text-xs sm:text-sm font-bold text-gray-800">
                         CAUSALES DE DECOMISOS
                       </h2>
                     </div>
-                    <table className="w-full text-xs sm:text-sm border-collapse">
+                    <table className="w-full text-[10px] sm:text-xs md:text-sm border-collapse">
                       <thead>
                         <tr className="bg-green-100">
-                          <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">
+                          <th className="px-2 sm:px-3 py-1 text-left font-semibold text-gray-700 border border-gray-300">
                             Causa
                           </th>
-                          <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">
+                          <th className="px-2 sm:px-3 py-1 text-left font-semibold text-gray-700 border border-gray-300">
                             Detalle
                           </th>
-                          <th className="px-3 sm:px-4 py-2 text-center font-semibold text-gray-700 border border-gray-300">
-                            Cantidad
+                          <th className="px-2 sm:px-3 py-1 text-center font-semibold text-gray-700 border border-gray-300">
+                            Cant.
                           </th>
                         </tr>
                       </thead>
@@ -739,25 +739,25 @@ export default function InformesPage() {
                                     {idx === 0 && (
                                       <td
                                         rowSpan={detalles.length + 1}
-                                        className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-800 bg-blue-50 border border-gray-300 align-top"
+                                        className="px-2 sm:px-3 py-1 text-left font-semibold text-gray-800 bg-blue-50 border border-gray-300 align-top text-[10px] sm:text-xs"
                                       >
                                         {enfermedad}
                                       </td>
                                     )}
-                                    <td className="px-3 sm:px-4 py-2 text-left text-gray-700 border border-gray-300 text-xs sm:text-sm">
+                                    <td className="px-2 sm:px-3 py-1 text-left text-gray-700 border border-gray-300 text-[10px] sm:text-xs line-clamp-2">
                                       {detalle.tipo} - {detalle.parte}
                                     </td>
-                                    <td className="px-3 sm:px-4 py-2 text-center text-gray-800 border border-gray-300 font-medium">
+                                    <td className="px-2 sm:px-3 py-1 text-center text-gray-800 border border-gray-300 font-medium text-[10px] sm:text-xs">
                                       {detalle.cantidad}
                                     </td>
                                   </tr>
                                 ))}
                                 {/* Fila de subtotal por causa */}
                                 <tr className="bg-green-100 font-bold border-b">
-                                  <td className="px-3 sm:px-4 py-2 text-right text-green-800 border border-gray-300">
-                                    Subtotal {enfermedad}:
+                                  <td className="px-2 sm:px-3 py-1 text-right text-green-800 border border-gray-300 text-[10px] sm:text-xs">
+                                    Sub {enfermedad}:
                                   </td>
-                                  <td className="px-3 sm:px-4 py-2 text-center text-green-800 border border-gray-300">
+                                  <td className="px-2 sm:px-3 py-1 text-center text-green-800 border border-gray-300 text-[10px] sm:text-xs">
                                     {totalEnfermedad}
                                   </td>
                                 </tr>
@@ -769,11 +769,11 @@ export default function InformesPage() {
                         <tr className="bg-green-200 font-bold border-t-2">
                           <td
                             colSpan="2"
-                            className="px-3 sm:px-4 py-2 text-right text-gray-800 border border-gray-300"
+                            className="px-2 sm:px-3 py-1 text-right text-gray-800 border border-gray-300 text-[10px] sm:text-xs"
                           >
-                            TOTAL DECOMISOS
+                            TOTAL DEC.
                           </td>
-                          <td className="px-3 sm:px-4 py-2 text-center text-gray-800 border border-gray-300">
+                          <td className="px-2 sm:px-3 py-1 text-center text-gray-800 border border-gray-300 text-[10px] sm:text-xs">
                             {Array.from(enfermedades)
                               .sort()
                               .reduce((sum, enfermedad) => {
@@ -803,9 +803,9 @@ export default function InformesPage() {
                 </div>
 
                 {/* 4. OBSERVACIONES */}
-                <div className="mb-8">
-                  <div className="border-t-2 border-gray-300 pt-4">
-                    <h3 className="text-sm font-bold text-gray-800 mb-3 print:text-lg">
+                <div className="mb-4 sm:mb-8">
+                  <div className="border-t-2 border-gray-300 pt-2 sm:pt-4">
+                    <h3 className="text-xs sm:text-sm font-bold text-gray-800 mb-2 sm:mb-3 print:text-lg">
                       OBSERVACIONES
                     </h3>
                     <div className="mb-2">
@@ -821,20 +821,20 @@ export default function InformesPage() {
                             texto
                           );
                         }}
-                        placeholder="Escriba observaciones adicionales (máximo 500 caracteres)..."
-                        className="w-full p-3 sm:p-4 border-2 border-gray-300 bg-white text-gray-700 text-xs sm:text-sm rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-green-500 transition-all hover:border-green-300 print:border-black"
-                        rows="4"
+                        placeholder="Observaciones adicionales (máximo 500 caracteres)..."
+                        className="w-full p-2 sm:p-3 border-2 border-gray-300 bg-white text-gray-700 text-xs rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-green-500 transition-all hover:border-green-300 print:border-black"
+                        rows="3"
                       />
                     </div>
                     <div className="text-right text-xs text-gray-500 print:hidden">
-                      {observaciones.length} / 500 caracteres
+                      {observaciones.length} / 500
                     </div>
                   </div>
                 </div>
 
                 {/* 5. TABLA FINAL DE TITULARES - ANCHO COMPLETO */}
-                <div className="mb-8">
-                  <div className="bg-green-100 px-3 sm:px-4 py-2 mb-3 rounded-t-lg">
+                <div className="mb-4 sm:mb-8">
+                  <div className="bg-green-100 px-2 sm:px-4 py-1 sm:py-2 mb-3 rounded-t-lg">
                     <h2 className="text-xs sm:text-sm font-bold text-gray-800">
                       TITULARES DE FAENA POR CATEGORÍA
                     </h2>
@@ -865,18 +865,18 @@ export default function InformesPage() {
 
                     return (
                       <div className="overflow-x-auto rounded-b-lg border border-t-0 border-gray-200">
-                        <table className="w-full text-xs sm:text-sm border-collapse">
+                        <table className="w-full text-[10px] sm:text-xs md:text-sm border-collapse">
                           <thead>
                             <tr className="bg-green-100">
-                              <th className="px-3 sm:px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">
-                                Titular de Faena
+                              <th className="px-2 sm:px-3 py-1 text-left font-semibold text-gray-700 border border-gray-300">
+                                Titular Faena
                               </th>
                               {categoriasOrdenadas.map((cat) => (
                                 <th
                                   key={cat}
-                                  className="px-3 sm:px-4 py-2 text-center font-semibold text-gray-700 border border-gray-300 whitespace-nowrap"
+                                  className="px-2 sm:px-3 py-1 text-center font-semibold text-gray-700 border border-gray-300 whitespace-nowrap text-[10px] sm:text-xs"
                                 >
-                                  {cat}
+                                  {cat.substring(0, 10)}
                                 </th>
                               ))}
                             </tr>
@@ -897,13 +897,13 @@ export default function InformesPage() {
                                       : 'bg-gray-50 hover:bg-gray-100'
                                   }
                                 >
-                                  <td className="px-3 sm:px-4 py-2 text-left text-gray-800 font-medium border border-gray-300">
+                                  <td className="px-2 sm:px-3 py-1 text-left text-gray-800 font-medium border border-gray-300 text-[10px] sm:text-xs\">
                                     {especie}
                                   </td>
                                   {categoriasOrdenadas.map((cat) => (
                                     <td
                                       key={`${especie}-${cat}`}
-                                      className="px-3 sm:px-4 py-2 text-center text-gray-700 font-medium border border-gray-300"
+                                      className="px-2 sm:px-3 py-1 text-center text-gray-700 font-medium border border-gray-300 text-[10px] sm:text-xs\"
                                     >
                                       {titularesPorCategoria[especie]?.[cat] ||
                                         0}
@@ -915,13 +915,13 @@ export default function InformesPage() {
                           </tbody>
                           <tfoot>
                             <tr className="bg-green-200 font-bold">
-                              <td className="px-3 sm:px-4 py-2 text-left text-gray-800 border border-gray-300">
+                              <td className="px-2 sm:px-3 py-1 text-left text-gray-800 border border-gray-300 text-[10px] sm:text-xs">
                                 TOTALES
                               </td>
                               {categoriasOrdenadas.map((cat) => (
                                 <td
                                   key={`total-${cat}`}
-                                  className="px-3 sm:px-4 py-2 text-center text-gray-800 border border-gray-300"
+                                  className="px-2 sm:px-3 py-1 text-center text-gray-800 border border-gray-300 text-[10px] sm:text-xs"
                                 >
                                   {especies.reduce(
                                     (sum, esp) =>

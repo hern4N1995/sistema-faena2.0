@@ -344,12 +344,17 @@ const AgregarUsuarioPage = () => {
 
     // Validación: email único (case-insensitive). Permitir si estamos editando el mismo usuario.
     try {
-      const emailNormalized = String(form.email || '').trim().toLowerCase();
+      const emailNormalized = String(form.email || '')
+        .trim()
+        .toLowerCase();
       if (emailNormalized) {
-        const exists = usuarios.some((u) =>
-          String(u.email || '').trim().toLowerCase() === emailNormalized &&
-          // si editando, ignorar el propio registro
-          String(u.id_usuario) !== String(editandoId ?? '')
+        const exists = usuarios.some(
+          (u) =>
+            String(u.email || '')
+              .trim()
+              .toLowerCase() === emailNormalized &&
+            // si editando, ignorar el propio registro
+            String(u.id_usuario) !== String(editandoId ?? '')
         );
         if (exists) {
           openErrorModal(
@@ -510,7 +515,9 @@ const AgregarUsuarioPage = () => {
     try {
       // 1) PATCH mínimo (si existe)
       try {
-        await api.patch(`/usuarios/${usuario.id_usuario}`, { estado: nuevoEstado });
+        await api.patch(`/usuarios/${usuario.id_usuario}`, {
+          estado: nuevoEstado,
+        });
       } catch (err) {
         // 2) Fallback PUT con objeto completo usando memoria y planta válida
         const usuarioCompleto =
@@ -555,10 +562,11 @@ const AgregarUsuarioPage = () => {
         try {
           await api.put(`/usuarios/${usuario.id_usuario}`, payloadPut);
         } catch (putErr) {
-          const errorMsg = putErr?.response?.data?.error || 
-                          putErr?.response?.data?.message || 
-                          putErr?.message || 
-                          'PUT failed';
+          const errorMsg =
+            putErr?.response?.data?.error ||
+            putErr?.response?.data?.message ||
+            putErr?.message ||
+            'PUT failed';
           throw new Error(errorMsg);
         }
       }
@@ -924,7 +932,11 @@ const AgregarUsuarioPage = () => {
                         <span className="text-gray-600">{u.email}</span> — Tel:{' '}
                         {u.n_telefono || '—'} — Rol:{' '}
                         <span className="font-medium text-gray-800">
-                          {u.id_rol === 2 ? 'Supervisor' : 'Usuario'}
+                          {u.id_rol === 2
+                            ? 'Supervisor'
+                            : u.id_rol === 1
+                            ? 'Super Usuario'
+                            : 'Usuario'}
                         </span>
                       </p>
                       <p>

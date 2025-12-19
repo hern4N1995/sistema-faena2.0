@@ -36,6 +36,8 @@ import InformesPage from './pages/InformesPage.jsx';
 import InformeTropaPage from './pages/InformeTropaPage.jsx';
 import InformeFaenaPage from './pages/InformeFaenaPage.jsx';
 import InformeDecomisosPage from './pages/InformeDecomisosPage.jsx';
+import PrivacyPage from './pages/PrivacyPage.jsx';
+import TermsPage from './pages/TermsPage.jsx';
 
 function App() {
   return (
@@ -190,6 +192,10 @@ function App() {
               </PrivateRoute>
             }
           />
+
+          {/* Páginas legales */}
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
 
           {/* Fallback 404 */}
           <Route

@@ -63,9 +63,9 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
-            <div className="flex items-center space-x-3">
-              <img src="/png/cteslogo.png" alt="ctes" className="h-12" />
-              <span className="text-white font-bold text-2xl tracking-tight">
+            <div className="flex items-center space-x-3 flex-shrink-0 min-w-0">
+              <img src="/png/cteslogo.png" alt="ctes" className="h-12 flex-shrink-0" />
+              <span className="text-white font-bold text-xl sm:text-2xl tracking-tight truncate">
                 SIFADECO
               </span>
             </div>

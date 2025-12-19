@@ -1,28 +1,32 @@
 import React from 'react';
 import { FaFacebookF, FaTwitter, FaInstagram } from 'react-icons/fa6';
+import { Link } from 'react-router-dom';
 
 export default function Footer() {
+  // Año dinámico que cambia automáticamente cada año
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="bg-dark text-gray-300 font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center text-sm">
           {/* Enlaces centrados horizontalmente en móvil */}
           <div className="flex justify-center md:justify-start items-center gap-6 flex-wrap">
-            <a href="/privacy" className="hover:text-white transition">
+            <Link to="/privacy" className="hover:text-white transition">
               Privacidad
-            </a>
-            <a href="/terms" className="hover:text-white transition">
+            </Link>
+            <Link to="/terms" className="hover:text-white transition">
               Términos
-            </a>
-            <a href="/contact" className="hover:text-white transition">
-              Contacto
-            </a>
+            </Link>
           </div>
 
           {/* Centro de texto */}
           <div className="text-center">
             <p className="mb-1">
-              © 2025 Ministerio de Producción de Corrientes
+              © {currentYear} Ministerio de Producción de Corrientes
+            </p>
+            <p className="mb-3 text-xs">
+              Todos los derechos reservados
             </p>
             <p className="mb-1">
               Desarrollado por el Área de Sistemas:{' '}

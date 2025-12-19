@@ -297,14 +297,59 @@ app.use((req, res, next) => {
    Middlewares y rutas
    --------------------------- */
 
+// Importar middlewares de seguridad
+const securityMiddleware = require('./middleware/security');
+const authMiddleware = require('./middleware/auth');
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ===== MIDDLEWARES DE SEGURIDAD =====
+// 1. Rate limiting - Proteger contra fuerza bruta
+app.use(securityMiddleware.rateLimiter);
+
+// 2. Sanitización de entrada - Limpiar datos peligrosos
+app.use(securityMiddleware.sanitizeInput);
+
+// 3. Headers de seguridad
+app.use((req, res, next) => {
+  // Prevenir clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+  // Prevenir MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Habilitar XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  // Content Security Policy
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'");
+  // Strict Transport Security (HTTPS)
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
 
 app.get('/', (req, res) => {
   res.json({
     message: 'Sistema de Faenas API, ESTA FUNCIONANDO CORRECTAMENTE',
   });
 });
+
+// ===== ENDPOINT PARA OBTENER CSRF TOKEN =====
+// El frontend debe obtener este token ANTES de hacer cambios
+app.post('/api/auth/csrf-token', authMiddleware.verificarToken, (req, res) => {
+  const token = securityMiddleware.generateCsrfToken(req.user.id_usuario);
+  res.json({
+    csrfToken: token,
+    expiresIn: 3600000, // 1 hora en ms
+  });
+});
+
+// ===== HEALTH CHECK ENDPOINTS =====
+const healthController = safeRequire('./controllers/health.controller');
+if (healthController) {
+  app.get('/api/health', healthController.healthCheck);
+  app.get('/api/ping', healthController.ping);
+}
 
 /* Montar rutas con paths explícitos (usamos /api como prefijo) */
 safeMount(app, '/api/auth', authRoutes, './routes/auth.routes');

@@ -1,5 +1,6 @@
 // src/services/api.js
 import axios from 'axios';
+import { getResponseCache, getRequestDeduplicator } from './cache';
 
 /**
  * Determina la base del API en RUNTIME:
@@ -43,25 +44,91 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     try {
+      // Agregar token JWT
       const token = localStorage.getItem('token');
       config.headers = config.headers || {};
       if (token) config.headers.Authorization = `Bearer ${token}`;
-    } catch (e) {}
+
+      // Agregar CSRF token en requests de modificación
+      const method = config.method?.toUpperCase();
+      if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+        const csrfToken = localStorage.getItem('csrfToken');
+        if (csrfToken) {
+          config.headers['X-CSRF-Token'] = csrfToken;
+        } else {
+          console.warn('[API] CSRF token no encontrado. Algunas operaciones pueden fallar.');
+        }
+      }
+
+      // Implementar caching para GETs
+      if (method === 'GET') {
+        const cache = getResponseCache();
+        const cached = cache.get(config.url);
+        if (cached) {
+          // Retornar respuesta cacheada
+          return Promise.reject({
+            response: { data: cached, status: 200 },
+            isFromCache: true,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[API] Error en request interceptor:', e);
+    }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Guardar en caché si es GET exitoso
+    if (response.config.method?.toUpperCase() === 'GET') {
+      getResponseCache().set(response.config.url, response.data);
+    }
+
+    // Invalidar caché en operaciones de modificación
+    const method = response.config.method?.toUpperCase();
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+      getResponseCache().invalidate('*'); // Limpiar todo el caché
+    }
+
+    return response;
+  },
   (error) => {
     try {
+      // Si viene del caché, retornar los datos
+      if (error.isFromCache) {
+        return Promise.resolve(error.response);
+      }
+
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+
       console.error(
         '[API error]',
-        error?.response?.status,
-        error?.response?.data ?? error.message
+        status,
+        data ?? error.message
       );
-    } catch (e) {}
+
+      // Manejar errores de seguridad específicos
+      if (status === 403 && data?.code === 'CSRF_INVALID') {
+        console.warn('[SECURITY] CSRF token inválido. Redireccionando a login...');
+        // En producción, redirigir a login
+        localStorage.removeItem('csrfToken');
+      }
+
+      if (status === 429 && data?.code === 'RATE_LIMIT_EXCEEDED') {
+        console.warn('[SECURITY] Rate limit excedido. Demasiadas solicitudes.');
+      }
+
+      if (status === 400 && data?.code === 'VALIDATION_ERROR') {
+        console.warn('[SECURITY] Error de validación de datos:', data?.details);
+      }
+    } catch (e) {
+      console.error('[API] Error en response interceptor:', e);
+    }
+
     return Promise.reject(error);
   }
 );

@@ -1,8 +1,13 @@
 const pool = require('../db');
 const bcrypt = require('bcrypt');
 
-// Obtener todos los usuarios con nombre de planta
-// Obtener usuarios (activos por defecto), con soporte de ?estado=all | activos | inactivos
+/**
+ * Obtiene lista de usuarios con filtros de estado
+ * @param {Object} req - Express request
+ * @param {string} req.query.estado - 'activos' | 'inactivos' | 'all' (default: 'activos')
+ * @param {Object} res - Express response
+ * @returns {Array} Array de usuarios con datos de planta
+ */
 const obtenerUsuarios = async (req, res) => {
   try {
     // valores aceptados: 'activos' (default), 'inactivos', 'all'
@@ -36,7 +41,12 @@ const obtenerUsuarios = async (req, res) => {
   }
 };
 
-// devuelve usuario mínimo + planta asociada (id_planta y nombre)
+/**
+ * Obtiene datos del usuario autenticado con info de planta
+ * @param {Object} req - Express request con user del JWT
+ * @param {Object} res - Express response
+ * @returns {Object} Usuario actual con datos de planta
+ */
 const usuarioActual = async (req, res) => {
   try {
     const id_usuario = req.user?.id_usuario;

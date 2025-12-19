@@ -26,8 +26,9 @@ export default function InformeFaenaPage() {
   const [provincias, setProvincias] = useState([]);
   const [plantas, setPlantas] = useState([]);
 
+  const [user, setUser] = useState(null);
+
   const [period, setPeriod] = useState('6'); // meses
-  const [distribucionMode, setDistribucionMode] = useState('animales'); // 'animales', 'tropas'
 
   const [faenas, setFaenas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -52,23 +53,20 @@ export default function InformeFaenaPage() {
 
         let plantasData = plantRes.data || [];
 
-        // Filtrar plantas si el usuario pertenece a una sola
+        // Handle user permissions
         try {
           const userStr = localStorage.getItem('user');
           if (userStr) {
             const user = JSON.parse(userStr);
-            if (user.id_planta) {
-              plantasData = plantasData.filter(
-                (p) => p.id_planta === user.id_planta
-              );
-              // Si solo hay una planta, seleccionarla por defecto
-              if (plantasData.length === 1) {
-                setIdPlanta(plantasData[0].id_planta.toString());
-              }
+            setUser(user);
+            if (user.role !== 1 && user.id_planta) {
+              // Non-admin: auto-select their plant
+              setIdPlanta(user.id_planta.toString());
             }
+            // For non-admin, we could filter plantasData to only their plant, but since the select will be hidden, it's optional
           }
         } catch (e) {
-          console.error('Error filtrando plantas:', e);
+          console.error('Error obteniendo usuario:', e);
         }
 
         setEspecies(espRes.data || []);
@@ -130,11 +128,6 @@ export default function InformeFaenaPage() {
   // Totales calculados a partir de faenas
   const totals = useMemo(() => {
     const total = faenas.length;
-    const byEstado = faenas.reduce((acc, f) => {
-      const est = (f.estado || f.estado_faena || 'finalizada').toString();
-      acc[est] = (acc[est] || 0) + 1;
-      return acc;
-    }, {});
 
     // Calcular sum_faenado por tropa
     const sumFaenadoByTropa = faenas.reduce((acc, f) => {
@@ -142,46 +135,23 @@ export default function InformeFaenaPage() {
       return acc;
     }, {});
 
-    // Calcular byEstadoAnimales con caso especial para 'pendiente'
-    const byEstadoAnimales = {};
-    estadosOrden.forEach((estado) => {
-      if (estado === 'pendiente') {
-        const uniqueTropasPendiente = new Set(
-          faenas
-            .filter(
-              (f) => (f.estado || f.estado_faena || 'finalizada') === estado
-            )
-            .map((f) => f.tropa_id)
-        );
-        byEstadoAnimales[estado] = Array.from(uniqueTropasPendiente).reduce(
-          (sum, tropa) => sum + (totalPorTropa[tropa] || 0),
-          0
-        );
-      } else {
-        byEstadoAnimales[estado] = faenas
-          .filter(
-            (f) => (f.estado || f.estado_faena || 'finalizada') === estado
-          )
-          .reduce((sum, f) => sum + Number(f.total_faenado || 0), 0);
-      }
-    });
+    const byEstadoAnimales = {
+      finalizada: totalFaenados,
+      pendiente: totalUnidades - totalFaenados,
+    };
 
-    const uniqueTropasByEstado = faenas.reduce((acc, f) => {
+    const byEstado = faenas.reduce((acc, f) => {
       const est = (f.estado || f.estado_faena || 'finalizada').toString();
-      if (!acc[est]) acc[est] = new Set();
-      acc[est].add(f.tropa_id);
+      acc[est] = (acc[est] || 0) + 1;
       return acc;
     }, {});
-    const byEstadoTropas = Object.fromEntries(
-      Object.entries(uniqueTropasByEstado).map(([est, set]) => [est, set.size])
-    );
     const byPlanta = faenas.reduce((acc, f) => {
       const planta = f.nombre_planta || `Planta ${f.id_planta || ''}`;
       acc[planta] = (acc[planta] || 0) + 1;
       return acc;
     }, {});
 
-    return { total, byEstado, byEstadoAnimales, byEstadoTropas, byPlanta };
+    return { total, byEstado, byEstadoAnimales, byPlanta };
   }, [faenas, totalPorTropa]);
 
   // datos de tendencia (construidos a partir de faenas - simple agrupación por mes)
@@ -274,19 +244,21 @@ export default function InformeFaenaPage() {
               ))}
             </select>
 
-            <select
-              value={idPlanta}
-              onChange={(e) => setIdPlanta(e.target.value)}
-              className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              aria-label="Planta"
-            >
-              <option value="">Planta</option>
-              {plantas.map((p) => (
-                <option key={p.id_planta} value={p.id_planta}>
-                  {p.nombre}
-                </option>
-              ))}
-            </select>
+            {user && user.role === 1 && (
+              <select
+                value={idPlanta}
+                onChange={(e) => setIdPlanta(e.target.value)}
+                className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                aria-label="Planta"
+              >
+                <option value="">Planta</option>
+                {plantas.map((p) => (
+                  <option key={p.id_planta} value={p.id_planta}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            )}
 
             <button
               onClick={fetchData}
@@ -336,35 +308,15 @@ export default function InformeFaenaPage() {
             {/* Distribución por estado (simple bar) */}
             <div className="col-span-1 lg:col-span-2 bg-gray-50 rounded-lg p-4 border border-gray-200">
               <h3 className="text-base font-semibold mb-3 text-gray-900">
-                Distribución por estado
+                Distribución por estado de animales
               </h3>
-              <div className="flex gap-2 mb-3">
-                <select
-                  value={distribucionMode}
-                  onChange={(e) => setDistribucionMode(e.target.value)}
-                  className="px-3 py-1 text-sm border rounded"
-                >
-                  <option value="animales">Animales</option>
-                  <option value="tropas">Tropas</option>
-                </select>
-              </div>
               <div className="space-y-2">
                 {estadosOrden.map((estado) => {
-                  const distribucionData =
-                    distribucionMode === 'animales'
-                      ? totals.byEstadoAnimales
-                      : totals.byEstadoTropas;
+                  const distribucionData = totals.byEstadoAnimales;
                   const count = distribucionData[estado] || 0;
-                  const totalForPct =
-                    distribucionMode === 'animales'
-                      ? Object.values(totals.byEstadoAnimales).reduce(
-                          (a, b) => a + b,
-                          0
-                        )
-                      : Object.values(totals.byEstadoTropas).reduce(
-                          (a, b) => a + b,
-                          0
-                        );
+                  const totalForPct = Object.values(
+                    totals.byEstadoAnimales
+                  ).reduce((a, b) => a + b, 0);
                   const pct = totalForPct
                     ? Math.round((count / totalForPct) * 100)
                     : 0;
@@ -407,7 +359,7 @@ export default function InformeFaenaPage() {
                 </select>
               </div>
               <div className="w-full h-32">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minHeight={128}>
                   <LineChart data={tendencia.data}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis

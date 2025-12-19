@@ -198,18 +198,23 @@ const obtenerFaenasRealizadas = async (req, res) => {
     }
     if (id_especie.trim()) {
       valoresTropa.push(id_especie);
-      filtrosTropa.push(`EXISTS (SELECT 1 FROM tropa_detalle td WHERE td.id_tropa = tropa.id_tropa AND td.id_especie = $${valoresTropa.length})`);
+      filtrosTropa.push(
+        `EXISTS (SELECT 1 FROM tropa_detalle td WHERE td.id_tropa = tropa.id_tropa AND td.id_especie = $${valoresTropa.length})`,
+      );
     }
     if (id_provincia.trim()) {
       valoresTropa.push(id_provincia);
-      filtrosTropa.push(`EXISTS (SELECT 1 FROM departamento d WHERE d.id_departamento = tropa.id_departamento AND d.id_provincia = $${valoresTropa.length})`);
+      filtrosTropa.push(
+        `EXISTS (SELECT 1 FROM departamento d WHERE d.id_departamento = tropa.id_departamento AND d.id_provincia = $${valoresTropa.length})`,
+      );
     }
     if (id_planta.trim()) {
       valoresTropa.push(id_planta);
       filtrosTropa.push(`tropa.id_planta = $${valoresTropa.length}`);
     }
 
-    const whereTropa = filtrosTropa.length > 0 ? `WHERE ${filtrosTropa.join(' AND ')}` : '';
+    const whereTropa =
+      filtrosTropa.length > 0 ? `WHERE ${filtrosTropa.join(' AND ')}` : '';
     const totalTropasQuery = `SELECT COUNT(*) as total FROM tropa ${whereTropa}`;
     const totalTropasResult = await pool.query(totalTropasQuery, valoresTropa);
     const totalTropas = parseInt(totalTropasResult.rows[0].total);
@@ -236,7 +241,9 @@ const obtenerFaenasRealizadas = async (req, res) => {
     let totalCantidadByTropa = {};
     if (tropaIds.length > 0) {
       const totalCantidadQuery = `SELECT id_tropa, SUM(cantidad) as total_cantidad FROM tropa_detalle WHERE id_tropa = ANY($1) GROUP BY id_tropa`;
-      const totalCantidadResult = await pool.query(totalCantidadQuery, [tropaIds]);
+      const totalCantidadResult = await pool.query(totalCantidadQuery, [
+        tropaIds,
+      ]);
       totalCantidadByTropa = totalCantidadResult.rows.reduce((acc, row) => {
         acc[row.id_tropa] = Number(row.total_cantidad);
         return acc;
@@ -253,16 +260,21 @@ const obtenerFaenasRealizadas = async (req, res) => {
     // Total unidades de todas las tropas filtradas
     const whereTropaDetalle = whereTropa.replace(/tropa\./g, 't.');
     const totalUnidadesQuery = `SELECT SUM(td.cantidad)::int as total_unidades FROM tropa_detalle td JOIN tropa t ON td.id_tropa = t.id_tropa ${whereTropaDetalle}`;
-    const totalUnidadesResult = await pool.query(totalUnidadesQuery, valoresTropa);
-    const totalUnidades = parseInt(totalUnidadesResult.rows[0].total_unidades || 0);
+    const totalUnidadesResult = await pool.query(
+      totalUnidadesQuery,
+      valoresTropa,
+    );
+    const totalUnidades = parseInt(
+      totalUnidadesResult.rows[0].total_unidades || 0,
+    );
 
-    res.status(200).json({ 
-      faenas, 
-      total_faenados: totalFaenados, 
-      total_tropas: totalTropas, 
+    res.status(200).json({
+      faenas,
+      total_faenados: totalFaenados,
+      total_tropas: totalTropas,
       tropas_faenadas_completas: fullyFaenadaCount,
       total_unidades: totalUnidades,
-      total_por_tropa: totalCantidadByTropa
+      total_por_tropa: totalCantidadByTropa,
     });
   } catch (error) {
     console.error('Error al obtener faenas realizadas:', error.message);
@@ -490,10 +502,13 @@ const obtenerDetallesFaenaConCategoria = async (req, res) => {
       JOIN tropa t ON f.id_tropa = t.id_tropa
       ORDER BY f.fecha_faena DESC;
     `);
-    
+
     res.status(200).json(result.rows || []);
   } catch (error) {
-    console.error('Error al obtener detalles de faena con categoría:', error.message);
+    console.error(
+      'Error al obtener detalles de faena con categoría:',
+      error.message,
+    );
     res.status(500).json({ error: 'Error al obtener detalles de faena' });
   }
 };

@@ -24,7 +24,7 @@ if (connectionString) {
     port: (process.env.PGPORT && Number(process.env.PGPORT)) || 5432,
     user: process.env.PGUSER || 'postgres',
     password: process.env.PGPASSWORD || '',
-    database: process.env.PGDATABASE || 'sistema_faena_db',
+    database: process.env.PGDATABASE || 'sifadecodb',
     ssl: {
       rejectUnauthorized: false,
     },
@@ -39,13 +39,13 @@ if (connectionString) {
 } else {
   // Desarrollo local: usar variables individuales SIN SSL
   console.log('[DB] Conectando con variables individuales (localhost)');
-  
+
   const poolConfig = {
     host: pghost,
     port: (process.env.PGPORT && Number(process.env.PGPORT)) || 5432,
     user: process.env.PGUSER || 'postgres',
     password: process.env.PGPASSWORD || '',
-    database: process.env.PGDATABASE || 'sistema_faena_db',
+    database: process.env.PGDATABASE || 'sifadecodb',
   };
 
   console.log('[DB] Config:', {

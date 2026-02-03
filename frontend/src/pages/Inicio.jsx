@@ -35,7 +35,7 @@ export default function Inicio() {
             SIFADECO
           </h1>
           <p className="mt-4 text-xl md:text-2xl max-w-2xl mx-auto drop-shadow-md">
-            Sistema Integral de Gestión de Faena & Decomisos
+            Sistema Integral de Gestión de Faenas & Decomisos
           </p>
           <p className="mt-2 text-base md:text-lg opacity-90 drop-shadow-sm">
             Desarrollado por el Área de Sistemas del Ministerio de Producción de

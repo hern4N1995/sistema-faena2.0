@@ -186,8 +186,8 @@ export default function InformeFaenaPage() {
           </p>
         </div>
 
-        {/* Barra de navegación y filtros */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 mb-4">
+        {/* Barra de navegación y filtros - NO IMPRIMIR */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 mb-4 no-print">
           <button
             onClick={() => navigate('/informes')}
             className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700 shadow-sm"
@@ -271,6 +271,30 @@ export default function InformeFaenaPage() {
 
         {/* Main card */}
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 sm:p-6">
+          {/* Botón de impresión */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-2 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 border-b border-green-200 flex flex-col sm:flex-row justify-end items-end gap-2 sm:gap-3 md:gap-4 no-print mb-4">
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-all duration-200 font-medium shadow-md hover:shadow-lg active:scale-95 text-xs sm:text-sm print:hidden whitespace-nowrap"
+              title="Imprimir informe"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                />
+              </svg>
+              Imprimir
+            </button>
+          </div>
+
           {/* Top summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <div className="bg-green-600 text-white rounded-lg p-3 shadow-sm">
@@ -434,6 +458,119 @@ export default function InformeFaenaPage() {
           </div>
         </div>
       </div>
+
+      <style>{`
+        @page {
+          size: A4;
+          margin: 0;
+          padding: 0;
+          margin-top: 0;
+          margin-bottom: 0;
+          margin-left: 0;
+          margin-right: 0;
+        }
+
+        @media print {
+          /* Ocultar elementos que no queremos en la impresión */
+          .no-print {
+            display: none !important;
+          }
+
+          .print\\:hidden {
+            display: none !important;
+          }
+
+          /* Ocultar header y footer del navegador y aplicación */
+          html {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+          }
+
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: white !important;
+            color: #1f2937;
+            height: auto !important;
+            overflow: visible !important;
+            width: 100% !important;
+          }
+
+          /* Ocultar elemento header y footer de la aplicación */
+          header,
+          nav,
+          footer {
+            display: none !important;
+          }
+
+          /* Contenedor principal */
+          .bg-gray-50 {
+            background-color: white !important;
+            margin: 10mm 10mm 0 10mm !important;
+            padding: 0 !important;
+          }
+
+          .max-w-6xl {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          .bg-white {
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          /* Título principal con espacio */
+          h1 {
+            margin-top: 0 !important;
+            margin-bottom: 10mm !important;
+            page-break-after: avoid !important;
+          }
+
+          /* Tablas */
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: avoid;
+          }
+
+          th,
+          td {
+            border: 1px solid #d1d5db;
+            padding: 8px;
+          }
+
+          th {
+            background-color: #f3f4f6;
+            font-weight: bold;
+          }
+
+          /* Evitar saltos de página en elementos importantes */
+          .bg-green-600 {
+            page-break-inside: avoid;
+          }
+
+          /* Gráficos */
+          svg {
+            max-width: 100%;
+          }
+
+          /* Asegurar que el contenido fluya bien */
+          * {
+            page-break-inside: avoid;
+          }
+
+          /* Asegurar que no haya espacios en blanco */
+          div[class*="max-w-6xl"] {
+            margin-top: 0 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

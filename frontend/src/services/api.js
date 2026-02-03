@@ -15,7 +15,7 @@ function getApiBase() {
     // Vercel: siempre usar backend remoto
     if (hostname === 'sistema-faena2-0.vercel.app') {
       console.log('[API] Detectado Vercel, usando backend remoto');
-      return 'https://sistema-faena.onrender.com/api';
+      return 'https://sifadeco.onrender.com/api';
     }
 
     // Localhost: usar /api relativo

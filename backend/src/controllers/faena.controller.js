@@ -140,6 +140,8 @@ const obtenerFaenasRealizadas = async (req, res) => {
         depto.nombre_departamento AS departamento,
         tf.nombre AS titular_faena,
         esp.descripcion AS especie,
+        esp.id_especie,
+        prov.id_provincia,
         SUM(fd.cantidad_faena)::int AS total_faenado,
         t.id_tropa
       FROM faena f
@@ -154,7 +156,7 @@ const obtenerFaenasRealizadas = async (req, res) => {
       LEFT JOIN planta p ON t.id_planta = p.id_planta
       ${where}
       GROUP BY f.id_faena, f.fecha_faena, t.dte_dtu, t.guia_policial, t.n_tropa, t.id_planta, p.nombre,
-               prod.nombre, depto.nombre_departamento, tf.nombre, esp.descripcion, t.id_tropa, prov.id_provincia
+               prod.nombre, depto.nombre_departamento, tf.nombre, esp.descripcion, esp.id_especie, t.id_tropa, prov.id_provincia
       ORDER BY f.fecha_faena DESC, f.id_faena DESC
       LIMIT $${valores.length + 1} OFFSET $${valores.length + 2};
     `;

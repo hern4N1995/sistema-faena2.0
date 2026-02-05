@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft } from 'react-icons/hi2';
+import Select from 'react-select';
 import {
   LineChart,
   Line,
@@ -11,6 +12,101 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import api from '../services/api';
+
+/* ------------------------------------------------------------------ */
+/*  SelectField estilizado                                            */
+/* ------------------------------------------------------------------ */
+function SelectField({ label, value, onChange, options, placeholder }) {
+  const [isFocusing, setIsFocusing] = useState(false);
+
+  const customStyles = {
+    control: (base, state) => ({
+      ...base,
+      height: '48px',
+      minHeight: '48px',
+      paddingLeft: '16px',
+      paddingRight: '16px',
+      backgroundColor: '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '0.5rem',
+      boxShadow: isFocusing
+        ? '0 0 0 1px #000'
+        : state.isFocused
+          ? '0 0 0 4px #d1fae5'
+          : 'none',
+      transition: 'all 100ms ease',
+      '&:hover': {
+        borderColor: '#6ee7b7',
+      },
+      '&:focus-within': {
+        borderColor: '#22c55e',
+      },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 0 0 2px',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+      fontSize: '14px',
+      fontFamily: 'inherit',
+      color: '#111827',
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#111827',
+      margin: 0,
+    }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#6b7280',
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '48px',
+    }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused }) => ({
+      ...base,
+      fontSize: '14px',
+      padding: '10px 16px',
+      backgroundColor: isFocused ? '#d1fae5' : '#fff',
+      color: isFocused ? '#065f46' : '#111827',
+    }),
+  };
+
+  return (
+    <div className="flex flex-col">
+      <label className="mb-2 font-semibold text-gray-700 text-sm">
+        {label}
+      </label>
+      <Select
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={placeholder}
+        styles={customStyles}
+        noOptionsMessage={() => 'Sin opciones'}
+        components={{ IndicatorSeparator: () => null }}
+        onFocus={() => {
+          setIsFocusing(true);
+          setTimeout(() => setIsFocusing(false), 50);
+        }}
+      />
+    </div>
+  );
+}
 
 // Página Informe de Faena — ahora con datos dinámicos y filtros
 export default function InformeFaenaPage() {
@@ -84,28 +180,37 @@ export default function InformeFaenaPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Construir parámetros de consulta
       const params = {};
       if (desde) params.desde = desde;
       if (hasta) params.hasta = hasta;
-      if (idEspecie) params.id_especie = idEspecie;
-      if (idProvincia) params.id_provincia = idProvincia;
-      if (idPlanta) params.id_planta = idPlanta;
+      if (idEspecie && idEspecie !== '') params.id_especie = idEspecie;
+      if (idProvincia && idProvincia !== '') params.id_provincia = idProvincia;
+      
+      // Si el usuario no es admin, filtrar por su planta
+      if (user && user.role !== 1 && user.id_planta) {
+        params.id_planta = user.id_planta;
+      } else if (idPlanta && idPlanta !== '') {
+        // Si es admin, usar el idPlanta seleccionado
+        params.id_planta = idPlanta;
+      }
 
+      console.log('[InformeFaenaPage] Llamando API con params:', params);
       const res = await api.get('/faena/faenas-realizadas', { params });
-      // respuesta: { faenas, total_faenados, total_tropas, tropas_faenadas_completas, total_unidades }
+      console.log('[InformeFaenaPage] Respuesta recibida:', res.data);
+      
+      // Procesar respuesta
       const payload = res.data?.faenas ?? res.data ?? [];
       const totalFaenados = res.data?.total_faenados ?? 0;
       const totalTropasRes = res.data?.total_tropas ?? 0;
-      const tropasFaenadasCompletasRes =
-        res.data?.tropas_faenadas_completas ?? 0;
+      const tropasFaenadasCompletasRes = res.data?.tropas_faenadas_completas ?? 0;
       const totalUnidadesRes = res.data?.total_unidades ?? 0;
-      const totalPorTropaRes = res.data?.total_por_tropa ?? {};
+      
       setFaenas(payload);
       setTotalFaenados(totalFaenados);
       setTotalTropas(totalTropasRes);
       setTropasFaenadasCompletas(tropasFaenadasCompletasRes);
       setTotalUnidades(totalUnidadesRes);
-      setTotalPorTropa(totalPorTropaRes);
     } catch (err) {
       console.error(
         'Error al obtener faenas realizadas:',
@@ -119,9 +224,9 @@ export default function InformeFaenaPage() {
 
   // cargar datos iniciales
   useEffect(() => {
-    if (initialLoad) return;
+    if (initialLoad || !user) return;
     fetchData();
-  }, [desde, hasta, idEspecie, idProvincia, idPlanta, initialLoad]);
+  }, [desde, hasta, idEspecie, idProvincia, idPlanta, initialLoad, user]);
 
   const estadosOrden = ['pendiente', 'finalizada'];
 
@@ -176,96 +281,162 @@ export default function InformeFaenaPage() {
   return (
     <div className="bg-gray-50 min-h-full">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header con título principal */}
-        <div className="text-center mb-4">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
-            📊 Informe de Faena
-          </h1>
-          <p className="text-gray-600 mt-1 text-sm">
-            Resumen operativo y tendencias
-          </p>
-        </div>
-
-        {/* Barra de navegación y filtros - NO IMPRIMIR */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 mb-4 no-print">
+        {/* Header con título principal y botón volver */}
+        <div className="flex items-center justify-between mb-6 no-print">
           <button
             onClick={() => navigate('/informes')}
             className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700 shadow-sm"
             aria-label="Volver a informes"
+            title="Volver a informes"
           >
             <HiArrowLeft size={20} />
           </button>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
+            📊 Informe de Faena
+          </h1>
+          <div className="w-10"></div>
+        </div>
 
-          {/* Filtros principales */}
-          <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:flex-1 lg:justify-center">
-            <div className="flex items-center gap-1">
+        {/* Barra de navegación y filtros - NO IMPRIMIR */}
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 no-print">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+            {/* Fechas */}
+            <div className="flex flex-col gap-2">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">Desde</label>
               <input
                 type="date"
                 value={desde}
                 onChange={(e) => setDesde(e.target.value)}
-                className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 bg-gray-50 h-12 transition-all"
                 aria-label="Desde"
               />
-              <span className="text-xs text-gray-500">a</span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">Hasta</label>
               <input
                 type="date"
                 value={hasta}
                 onChange={(e) => setHasta(e.target.value)}
-                className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 bg-gray-50 h-12 transition-all"
                 aria-label="Hasta"
               />
             </div>
 
-            <select
-              value={idEspecie}
-              onChange={(e) => setIdEspecie(e.target.value)}
-              className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              aria-label="Especie"
-            >
-              <option value="">Especie</option>
-              {especies.map((s) => (
-                <option key={s.id_especie} value={s.id_especie}>
-                  {s.descripcion}
-                </option>
-              ))}
-            </select>
+            {/* Especie */}
+            <SelectField
+              label="Especie"
+              value={
+                {
+                  value: idEspecie,
+                  label: idEspecie === '' ? 'Todas' : (especies.find((s) => String(s.id_especie) === String(idEspecie))?.descripcion || 'Seleccione especie'),
+                }
+              }
+              onChange={(option) => setIdEspecie(option?.value || '')}
+              options={[
+                { value: '', label: 'Todas' },
+                ...especies.map((s) => ({
+                  value: s.id_especie,
+                  label: s.descripcion,
+                })),
+              ]}
+              placeholder="Seleccione especie"
+            />
 
-            <select
-              value={idProvincia}
-              onChange={(e) => setIdProvincia(e.target.value)}
-              className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              aria-label="Provincia"
-            >
-              <option value="">Provincia</option>
-              {provincias.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.descripcion}
-                </option>
-              ))}
-            </select>
+            {/* Provincia */}
+            <SelectField
+              label="Provincia"
+              value={
+                {
+                  value: idProvincia,
+                  label: idProvincia === '' ? 'Todas' : (provincias.find((p) => String(p.id) === String(idProvincia))?.descripcion || 'Seleccione provincia'),
+                }
+              }
+              onChange={(option) => setIdProvincia(option?.value || '')}
+              options={[
+                { value: '', label: 'Todas' },
+                ...provincias.map((p) => ({
+                  value: p.id,
+                  label: p.descripcion,
+                })),
+              ]}
+              placeholder="Seleccione provincia"
+            />
 
-            {user && user.role === 1 && (
-              <select
-                value={idPlanta}
-                onChange={(e) => setIdPlanta(e.target.value)}
-                className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                aria-label="Planta"
-              >
-                <option value="">Planta</option>
-                {plantas.map((p) => (
-                  <option key={p.id_planta} value={p.id_planta}>
-                    {p.nombre}
-                  </option>
-                ))}
-              </select>
+            {/* Planta */}
+            {user && user.role === 1 ? (
+              <SelectField
+                label="Planta"
+                value={
+                  idPlanta
+                    ? {
+                        value: idPlanta,
+                        label:
+                          plantas.find(
+                            (p) =>
+                              String(p.id_planta) ===
+                              String(idPlanta),
+                          )?.nombre || 'Seleccione planta',
+                      }
+                    : { value: '', label: 'Todas' }
+                }
+                onChange={(option) =>
+                  setIdPlanta(option?.value || '')
+                }
+                options={[
+                  { value: '', label: 'Todas' },
+                  ...plantas.map((p) => ({
+                    value: p.id_planta,
+                    label: p.nombre,
+                  })),
+                ]}
+                placeholder="Seleccione planta"
+              />
+            ) : plantas.length > 0 ? (
+              <SelectField
+                label="Planta"
+                value={{
+                  value: user?.id_planta,
+                  label: plantas.find(
+                    (p) =>
+                      String(p.id_planta) ===
+                      String(user?.id_planta),
+                  )?.nombre || 'Tu planta',
+                }}
+                onChange={() => {}}
+                options={[
+                  {
+                    value: user?.id_planta,
+                    label:
+                      plantas.find(
+                        (p) =>
+                          String(p.id_planta) ===
+                          String(user?.id_planta),
+                      )?.nombre || 'Tu planta',
+                  },
+                ]}
+                placeholder="Tu planta"
+              />
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Planta
+                </label>
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500">
+                  Cargando plantas...
+                </div>
+              </div>
             )}
 
-            <button
-              onClick={fetchData}
-              className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors text-sm font-medium shadow-sm"
-            >
-              {loading ? '...' : 'Filtrar'}
-            </button>
+            {/* Botón Filtrar */}
+            <div className="flex items-end">
+              <button
+                onClick={fetchData}
+                className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium shadow-sm h-12"
+              >
+                {loading ? 'Filtrando...' : 'Filtrar'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -293,6 +464,33 @@ export default function InformeFaenaPage() {
               </svg>
               Imprimir
             </button>
+          </div>
+
+          {/* Título principal del informe */}
+          <div className="px-4 sm:px-6 py-6 border-b border-gray-200 text-center">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Informe Mensual de Faenas
+            </h2>
+            <div className="text-lg text-gray-700 space-y-1">
+              <p>
+                <span className="font-semibold">Establecimiento:</span>{' '}
+                {user && user.role === 1
+                  ? (idPlanta ? plantas.find((p) => String(p.id_planta) === String(idPlanta))?.nombre : 'Todas las plantas')
+                  : (user?.id_planta ? plantas.find((p) => String(p.id_planta) === String(user.id_planta))?.nombre : 'Cargando...')
+                }
+              </p>
+              <p>
+                <span className="font-semibold">Período:</span>{' '}
+                {new Date(
+                  new Date().getFullYear(),
+                  new Date().getMonth(),
+                  1
+                ).toLocaleDateString('es-AR', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </p>
+            </div>
           </div>
 
           {/* Top summary cards */}

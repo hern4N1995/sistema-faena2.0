@@ -21,8 +21,8 @@ function SelectField({ label, value, onChange, options, placeholder }) {
       boxShadow: isFocusing
         ? '0 0 0 1px #000'
         : state.isFocused
-        ? '0 0 0 4px #d1fae5'
-        : 'none',
+          ? '0 0 0 4px #d1fae5'
+          : 'none',
       transition: 'all 100ms ease',
       '&:hover': {
         borderColor: '#6ee7b7',
@@ -129,13 +129,13 @@ export default function InformesPage() {
           if (plantaId) {
             console.log(
               '[InformesPage] Usuario no-admin con planta asignada:',
-              plantaId
+              plantaId,
             );
             setPlantaDelUsuario(plantaId);
             setPlantaSeleccionada(plantaId);
           } else {
             console.warn(
-              '[InformesPage] Usuario no-admin pero sin planta asignada'
+              '[InformesPage] Usuario no-admin pero sin planta asignada',
             );
           }
         }
@@ -152,7 +152,7 @@ export default function InformesPage() {
       loadPlantas();
       // Cargar observaciones guardadas
       const obsGuardadas = localStorage.getItem(
-        `informe-observaciones-${mes}-${año}-${plantaSeleccionada || 'todas'}`
+        `informe-observaciones-${mes}-${año}-${plantaSeleccionada || 'todas'}`,
       );
       if (obsGuardadas) {
         setObservaciones(obsGuardadas);
@@ -201,7 +201,7 @@ export default function InformesPage() {
         'Planta seleccionada:',
         plantaSeleccionada,
         'Planta del usuario:',
-        plantaDelUsuario
+        plantaDelUsuario,
       );
 
       // Filtrar por mes, año y planta
@@ -267,7 +267,7 @@ export default function InformesPage() {
 
           console.log(
             `[InformesPage] Faena día ${dia}: cantidad=${cantidad}, faena:`,
-            f
+            f,
           );
 
           if (!animalesPorDia[dia]) {
@@ -313,7 +313,7 @@ export default function InformesPage() {
           const cantidad = parseInt(detalle.cantidad_faena) || 0;
 
           console.log(
-            `[InformesPage] Detalle faena - Especie: ${especie}, Categoría: ${categoria}, Cantidad: ${cantidad}`
+            `[InformesPage] Detalle faena - Especie: ${especie}, Categoría: ${categoria}, Cantidad: ${cantidad}`,
           );
 
           // Crear entrada de especie si no existe
@@ -398,7 +398,7 @@ export default function InformesPage() {
       console.log('[InformesPage] Datos agrupados:', grouped);
       console.log(
         '[InformesPage] Enfermedades encontradas:',
-        Array.from(enfermedadesSet)
+        Array.from(enfermedadesSet),
       );
 
       setDataByDay(grouped);
@@ -407,7 +407,7 @@ export default function InformesPage() {
       console.error('[InformesPage] Error cargando datos:', err);
       setError(
         'No se pudieron cargar los datos: ' +
-          (err.message || 'Error desconocido')
+          (err.message || 'Error desconocido'),
       );
     } finally {
       setLoading(false);
@@ -421,13 +421,13 @@ export default function InformesPage() {
         return 'Todas las plantas';
       }
       const p = plantas.find(
-        (pl) => String(pl.id_planta) === String(plantaSeleccionada)
+        (pl) => String(pl.id_planta) === String(plantaSeleccionada),
       );
       return p ? p.nombre : 'Seleccione establecimiento';
     } else {
       // Usuario normal: mostrar solo su planta
       const p = plantas.find(
-        (pl) => String(pl.id_planta) === String(plantaDelUsuario)
+        (pl) => String(pl.id_planta) === String(plantaDelUsuario),
       );
       return p ? p.nombre : 'Cargando...';
     }
@@ -450,11 +450,11 @@ export default function InformesPage() {
 
   const años = Array.from(
     { length: 5 },
-    (_, i) => new Date().getFullYear() - 2 + i
+    (_, i) => new Date().getFullYear() - 2 + i,
   );
 
   const diasOrdenados = Object.keys(dataByDay).sort(
-    (a, b) => parseInt(a) - parseInt(b)
+    (a, b) => parseInt(a) - parseInt(b),
   );
 
   return (
@@ -480,7 +480,7 @@ export default function InformesPage() {
                           plantas.find(
                             (pl) =>
                               String(pl.id_planta) ===
-                              String(plantaSeleccionada)
+                              String(plantaSeleccionada),
                           )?.nombre || 'Seleccione planta',
                       }
                     : { value: '', label: 'Todas' }
@@ -540,7 +540,9 @@ export default function InformesPage() {
             <SelectField
               label="Año"
               value={{ value: año, label: año.toString() }}
-              onChange={(option) => setAño(option?.value || new Date().getFullYear())}
+              onChange={(option) =>
+                setAño(option?.value || new Date().getFullYear())
+              }
               options={años.map((a) => ({
                 value: a,
                 label: a.toString(),
@@ -671,7 +673,7 @@ export default function InformesPage() {
                           <td className="px-2 sm:px-3 py-1 text-center text-gray-800 border border-gray-300">
                             {Object.values(animalesFaenados).reduce(
                               (sum, cantidad) => sum + cantidad,
-                              0
+                              0,
                             )}
                           </td>
                         </tr>
@@ -712,11 +714,11 @@ export default function InformesPage() {
                               const dayData = dataByDay[dia];
                               if (dayData.decomisos[enfermedad]) {
                                 const tiposParteDelEnf = Object.keys(
-                                  dayData.decomisos[enfermedad]
+                                  dayData.decomisos[enfermedad],
                                 );
                                 tiposParteDelEnf.forEach((tipoParte) => {
                                   Object.entries(
-                                    dayData.decomisos[enfermedad][tipoParte]
+                                    dayData.decomisos[enfermedad][tipoParte],
                                   ).forEach(([nombreParte, cantidad]) => {
                                     totalEnfermedad += cantidad;
                                     detalles.push({
@@ -782,11 +784,13 @@ export default function InformesPage() {
                                   const dayData = dataByDay[dia];
                                   if (dayData.decomisos[enfermedad]) {
                                     const tiposParteDelEnf = Object.keys(
-                                      dayData.decomisos[enfermedad]
+                                      dayData.decomisos[enfermedad],
                                     );
                                     tiposParteDelEnf.forEach((tipoParte) => {
                                       Object.entries(
-                                        dayData.decomisos[enfermedad][tipoParte]
+                                        dayData.decomisos[enfermedad][
+                                          tipoParte
+                                        ],
                                       ).forEach(([, cantidad]) => {
                                         totalEnfermedad += cantidad;
                                       });
@@ -818,7 +822,7 @@ export default function InformesPage() {
                             `informe-observaciones-${mes}-${año}-${
                               plantaSeleccionada || 'todas'
                             }`,
-                            texto
+                            texto,
                           );
                         }}
                         placeholder="Observaciones adicionales (máximo 500 caracteres)..."
@@ -836,7 +840,7 @@ export default function InformesPage() {
                 <div className="mb-4 sm:mb-8">
                   <div className="bg-green-100 px-2 sm:px-4 py-1 sm:py-2 mb-3 rounded-t-lg">
                     <h2 className="text-xs sm:text-sm font-bold text-gray-800">
-                      TITULARES DE FAENA POR CATEGORÍA
+                      ESPECIES Y CATEGORÍAS DE ANIMALES FAENADOS
                     </h2>
                   </div>
                   {(() => {
@@ -848,7 +852,7 @@ export default function InformesPage() {
                       Object.keys(titularesPorCategoria[especie] || {}).forEach(
                         (cat) => {
                           todasLasCategorias.add(cat);
-                        }
+                        },
                       );
                     });
 
@@ -869,7 +873,7 @@ export default function InformesPage() {
                           <thead>
                             <tr className="bg-green-100">
                               <th className="px-2 sm:px-3 py-1 text-left font-semibold text-gray-700 border border-gray-300">
-                                Titular Faena
+                                Especies
                               </th>
                               {categoriasOrdenadas.map((cat) => (
                                 <th
@@ -886,7 +890,7 @@ export default function InformesPage() {
                               const tieneItems = categoriasOrdenadas.some(
                                 (cat) =>
                                   (titularesPorCategoria[especie]?.[cat] || 0) >
-                                  0
+                                  0,
                               );
                               return tieneItems ? (
                                 <tr
@@ -927,7 +931,7 @@ export default function InformesPage() {
                                     (sum, esp) =>
                                       sum +
                                       (titularesPorCategoria[esp]?.[cat] || 0),
-                                    0
+                                    0,
                                   )}
                                 </td>
                               ))}

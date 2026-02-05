@@ -4,7 +4,7 @@ import { getResponseCache, getRequestDeduplicator } from './cache';
 
 /**
  * Determina la base del API en RUNTIME:
- * - Si el hostname es sistema-faena2-0.vercel.app → usa backend remoto (onrender.com)
+ * - Si el hostname es sifadeco.vercel.app → usa backend remoto (onrender.com)
  * - Si es localhost o 127.0.0.1 → usa /api relativo
  * - Fallback: /api
  */
@@ -13,7 +13,7 @@ function getApiBase() {
     const hostname = window.location.hostname;
 
     // Vercel: siempre usar backend remoto
-    if (hostname === 'sistema-faena2-0.vercel.app') {
+    if (hostname === 'sifadeco.vercel.app') {
       console.log('[API] Detectado Vercel, usando backend remoto');
       return 'https://sifadeco.onrender.com/api';
     }

@@ -175,8 +175,10 @@ const obtenerFaenasRealizadas = async (req, res) => {
       FROM faena f
       JOIN faena_detalle fd ON f.id_faena = fd.id_faena
       JOIN tropa t ON f.id_tropa = t.id_tropa
-      LEFT JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
-      LEFT JOIN departamento depto ON t.id_departamento = depto.id_departamento
+      JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
+      JOIN especie esp ON td.id_especie = esp.id_especie
+      JOIN departamento depto ON t.id_departamento = depto.id_departamento
+      LEFT JOIN provincia prov ON depto.id_provincia = prov.id_provincia
       ${where}
     `;
     const totalFaenadosResult = await pool.query(totalFaenadosQuery, valores);
@@ -188,11 +190,11 @@ const obtenerFaenasRealizadas = async (req, res) => {
 
     if (desde.trim()) {
       valoresTropa.push(desde);
-      filtrosTropa.push(`tropa.fecha_ingreso::date >= $${valoresTropa.length}`);
+      filtrosTropa.push(`tropa.fecha::date >= $${valoresTropa.length}`);
     }
     if (hasta.trim()) {
       valoresTropa.push(hasta);
-      filtrosTropa.push(`tropa.fecha_ingreso::date <= $${valoresTropa.length}`);
+      filtrosTropa.push(`tropa.fecha::date <= $${valoresTropa.length}`);
     }
     if (n_tropa.trim()) {
       valoresTropa.push(`%${n_tropa}%`);
@@ -227,8 +229,10 @@ const obtenerFaenasRealizadas = async (req, res) => {
       FROM faena f
       JOIN faena_detalle fd ON f.id_faena = fd.id_faena
       JOIN tropa t ON f.id_tropa = t.id_tropa
-      LEFT JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
-      LEFT JOIN departamento depto ON t.id_departamento = depto.id_departamento
+      JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
+      JOIN especie esp ON td.id_especie = esp.id_especie
+      JOIN departamento depto ON t.id_departamento = depto.id_departamento
+      LEFT JOIN provincia prov ON depto.id_provincia = prov.id_provincia
       ${where}
       GROUP BY t.id_tropa
     `;

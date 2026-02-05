@@ -147,7 +147,7 @@ export default function InformeFaenaPage() {
         ]);
         if (!mounted) return;
 
-        let plantasData = plantRes.data || [];
+        console.log('[InformeFaenaPage] Plantas cargadas:', plantRes.data);
 
         // Handle user permissions
         try {
@@ -157,9 +157,8 @@ export default function InformeFaenaPage() {
             setUser(user);
             if (user.role !== 1 && user.id_planta) {
               // Non-admin: auto-select their plant
-              setIdPlanta(user.id_planta.toString());
+              setIdPlanta(String(user.id_planta));
             }
-            // For non-admin, we could filter plantasData to only their plant, but since the select will be hidden, it's optional
           }
         } catch (e) {
           console.error('Error obteniendo usuario:', e);
@@ -167,7 +166,7 @@ export default function InformeFaenaPage() {
 
         setEspecies(espRes.data || []);
         setProvincias(provRes.data || []);
-        setPlantas(plantasData);
+        setPlantas(plantRes.data || []);
         setInitialLoad(false);
       } catch (err) {
         // no bloquear la UI; mostrar vacío si falla
@@ -187,12 +186,15 @@ export default function InformeFaenaPage() {
       if (idEspecie && idEspecie !== '') params.id_especie = idEspecie;
       if (idProvincia && idProvincia !== '') params.id_provincia = idProvincia;
       
-      // Si el usuario no es admin, filtrar por su planta
-      if (user && user.role !== 1 && user.id_planta) {
-        params.id_planta = user.id_planta;
-      } else if (idPlanta && idPlanta !== '') {
-        // Si es admin, usar el idPlanta seleccionado
-        params.id_planta = idPlanta;
+      // Usar la planta seleccionada en el filtro, o la del usuario si es no-admin y no selecciona nada
+      let plantaAFiltrar = idPlanta;
+      if (!plantaAFiltrar && user?.role !== 1) {
+        // No-admin sin selección: usar su planta asignada
+        plantaAFiltrar = String(user?.id_planta || '');
+      }
+      
+      if (plantaAFiltrar && plantaAFiltrar !== '') {
+        params.id_planta = plantaAFiltrar;
       }
 
       console.log('[InformeFaenaPage] Llamando API con params:', params);
@@ -222,11 +224,29 @@ export default function InformeFaenaPage() {
     }
   };
 
-  // cargar datos iniciales
+  // Efecto separado: cuando initialLoad se pone en false, hacer el primer fetch
   useEffect(() => {
     if (initialLoad || !user) return;
+    console.log('[InformeFaenaPage] Disparando fetchData después de initialLoad');
     fetchData();
-  }, [desde, hasta, idEspecie, idProvincia, idPlanta, initialLoad, user]);
+  }, [initialLoad, user]);
+
+  // Efecto: cuando cambian los filtros, hacer fetch (solo si ya no es initialLoad)
+  useEffect(() => {
+    if (initialLoad || !user) return;
+    console.log('[InformeFaenaPage] Disparando fetchData por cambio de filtros');
+    fetchData();
+  }, [desde, hasta, idEspecie, idProvincia, idPlanta]);
+
+  // Función para resetear filtros a valores vacíos (por defecto)
+  const resetearFiltros = () => {
+    setDesde('');
+    setHasta('');
+    setIdEspecie('');
+    setIdProvincia('');
+    setIdPlanta('');
+    console.log('[InformeFaenaPage] Filtros reseteados a valores vacíos');
+  };
 
   const estadosOrden = ['pendiente', 'finalizada'];
 
@@ -301,24 +321,24 @@ export default function InformeFaenaPage() {
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 no-print">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
             {/* Fechas */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col">
               <label className="mb-2 font-semibold text-gray-700 text-sm">Desde</label>
               <input
                 type="date"
                 value={desde}
                 onChange={(e) => setDesde(e.target.value)}
-                className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 bg-gray-50 h-12 transition-all"
+                className="border-2 border-gray-200 rounded-lg px-4 py-2 text-sm focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 bg-gray-50 h-12 transition-all hover:border-emerald-300"
                 aria-label="Desde"
               />
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col">
               <label className="mb-2 font-semibold text-gray-700 text-sm">Hasta</label>
               <input
                 type="date"
                 value={hasta}
                 onChange={(e) => setHasta(e.target.value)}
-                className="border-2 border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 bg-gray-50 h-12 transition-all"
+                className="border-2 border-gray-200 rounded-lg px-4 py-2 text-sm focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 bg-gray-50 h-12 transition-all hover:border-emerald-300"
                 aria-label="Hasta"
               />
             </div>
@@ -364,77 +384,49 @@ export default function InformeFaenaPage() {
             />
 
             {/* Planta */}
-            {user && user.role === 1 ? (
-              <SelectField
-                label="Planta"
-                value={
-                  idPlanta
-                    ? {
-                        value: idPlanta,
-                        label:
-                          plantas.find(
-                            (p) =>
-                              String(p.id_planta) ===
-                              String(idPlanta),
-                          )?.nombre || 'Seleccione planta',
-                      }
-                    : { value: '', label: 'Todas' }
-                }
-                onChange={(option) =>
-                  setIdPlanta(option?.value || '')
-                }
-                options={[
-                  { value: '', label: 'Todas' },
-                  ...plantas.map((p) => ({
-                    value: p.id_planta,
-                    label: p.nombre,
-                  })),
-                ]}
-                placeholder="Seleccione planta"
-              />
-            ) : plantas.length > 0 ? (
-              <SelectField
-                label="Planta"
-                value={{
-                  value: user?.id_planta,
-                  label: plantas.find(
-                    (p) =>
-                      String(p.id_planta) ===
-                      String(user?.id_planta),
-                  )?.nombre || 'Tu planta',
-                }}
-                onChange={() => {}}
-                options={[
-                  {
-                    value: user?.id_planta,
-                    label:
-                      plantas.find(
-                        (p) =>
-                          String(p.id_planta) ===
-                          String(user?.id_planta),
-                      )?.nombre || 'Tu planta',
-                  },
-                ]}
-                placeholder="Tu planta"
-              />
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Planta
-                </label>
-                <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500">
-                  Cargando plantas...
-                </div>
-              </div>
-            )}
+            <SelectField
+              label="Planta"
+              value={
+                idPlanta
+                  ? {
+                      value: String(idPlanta),
+                      label:
+                        plantas.find(
+                          (p) =>
+                            parseInt(p.id_planta) ===
+                            parseInt(idPlanta),
+                        )?.nombre || 'Seleccione planta',
+                    }
+                  : { value: '', label: 'Todas' }
+              }
+              onChange={(option) => {
+                console.log('[InformeFaenaPage] onChange planta:', option);
+                setIdPlanta(option?.value ? String(option.value) : '');
+              }}
+              options={[
+                { value: '', label: 'Todas' },
+                ...plantas.map((p) => ({
+                  value: String(p.id_planta),
+                  label: p.nombre,
+                })),
+              ]}
+              placeholder="Seleccione planta"
+            />
 
             {/* Botón Filtrar */}
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <button
                 onClick={fetchData}
                 className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium shadow-sm h-12"
               >
                 {loading ? 'Filtrando...' : 'Filtrar'}
+              </button>
+              <button
+                onClick={resetearFiltros}
+                className="px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded-lg transition-colors text-sm font-medium shadow-sm h-12 whitespace-nowrap"
+                title="Resetear filtros a valores por defecto"
+              >
+                Limpiar
               </button>
             </div>
           </div>
@@ -467,29 +459,70 @@ export default function InformeFaenaPage() {
           </div>
 
           {/* Título principal del informe */}
-          <div className="px-4 sm:px-6 py-6 border-b border-gray-200 text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Informe Mensual de Faenas
+          <div className="px-4 sm:px-6 py-6 border-b border-gray-200">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center">
+              Informe de Faenas
             </h2>
-            <div className="text-lg text-gray-700 space-y-1">
-              <p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700">
+              {/* Establecimiento */}
+              <div>
                 <span className="font-semibold">Establecimiento:</span>{' '}
-                {user && user.role === 1
-                  ? (idPlanta ? plantas.find((p) => String(p.id_planta) === String(idPlanta))?.nombre : 'Todas las plantas')
-                  : (user?.id_planta ? plantas.find((p) => String(p.id_planta) === String(user.id_planta))?.nombre : 'Cargando...')
-                }
-              </p>
-              <p>
+                {(() => {
+                  console.log('[InformeFaenaPage] Renderizando establecimiento:', {
+                    idPlanta,
+                    user: user?.role,
+                    plantas: plantas.length,
+                  });
+                  
+                  if (plantas.length === 0) return 'Cargando...';
+                  
+                  // Mostrar según lo que está seleccionado en el filtro
+                  if (!idPlanta || idPlanta === '') {
+                    return 'Todas las plantas';
+                  }
+                  
+                  const plantaSeleccionada = plantas.find(
+                    (p) => parseInt(p.id_planta) === parseInt(idPlanta)
+                  );
+                  
+                  return plantaSeleccionada?.nombre || 'No encontrada';
+                })()}
+              </div>
+
+              {/* Período */}
+              <div>
                 <span className="font-semibold">Período:</span>{' '}
-                {new Date(
-                  new Date().getFullYear(),
-                  new Date().getMonth(),
-                  1
-                ).toLocaleDateString('es-AR', {
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </p>
+                {desde && hasta
+                  ? (() => {
+                      // Agregar 1 día para compensar el problema de timezone
+                      const desdeDate = new Date(desde + 'T00:00:00');
+                      const hastaDate = new Date(hasta + 'T00:00:00');
+                      return `${desdeDate.toLocaleDateString('es-AR')} - ${hastaDate.toLocaleDateString('es-AR')}`;
+                    })()
+                  : 'Sin filtro'}
+              </div>
+
+              {/* Especie */}
+              <div>
+                <span className="font-semibold">Especie:</span>{' '}
+                {idEspecie && especies.length > 0
+                  ? (() => {
+                      const especie = especies.find((e) => parseInt(e.id_especie) === parseInt(idEspecie));
+                      return especie?.descripcion || 'No encontrada';
+                    })()
+                  : 'Todas'}
+              </div>
+
+              {/* Provincia */}
+              <div>
+                <span className="font-semibold">Provincia:</span>{' '}
+                {idProvincia && provincias.length > 0
+                  ? (() => {
+                      const provincia = provincias.find((p) => parseInt(p.id) === parseInt(idProvincia));
+                      return provincia?.descripcion || 'No encontrada';
+                    })()
+                  : 'Todas'}
+              </div>
             </div>
           </div>
 
@@ -511,7 +544,7 @@ export default function InformeFaenaPage() {
 
             <div className="bg-green-600 text-white rounded-lg p-3 shadow-sm">
               <div className="text-xs font-medium uppercase tracking-wide">
-                Total tropas faenadas
+                Tropas faenadas en su total
               </div>
               <div className="text-2xl font-bold mt-1">
                 {tropasFaenadasCompletas}

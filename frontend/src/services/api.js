@@ -4,7 +4,7 @@ import { getResponseCache, getRequestDeduplicator } from './cache';
 
 /**
  * Determina la base del API en RUNTIME:
- * - Si el hostname es sistema-faena2-0.vercel.app → usa backend remoto (onrender.com)
+ * - Si el hostname es sifadecovercel.app → usa backend remoto (onrender.com)
  * - Si es localhost o 127.0.0.1 → usa /api relativo
  * - Fallback: /api
  */
@@ -13,7 +13,7 @@ function getApiBase() {
     const hostname = window.location.hostname;
 
     // Vercel: siempre usar backend remoto
-    if (hostname === 'sistema-faena2-0.vercel.app') {
+    if (hostname === 'sifadecovercel.app') {
       console.log('[API] Detectado Vercel, usando backend remoto');
       return 'https://sifadeco.onrender.com/api';
     }
@@ -63,7 +63,11 @@ api.interceptors.request.use(
       // Implementar caching para GETs
       if (method === 'GET') {
         const cache = getResponseCache();
-        const cached = cache.get(config.url);
+        // Generar clave de caché incluyendo query parameters
+        const cacheKey = config.params
+          ? `${config.url}?${new URLSearchParams(config.params).toString()}`
+          : config.url;
+        const cached = cache.get(cacheKey);
         if (cached) {
           // Retornar respuesta cacheada
           return Promise.reject({
@@ -84,7 +88,11 @@ api.interceptors.response.use(
   (response) => {
     // Guardar en caché si es GET exitoso
     if (response.config.method?.toUpperCase() === 'GET') {
-      getResponseCache().set(response.config.url, response.data);
+      // Usar la misma clave que en request interceptor
+      const cacheKey = response.config.params
+        ? `${response.config.url}?${new URLSearchParams(response.config.params).toString()}`
+        : response.config.url;
+      getResponseCache().set(cacheKey, response.data);
     }
 
     // Invalidar caché en operaciones de modificación

@@ -101,7 +101,7 @@ const crearUsuario = async (req, res) => {
       dni,
       email,
       password,
-      rol,
+      id_rol,
       estado,
       id_planta,
       n_telefono,
@@ -109,7 +109,7 @@ const crearUsuario = async (req, res) => {
 
     const estadoBooleano = normalizarEstado(estado);
     const contraseniaHasheada = await bcrypt.hash(password, 10);
-    const id_rol = mapRol(rol);
+    const id_rol_num = parseInt(id_rol, 10) || 3;
     const id_planta_num = parseInt(id_planta, 10);
     if (!id_planta || isNaN(id_planta_num)) {
       console.warn('ID de planta inválido recibido:', id_planta);
@@ -130,7 +130,7 @@ const crearUsuario = async (req, res) => {
         dni,
         email,
         contraseniaHasheada,
-        id_rol,
+        id_rol_num,
         estadoBooleano,
         id_planta_num,
         n_telefono,
@@ -154,14 +154,14 @@ const actualizarUsuario = async (req, res) => {
       dni,
       email,
       password,
-      rol,
+      id_rol,
       estado,
       id_planta,
       n_telefono,
     } = req.body;
 
     const estadoBooleano = normalizarEstado(estado);
-    const id_rol = mapRol(rol);
+    const id_rol_num = parseInt(id_rol, 10) || 3;
     const id_planta_num = parseInt(id_planta, 10);
     if (!id_planta || isNaN(id_planta_num)) {
       console.warn('ID de planta inválido recibido:', id_planta);
@@ -185,7 +185,7 @@ const actualizarUsuario = async (req, res) => {
         dni,
         email,
         contraseniaHasheada,
-        id_rol,
+        id_rol_num,
         estadoBooleano,
         id_planta_num,
         n_telefono,
@@ -203,7 +203,7 @@ const actualizarUsuario = async (req, res) => {
         apellido,
         dni,
         email,
-        id_rol,
+        id_rol_num,
         estadoBooleano,
         id_planta_num,
         n_telefono,

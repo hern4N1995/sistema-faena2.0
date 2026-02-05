@@ -235,8 +235,8 @@ const envOrigins = envOriginsRaw
   : [];
 
 // Añadir dominio del frontend en Vercel si no está presente
-if (!envOrigins.includes('https://sistema-faena2-0.vercel.app')) {
-  envOrigins.push('https://sistema-faena2-0.vercel.app');
+if (!envOrigins.includes('https://sifadeco.vercel.app')) {
+  envOrigins.push('https://sifadeco.vercel.app');
 }
 
 // Sanitizar entradas: convertir a origin (scheme + host + port) y eliminar path si existe

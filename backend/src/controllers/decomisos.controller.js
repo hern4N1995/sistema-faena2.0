@@ -114,6 +114,7 @@ const listarDecomisos = async (req, res) => {
         t.n_tropa,
         t.dte_dtu,
         t.id_planta,
+        p.nombre AS nombre_planta,
         td.cantidad AS cantidad_tropa,
         fd.cantidad_faena,
         dd.id_decomiso_detalle,
@@ -130,6 +131,7 @@ const listarDecomisos = async (req, res) => {
       JOIN faena f ON fd.id_faena = f.id_faena
       JOIN tropa_detalle td ON fd.id_tropa_detalle = td.id_tropa_detalle
       JOIN tropa t ON td.id_tropa = t.id_tropa
+      LEFT JOIN planta p ON t.id_planta = p.id_planta
       LEFT JOIN decomiso_detalle dd ON d.id_decomiso = dd.id_decomiso
       LEFT JOIN parte_decomisada pd ON dd.id_parte_decomisada = pd.id_parte_decomisada
       LEFT JOIN tipo_parte_deco tp ON pd.id_tipo_parte_deco = tp.id_tipo_parte_deco

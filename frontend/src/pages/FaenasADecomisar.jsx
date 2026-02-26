@@ -35,7 +35,7 @@ export default function FaenasADecomisar() {
     try {
       const userData = JSON.parse(localStorage.getItem('user'));
       if (userData) {
-        const userRol = userData.id_rol || userData.rol;
+        const userRol = userData.rol || userData.id_rol;
         setRol(parseInt(userRol));
         
         // Usar id_planta del usuario (viene del backend)
@@ -261,6 +261,9 @@ export default function FaenasADecomisar() {
           <strong>DTE/DTU:</strong> {f.dte_dtu || '—'}
         </p>
         <p className="whitespace-normal break-words">
+          <strong>Planta:</strong> {plantaLabel(f)}
+        </p>
+        <p className="whitespace-normal break-words">
           <strong>Guía Policial:</strong> {f.guia_policial || '—'}
         </p>
         <p className="whitespace-normal break-words">
@@ -294,6 +297,18 @@ export default function FaenasADecomisar() {
       </div>
     </div>
   );
+
+  const plantaLabel = (f) => {
+    if (!f) return '—';
+    // Buscar en diferentes estructuras posibles
+    if (f.nombre_planta) return f.nombre_planta;
+    if (f.planta && typeof f.planta === 'object') {
+      return f.planta.nombre ?? (f.planta.id ? `Planta #${f.planta.id}` : '—');
+    }
+    if (f.planta_nombre) return f.planta_nombre;
+    if (f.planta) return f.planta;
+    return '—';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 sm:px-6 lg:px-6 box-border pb-24">
@@ -525,6 +540,7 @@ export default function FaenasADecomisar() {
                     <tr>
                       <th className="px-3 py-2">Fecha</th>
                       <th className="px-3 py-2">DTE/DTU</th>
+                      <th className="px-3 py-2">Planta</th>
                       <th className="px-3 py-2">Guía Policial</th>
                       <th className="px-3 py-2">Nº Tropa</th>
                       <th className="px-3 py-2">Productor</th>
@@ -541,34 +557,37 @@ export default function FaenasADecomisar() {
                         key={f.id_faena}
                         className="border-b last:border-b-0 bg-white hover:bg-green-50 transition"
                       >
-                        <td className="px-2 py-2 whitespace-normal break-words">
+                        <td className="px-3 py-2 whitespace-normal break-words">
                           {formatDate(f.fecha_faena)}
                         </td>
-                        <td className="px-2 py-2 whitespace-normal break-words">
+                        <td className="px-3 py-2 whitespace-normal break-words">
                           {f.dte_dtu || '—'}
                         </td>
-                        <td className="px-2 py-2 whitespace-normal break-words">
+                        <td className="px-3 py-2 whitespace-normal break-words">
+                          {plantaLabel(f)}
+                        </td>
+                        <td className="px-3 py-2 whitespace-normal break-words">
                           {f.guia_policial || '—'}
                         </td>
-                        <td className="px-2 py-2 font-semibold text-green-800 whitespace-normal break-words">
+                        <td className="px-3 py-2 font-semibold text-green-800 whitespace-normal break-words">
                           {f.n_tropa || '—'}
                         </td>
-                        <td className="px-2 py-2 whitespace-normal break-words">
+                        <td className="px-3 py-2 whitespace-normal break-words">
                           {f.productor || '—'}
                         </td>
-                        <td className="px-2 py-2 whitespace-normal break-words">
+                        <td className="px-3 py-2 whitespace-normal break-words">
                           {f.departamento || '—'}
                         </td>
-                        <td className="px-2 py-2 whitespace-normal break-words">
+                        <td className="px-3 py-2 whitespace-normal break-words">
                           {f.titular_faena || '—'}
                         </td>
-                        <td className="px-2 py-2 whitespace-normal break-words">
+                        <td className="px-3 py-2 whitespace-normal break-words">
                           {f.especie || '—'}
                         </td>
-                        <td className="px-2 py-2 font-semibold whitespace-normal break-words">
+                        <td className="px-3 py-2 font-semibold whitespace-normal break-words">
                           {f.total_faenado ?? '—'}
                         </td>
-                        <td className="px-2 py-2">
+                        <td className="px-3 py-2">
                           <button
                             onClick={() => handleDecomisar(f)}
                             disabled={redirigiendoId === f.id_faena}

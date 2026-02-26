@@ -21,6 +21,8 @@ const FaenaPage = () => {
   const [loading, setLoading] = useState(true);
   const [redirigiendoId, setRedirigiendoId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [rol, setRol] = useState(null);
+  const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
   const navigate = useNavigate();
 
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -58,7 +60,11 @@ const FaenaPage = () => {
   const fetchTropasPorPlanta = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/tropas/por-planta'); // usa instancia axios con credenciales
+      // Si es admin, obtener todas las tropas; si no, filtradas por su planta
+      const endpoint = rol === 1 ? '/tropas' : '/tropas/por-planta';
+      console.log('[FaenaPage] Usando endpoint:', endpoint, 'Rol:', rol);
+      
+      const res = await api.get(endpoint); // usa instancia axios con credenciales
       const data = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.data)
@@ -213,9 +219,30 @@ const FaenaPage = () => {
   };
 
   useEffect(() => {
-    fetchTropasPorPlanta();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Obtener rol y planta del usuario desde localStorage
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData) {
+        const userRol = userData.rol || userData.id_rol;
+        setRol(parseInt(userRol));
+        
+        // Usar id_planta del usuario (viene del backend)
+        if (parseInt(userRol) !== 1) {
+          setPlantaDelUsuario(userData.id_planta);
+        }
+      }
+    } catch (err) {
+      console.error('[FaenaPage] Error al obtener usuario:', err);
+      setRol(1); // Default a admin para mostrar datos
+    }
   }, []);
+
+  useEffect(() => {
+    if (rol !== null) {
+      fetchTropasPorPlanta();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rol]);
 
   const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
 
@@ -310,13 +337,13 @@ const FaenaPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-6">
-      <header className="mb-1">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-center text-slate-800 drop-shadow mb-6">
+    <div className="min-h-screen bg-slate-50 px-4 py-4 sm:px-6 lg:px-6">
+      <header className="mb-0">
+        <h1 className="text-xl md:text-2xl font-extrabold text-center text-slate-800 drop-shadow mb-3">
           📋 Tropas a Faenar
         </h1>
-        <div className="mt-2 mr-10 flex justify-end">
-          <p className="text-base font-semibold text-green-700">
+        <div className="mt-1 mr-10 flex justify-end">
+          <p className="text-sm font-semibold text-green-700">
             Total general a faenar:{' '}
             <span className="text-green-900">{totalFaenar}</span>
           </p>
@@ -341,9 +368,9 @@ const FaenaPage = () => {
           ))}
         </div>
       ) : (
-        <div className="flex justify-center">
-          <div className="overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200">
-            <table className="min-w-[800px] w-full text-sm text-center text-slate-700">
+        <div className="flex justify-center px-4">
+          <div className="w-full max-w-5xl overflow-x-auto overflow-y-auto max-h-[500px] rounded-xl shadow-xl ring-1 ring-slate-200">
+            <table className="min-w-[1100px] w-full text-sm text-center text-slate-700">
               <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
                 <tr>
                   <th className="px-3 py-2">Fecha</th>
@@ -387,14 +414,14 @@ const FaenaPage = () => {
                       <button
                         onClick={() => handleFaenar(t)}
                         disabled={redirigiendoId === t.id_tropa}
-                        className={`text-xs px-2 py-1 rounded font-semibold transition ${
+                        className={`text-xs px-1 py-0.5 rounded font-semibold transition ${
                           redirigiendoId === t.id_tropa
                             ? 'bg-green-300 text-white cursor-not-allowed'
                             : 'bg-green-100 text-green-800 hover:bg-green-200'
                         }`}
                       >
                         {redirigiendoId === t.id_tropa
-                          ? 'Redirigiendo...'
+                          ? 'Redir...'
                           : 'Faenar'}
                       </button>
                     </td>
@@ -407,11 +434,11 @@ const FaenaPage = () => {
       )}
 
       {tropas.length > rowsPerPage && (
-        <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
+        <div className="mt-4 flex justify-center items-center gap-2 flex-wrap">
           <button
             onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
             disabled={currentPage === 1}
-            className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+            className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
               currentPage === 1
                 ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
                 : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
@@ -425,7 +452,7 @@ const FaenaPage = () => {
               <button
                 key={page}
                 onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
                   currentPage === page
                     ? 'bg-green-700 text-white shadow'
                     : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
@@ -437,10 +464,10 @@ const FaenaPage = () => {
           })}
           {totalPages > 3 && (
             <>
-              <span className="text-slate-500 text-sm">…</span>
+              <span className="text-slate-500 text-xs">…</span>
               <button
                 onClick={() => setCurrentPage(totalPages)}
-                className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+                className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
                   currentPage === totalPages
                     ? 'bg-green-700 text-white shadow'
                     : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
@@ -453,7 +480,7 @@ const FaenaPage = () => {
           <button
             onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
             disabled={currentPage === totalPages}
-            className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
+            className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
               currentPage === totalPages
                 ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
                 : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'

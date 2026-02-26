@@ -31,7 +31,7 @@ const DecomisosCargadosPage = () => {
     try {
       const userData = JSON.parse(localStorage.getItem('user'));
       if (userData) {
-        const userRol = userData.id_rol || userData.rol;
+        const userRol = userData.rol || userData.id_rol;
         setRol(parseInt(userRol));
         
         // Usar id_planta del usuario (viene del backend)
@@ -78,6 +78,7 @@ const DecomisosCargadosPage = () => {
               n_tropa: row.n_tropa,
               dte_dtu: row.dte_dtu,
               id_planta: row.id_planta,
+              nombre_planta: row.nombre_planta,
               cantidad_tropa: row.cantidad_tropa,
               cantidad_faena: row.cantidad_faena,
               cantidad_decomisada: 0,
@@ -261,6 +262,9 @@ const DecomisosCargadosPage = () => {
           <strong>DTE/DTU:</strong> {d.dte_dtu || '—'}
         </p>
         <p>
+          <strong>Planta:</strong> {plantaLabel(d)}
+        </p>
+        <p>
           <strong>Cant. Tropa:</strong> {d.cantidad_tropa}
         </p>
         <p>
@@ -304,6 +308,18 @@ const DecomisosCargadosPage = () => {
     </div>
   );
 
+  const plantaLabel = (d) => {
+    if (!d) return '—';
+    // Buscar en diferentes estructuras posibles
+    if (d.nombre_planta) return d.nombre_planta;
+    if (d.planta && typeof d.planta === 'object') {
+      return d.planta.nombre ?? (d.planta.id ? `Planta #${d.planta.id}` : '—');
+    }
+    if (d.planta_nombre) return d.planta_nombre;
+    if (d.planta) return d.planta;
+    return '—';
+  };
+
   /* ---------------------------------------------------------- */
   /*  Vista principal                                           */
   /* ---------------------------------------------------------- */
@@ -344,6 +360,7 @@ const DecomisosCargadosPage = () => {
                     <tr>
                       <th className="px-3 py-3">Fecha Faena</th>
                       <th className="px-3 py-3">N° Tropa</th>
+                      <th className="px-3 py-3">Planta</th>
                       <th className="px-3 py-3">DTE / DTU</th>
                       <th className="px-3 py-3">Cant. Tropa</th>
                       <th className="px-3 py-3">Faenados</th>
@@ -366,6 +383,9 @@ const DecomisosCargadosPage = () => {
                             </td>
                             <td className="px-3 py-3 font-semibold text-green-800">
                               {d.n_tropa}
+                            </td>
+                            <td className="px-3 py-3">
+                              {plantaLabel(d)}
                             </td>
                             <td className="px-3 py-3 truncate">
                               {d.dte_dtu || '—'}

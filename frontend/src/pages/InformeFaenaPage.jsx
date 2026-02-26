@@ -16,7 +16,7 @@ import api from '../services/api';
 /* ------------------------------------------------------------------ */
 /*  SelectField estilizado                                            */
 /* ------------------------------------------------------------------ */
-function SelectField({ label, value, onChange, options, placeholder }) {
+function SelectField({ label, value, onChange, options, placeholder, isDisabled = false }) {
   const [isFocusing, setIsFocusing] = useState(false);
 
   const customStyles = {
@@ -26,20 +26,22 @@ function SelectField({ label, value, onChange, options, placeholder }) {
       minHeight: '48px',
       paddingLeft: '16px',
       paddingRight: '16px',
-      backgroundColor: '#f9fafb',
+      backgroundColor: isDisabled ? '#f3f4f6' : '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
-      boxShadow: isFocusing
+      boxShadow: isFocusing && !isDisabled
         ? '0 0 0 1px #000'
-        : state.isFocused
+        : state.isFocused && !isDisabled
           ? '0 0 0 4px #d1fae5'
           : 'none',
       transition: 'all 100ms ease',
+      cursor: isDisabled ? 'not-allowed' : 'pointer',
+      opacity: isDisabled ? 0.7 : 1,
       '&:hover': {
-        borderColor: '#6ee7b7',
+        borderColor: isDisabled ? '#e5e7eb' : '#6ee7b7',
       },
       '&:focus-within': {
-        borderColor: '#22c55e',
+        borderColor: isDisabled ? '#e5e7eb' : '#22c55e',
       },
     }),
     valueContainer: (base) => ({
@@ -99,9 +101,12 @@ function SelectField({ label, value, onChange, options, placeholder }) {
         styles={customStyles}
         noOptionsMessage={() => 'Sin opciones'}
         components={{ IndicatorSeparator: () => null }}
+        isDisabled={isDisabled}
         onFocus={() => {
-          setIsFocusing(true);
-          setTimeout(() => setIsFocusing(false), 50);
+          if (!isDisabled) {
+            setIsFocusing(true);
+            setTimeout(() => setIsFocusing(false), 50);
+          }
         }}
       />
     </div>
@@ -155,7 +160,8 @@ export default function InformeFaenaPage() {
           if (userStr) {
             const user = JSON.parse(userStr);
             setUser(user);
-            if (user.role !== 1 && user.id_planta) {
+            const userRol = parseInt(user.rol || 0);
+            if (userRol !== 1 && user.id_planta) {
               // Non-admin: auto-select their plant
               setIdPlanta(String(user.id_planta));
             }
@@ -384,34 +390,57 @@ export default function InformeFaenaPage() {
             />
 
             {/* Planta */}
-            <SelectField
-              label="Planta"
-              value={
-                idPlanta
-                  ? {
-                      value: String(idPlanta),
-                      label:
-                        plantas.find(
-                          (p) =>
-                            parseInt(p.id_planta) ===
-                            parseInt(idPlanta),
-                        )?.nombre || 'Seleccione planta',
-                    }
-                  : { value: '', label: 'Todas' }
-              }
-              onChange={(option) => {
-                console.log('[InformeFaenaPage] onChange planta:', option);
-                setIdPlanta(option?.value ? String(option.value) : '');
-              }}
-              options={[
-                { value: '', label: 'Todas' },
-                ...plantas.map((p) => ({
-                  value: String(p.id_planta),
-                  label: p.nombre,
-                })),
-              ]}
-              placeholder="Seleccione planta"
-            />
+            {parseInt(user?.rol || 0) === 1 ? (
+              <SelectField
+                label="Planta"
+                value={
+                  idPlanta
+                    ? {
+                        value: String(idPlanta),
+                        label:
+                          plantas.find(
+                            (p) =>
+                              parseInt(p.id_planta) ===
+                              parseInt(idPlanta),
+                          )?.nombre || 'Seleccione planta',
+                      }
+                    : { value: '', label: 'Todas' }
+                }
+                onChange={(option) => {
+                  console.log('[InformeFaenaPage] onChange planta:', option);
+                  setIdPlanta(option?.value ? String(option.value) : '');
+                }}
+                options={[
+                  { value: '', label: 'Todas' },
+                  ...plantas.map((p) => ({
+                    value: String(p.id_planta),
+                    label: p.nombre,
+                  })),
+                ]}
+                placeholder="Seleccione planta"
+              />
+            ) : (
+              <SelectField
+                label="Planta"
+                value={{
+                  value: String(user?.id_planta || ''),
+                  label: plantas.find(
+                    (p) => parseInt(p.id_planta) === parseInt(user?.id_planta || 0)
+                  )?.nombre || 'Planta asignada',
+                }}
+                onChange={() => {}}
+                options={[
+                  {
+                    value: String(user?.id_planta || ''),
+                    label: plantas.find(
+                      (p) => parseInt(p.id_planta) === parseInt(user?.id_planta || 0)
+                    )?.nombre || 'Planta asignada',
+                  },
+                ]}
+                placeholder="Tu planta"
+                isDisabled={true}
+              />
+            )}
 
             {/* Botón Filtrar */}
             <div className="flex items-end gap-2">

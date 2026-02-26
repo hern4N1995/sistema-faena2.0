@@ -5,7 +5,7 @@ import api from '../services/api';
 /* ------------------------------------------------------------------ */
 /*  SelectField estilizado                                            */
 /* ------------------------------------------------------------------ */
-function SelectField({ label, value, onChange, options, placeholder }) {
+function SelectField({ label, value, onChange, options, placeholder, isDisabled = false }) {
   const [isFocusing, setIsFocusing] = useState(false);
 
   const customStyles = {
@@ -15,20 +15,22 @@ function SelectField({ label, value, onChange, options, placeholder }) {
       minHeight: '48px',
       paddingLeft: '16px',
       paddingRight: '16px',
-      backgroundColor: '#f9fafb',
+      backgroundColor: isDisabled ? '#f3f4f6' : '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
-      boxShadow: isFocusing
+      boxShadow: isFocusing && !isDisabled
         ? '0 0 0 1px #000'
-        : state.isFocused
+        : state.isFocused && !isDisabled
           ? '0 0 0 4px #d1fae5'
           : 'none',
       transition: 'all 100ms ease',
+      cursor: isDisabled ? 'not-allowed' : 'pointer',
+      opacity: isDisabled ? 0.7 : 1,
       '&:hover': {
-        borderColor: '#6ee7b7',
+        borderColor: isDisabled ? '#e5e7eb' : '#6ee7b7',
       },
       '&:focus-within': {
-        borderColor: '#22c55e',
+        borderColor: isDisabled ? '#e5e7eb' : '#22c55e',
       },
     }),
     valueContainer: (base) => ({
@@ -88,9 +90,12 @@ function SelectField({ label, value, onChange, options, placeholder }) {
         styles={customStyles}
         noOptionsMessage={() => 'Sin opciones'}
         components={{ IndicatorSeparator: () => null }}
+        isDisabled={isDisabled}
         onFocus={() => {
-          setIsFocusing(true);
-          setTimeout(() => setIsFocusing(false), 50);
+          if (!isDisabled) {
+            setIsFocusing(true);
+            setTimeout(() => setIsFocusing(false), 50);
+          }
         }}
       />
     </div>
@@ -118,7 +123,7 @@ export default function InformesPage() {
       const userData = JSON.parse(localStorage.getItem('user'));
 
       if (userData) {
-        const userRol = userData.id_rol || userData.rol;
+        const userRol = userData.rol || userData.id_rol;
         setRol(parseInt(userRol));
 
         // Usar id_planta del usuario (viene del backend)
@@ -501,17 +506,18 @@ export default function InformesPage() {
               <SelectField
                 label="Planta"
                 value={{
-                  value: plantaDelUsuario,
+                  value: String(plantaDelUsuario),
                   label: getNombrePlanta(),
                 }}
                 onChange={() => {}}
                 options={[
                   {
-                    value: plantaDelUsuario,
+                    value: String(plantaDelUsuario),
                     label: getNombrePlanta(),
                   },
                 ]}
                 placeholder="Tu planta"
+                isDisabled={true}
               />
             ) : (
               <div>

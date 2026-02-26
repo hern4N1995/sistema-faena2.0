@@ -129,11 +129,50 @@ export default function TropasCargadas() {
   const [query, setQuery] = useState('');
   const [pageSize, setPageSize] = useState(7);
   const [usuario, setUsuario] = useState(null);
+  const [rol, setRol] = useState(null);
+  const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
+  const [plantas, setPlantas] = useState([]);
+  const [selectedPlanta, setSelectedPlanta] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
 
   const navigate = useNavigate();
   const debounceRef = useRef(null);
+
+  // Obtener rol y planta del usuario desde localStorage
+  useEffect(() => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData) {
+        const userRol = userData.rol || userData.id_rol;
+        setRol(parseInt(userRol));
+        
+        // Usar id_planta del usuario (viene del backend)
+        if (parseInt(userRol) !== 1) {
+          setPlantaDelUsuario(userData.id_planta);
+        }
+      }
+    } catch (err) {
+      console.error('[TropasCargadas] Error al obtener usuario:', err);
+      setRol(1); // Default a admin para mostrar datos
+    }
+  }, []);
+
+  // Cargar plantas disponibles
+  useEffect(() => {
+    const fetchPlantas = async () => {
+      try {
+        const res = await api.get('/plantas');
+        const data = res.data;
+        setPlantas(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('[TropasCargadas] Error al obtener plantas:', err);
+        setPlantas([]);
+      }
+    };
+    fetchPlantas();
+  }, []);
+
 
   const pageSizeOptions = useMemo(
     () => [
@@ -152,42 +191,14 @@ export default function TropasCargadas() {
     setLoading(true);
 
     api
-      .get('/usuarios/usuario-actual')
-      .then((resU) => {
+      .get('/tropas')
+      .then((resT) => {
         if (canceled) return;
-        const u = resU.data ?? null;
-        setUsuario(u);
-
-        const idPlanta =
-          u?.id_planta ??
-          u?.planta?.id_planta ??
-          u?.planta?.id ??
-          (u && (u.idPlanta || u.plantaId)) ??
-          null;
-
-        if (idPlanta != null) {
-          return api
-            .get(`/tropas?planta=${encodeURIComponent(idPlanta)}`)
-            .then((resT) => ({
-              tropas: Array.isArray(resT.data) ? resT.data : [],
-              idPlanta,
-            }))
-            .catch(() => ({ tropas: [], idPlanta }));
-        }
-
-        return api
-          .get('/tropas')
-          .then((resT) => ({
-            tropas: Array.isArray(resT.data) ? resT.data : [],
-            idPlanta: null,
-          }))
-          .catch(() => ({ tropas: [], idPlanta: null }));
-      })
-      .then(({ tropas: tropasResp, idPlanta }) => {
-        if (canceled) return;
-        let arr = tropasResp.slice();
-
-        if (idPlanta != null && tropasResp.length > 0) {
+        let arr = Array.isArray(resT.data) ? resT.data : [];
+        
+        // Filtrar por planta del usuario (si no es admin)
+        if (rol !== 1 && plantaDelUsuario) {
+          console.log('[TropasCargadas] Filtrando por planta del usuario:', plantaDelUsuario);
           arr = arr.filter((t) => {
             const tPlanta =
               t?.id_planta ??
@@ -196,8 +207,11 @@ export default function TropasCargadas() {
               t?.planta?.id ??
               null;
             if (tPlanta == null) return false;
-            return String(tPlanta) === String(idPlanta);
+            return String(tPlanta) === String(plantaDelUsuario);
           });
+          console.log('[TropasCargadas] Después de filtrar:', arr.length, 'tropas');
+        } else if (rol === 1) {
+          console.log('[TropasCargadas] Admin - mostrando todas las tropas');
         }
 
         const ordenadas = arr
@@ -207,13 +221,10 @@ export default function TropasCargadas() {
             return (b.id_tropa || 0) - (a.id_tropa || 0);
           })
           .map((t) => ({
-            // Normalizar identificador: asegurar `id_tropa` esté disponible
-            id_tropa: t.id_tropa ?? t.id ?? t.id_tropa ?? null,
-            // mantener el resto de propiedades
+            id_tropa: t.id_tropa ?? t.id ?? null,
             ...t,
           }));
 
-        // Debug: mostrar primer elemento para verificar estructura
         if (ordenadas.length > 0) {
           console.debug('TropasCargadas: ejemplo tropa normalizada ->', ordenadas[0]);
         }
@@ -221,7 +232,7 @@ export default function TropasCargadas() {
         setAllTropas(ordenadas);
       })
       .catch((err) => {
-        console.error('Error al obtener usuario/tropas:', err);
+        console.error('[TropasCargadas] Error al obtener tropas:', err);
         if (!canceled) setError('Error al obtener tropas');
       })
       .finally(() => {
@@ -231,7 +242,7 @@ export default function TropasCargadas() {
     return () => {
       canceled = true;
     };
-  }, []);
+  }, [rol, plantaDelUsuario]);
 
   const applyFilters = () => {
     const term = String(query || '')
@@ -240,7 +251,9 @@ export default function TropasCargadas() {
     const isNum = /^\d+$/.test(term);
     let filtered = allTropas.slice();
 
-    if (usuario && usuario.id_planta != null) {
+    // Filtrar por planta solo si NO es admin
+    if (rol !== 1 && plantaDelUsuario != null) {
+      console.log('[TropasCargadas] Filtrando por planta del usuario:', plantaDelUsuario, 'Rol:', rol);
       filtered = filtered.filter((t) => {
         const tPlanta =
           t.id_planta ??
@@ -248,8 +261,10 @@ export default function TropasCargadas() {
           (t.planta && (t.planta.id_planta ?? t.planta.id)) ??
           null;
         if (tPlanta == null) return false;
-        return String(tPlanta) === String(usuario.id_planta);
+        return String(tPlanta) === String(plantaDelUsuario);
       });
+    } else if (rol === 1) {
+      console.log('[TropasCargadas] Admin - mostrando todas las tropas');
     }
 
     if (startDate) {
@@ -266,6 +281,18 @@ export default function TropasCargadas() {
         if (!t.fecha) return false;
         const d = new Date(t.fecha);
         return d.setHours(0, 0, 0, 0) <= new Date(e).setHours(0, 0, 0, 0);
+      });
+    }
+
+    // Filtrar por planta seleccionada en el filtro
+    if (selectedPlanta && selectedPlanta.value) {
+      filtered = filtered.filter((t) => {
+        const tPlanta =
+          t.id_planta ??
+          t.planta_id ??
+          (t.planta && (t.planta.id_planta ?? t.planta.id)) ??
+          null;
+        return String(tPlanta) === String(selectedPlanta.value);
       });
     }
 
@@ -291,13 +318,21 @@ export default function TropasCargadas() {
     setCurrentPage(1);
   };
 
+  const plantaLabel = (t) => {
+    if (!t) return '—';
+    if (t.planta && typeof t.planta === 'object') {
+      return t.planta.nombre ?? (t.planta.id ? `Planta #${t.planta.id}` : '—');
+    }
+    return t.planta_nombre ?? t.planta ?? '—';
+  };
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(applyFilters, 250);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [startDate, endDate, query, allTropas, usuario]);
+  }, [startDate, endDate, query, allTropas, rol, plantaDelUsuario, selectedPlanta]);
 
   const clearStartDate = () => startDate && setStartDate('');
   const clearEndDate = () => endDate && setEndDate('');
@@ -486,6 +521,7 @@ export default function TropasCargadas() {
                     <tr>
                       <th className="px-2 sm:px-3 py-2 text-left">N° Tropa</th>
                       <th className="px-2 sm:px-3 py-2 text-left">Fecha</th>
+                      <th className="px-2 sm:px-3 py-2 text-left">Planta</th>
                       <th className="px-2 sm:px-3 py-2 text-left">Productor</th>
                       <th className="px-2 sm:px-3 py-2 text-left">Titular</th>
                       <th className="px-2 sm:px-3 py-2 text-left">DTE/DTU</th>
@@ -507,6 +543,9 @@ export default function TropasCargadas() {
                           {tropa.fecha
                             ? new Date(tropa.fecha).toLocaleDateString('es-AR')
                             : '—'}
+                        </td>
+                        <td className="px-2 sm:px-3 py-2">
+                          {plantaLabel(tropa)}
                         </td>
                         <td className="px-2 sm:px-3 py-2 truncate max-w-xs break-words">
                           {tropa.productor_nombre || tropa.productor || '—'}
@@ -569,7 +608,21 @@ export default function TropasCargadas() {
 
                       <div className="flex items-start space-x-1">
                         <span className="text-gray-400 text-[11px] mt-0.5">
-                          🏠
+                          �
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-gray-800 text-[11px]">
+                            Planta
+                          </p>
+                          <p className="text-gray-600 text-[11px] truncate">
+                            {plantaLabel(tropa)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-1">
+                        <span className="text-gray-400 text-[11px] mt-0.5">
+                          �🏠
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-gray-800 text-[11px]">

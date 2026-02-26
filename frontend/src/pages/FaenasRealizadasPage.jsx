@@ -136,7 +136,7 @@ export default function FaenasRealizadasPage() {
     try {
       const userData = JSON.parse(localStorage.getItem('user'));
       if (userData) {
-        const userRol = userData.id_rol || userData.rol;
+        const userRol = userData.rol || userData.id_rol;
         setRol(parseInt(userRol));
         
         // Usar id_planta del usuario (viene del backend)
@@ -334,6 +334,18 @@ export default function FaenasRealizadasPage() {
     return elems;
   };
 
+  const plantaLabel = (f) => {
+    if (!f) return '—';
+    // Buscar en diferentes estructuras posibles
+    if (f.nombre_planta) return f.nombre_planta;
+    if (f.planta && typeof f.planta === 'object') {
+      return f.planta.nombre ?? (f.planta.id ? `Planta #${f.planta.id}` : '—');
+    }
+    if (f.planta_nombre) return f.planta_nombre;
+    if (f.planta) return f.planta;
+    return '—';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 sm:px-6 lg:px-6">
       <header className="mb-6">
@@ -459,19 +471,20 @@ export default function FaenasRealizadasPage() {
               className="overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
-              <table className="min-w-[900px] w-full text-sm text-center text-slate-700">
-                <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
+              <table className="w-full text-xs text-center text-slate-700">
+                <thead className="bg-green-700 text-white uppercase tracking-wider text-[11px]">
                   <tr>
-                    <th className="px-3 py-3">Fecha</th>
-                    <th className="px-3 py-3">DTE/DTU</th>
-                    <th className="px-3 py-3">Guía Policial</th>
-                    <th className="px-3 py-3">Nº Tropa</th>
-                    <th className="px-3 py-3">Productor</th>
-                    <th className="px-3 py-3">Departamento</th>
-                    <th className="px-3 py-3">Titular</th>
-                    <th className="px-3 py-3">Especie</th>
-                    <th className="px-3 py-3">Faenado</th>
-                    <th className="px-3 py-3">Acciones</th>
+                    <th className="px-2 py-2">Fecha</th>
+                    <th className="px-2 py-2">DTE/DTU</th>
+                    <th className="px-2 py-2">Planta</th>
+                    <th className="px-2 py-2">Guía</th>
+                    <th className="px-2 py-2">Nº Tropa</th>
+                    <th className="px-2 py-2">Productor</th>
+                    <th className="px-2 py-2">Depto.</th>
+                    <th className="px-2 py-2">Titular</th>
+                    <th className="px-2 py-2">Especie</th>
+                    <th className="px-2 py-2">Faenado</th>
+                    <th className="px-2 py-2">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -480,23 +493,24 @@ export default function FaenasRealizadasPage() {
                       key={f.id_faena}
                       className="border-b last:border-b-0 transition-colors bg-white hover:bg-green-50"
                     >
-                      <td className="px-3 py-3 font-medium">
+                      <td className="px-2 py-2 text-[12px]">
                         {formatDate(f.fecha_faena)}
                       </td>
-                      <td className="px-3 py-3">{f.dte_dtu || '—'}</td>
-                      <td className="px-3 py-3">{f.guia_policial || '—'}</td>
-                      <td className="px-3 py-3 font-semibold text-green-800">
+                      <td className="px-2 py-2 text-[12px]">{f.dte_dtu || '—'}</td>
+                      <td className="px-2 py-2 text-[12px]">{plantaLabel(f)}</td>
+                      <td className="px-2 py-2 text-[12px] truncate">{f.guia_policial || '—'}</td>
+                      <td className="px-2 py-2 text-[12px] font-semibold text-green-800">
                         {f.n_tropa}
                       </td>
-                      <td className="px-3 py-3 text-left">{f.productor}</td>
-                      <td className="px-3 py-3">{f.departamento}</td>
-                      <td className="px-3 py-3 text-left">{f.titular_faena}</td>
-                      <td className="px-3 py-3">{f.especie}</td>
-                      <td className="px-3 py-3 font-bold">{f.total_faenado}</td>
-                      <td className="px-3 py-3">
+                      <td className="px-2 py-2 text-[12px] max-w-[80px] truncate">{f.productor}</td>
+                      <td className="px-2 py-2 text-[12px] max-w-[60px] truncate">{f.departamento}</td>
+                      <td className="px-2 py-2 text-[12px] max-w-[80px] truncate">{f.titular_faena}</td>
+                      <td className="px-2 py-2 text-[12px]">{f.especie}</td>
+                      <td className="px-2 py-2 text-[12px] font-bold">{f.total_faenado}</td>
+                      <td className="px-2 py-2">
                         <button
                           onClick={() => handleDecomisar(f.id_faena)}
-                          className="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition"
+                          className="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition whitespace-nowrap"
                         >
                           Decomisar
                         </button>
@@ -526,6 +540,10 @@ export default function FaenasRealizadasPage() {
                   <div>
                     <span className="font-medium">DTE/DTU:</span>{' '}
                     {f.dte_dtu || '—'}
+                  </div>
+                  <div>
+                    <span className="font-medium">Planta:</span>{' '}
+                    {plantaLabel(f)}
                   </div>
                   <div>
                     <span className="font-medium">Guía:</span>{' '}

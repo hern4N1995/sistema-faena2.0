@@ -251,9 +251,13 @@ const allowedOrigins = envOrigins
   })
   .filter(Boolean);
 
-// Asegurar localhost por defecto (dev)
-if (!allowedOrigins.includes('http://localhost:5173')) {
-  allowedOrigins.unshift('http://localhost:5173');
+// Asegurar localhost por defecto (dev) - agregar múltiples puertos para dev
+const localDevPorts = [5173, 5174, 5175, 5176];
+for (const port of localDevPorts) {
+  const localUrl = `http://localhost:${port}`;
+  if (!allowedOrigins.includes(localUrl)) {
+    allowedOrigins.unshift(localUrl);
+  }
 }
 
 console.log('DEBUG_ALLOWED_ORIGINS (sanitized):', allowedOrigins);

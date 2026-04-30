@@ -16,9 +16,9 @@ if (connectionString) {
       rejectUnauthorized: false,
     },
   });
-} else if (pghost.includes('render.com')) {
-  // Desarrollo conectado a Render (remoto con SSL requerido)
-  console.log('[DB] Conectando a Render (remoto con SSL)');
+} else if (pghost.includes('render.com') || pghost.includes('neon.tech')) {
+  // Desarrollo conectado a Render o Neon (remoto con SSL requerido)
+  console.log('[DB] Conectando a proveedor remoto con SSL');
   const poolConfig = {
     host: pghost,
     port: (process.env.PGPORT && Number(process.env.PGPORT)) || 5432,

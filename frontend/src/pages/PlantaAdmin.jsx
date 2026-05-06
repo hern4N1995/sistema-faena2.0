@@ -117,6 +117,7 @@ export default function PlantaAdmin() {
     nombre: '',
     provincia: null,
     direccion: '',
+    cuit: '',
     fecha_habilitacion: '',
     norma_legal: '',
     estado: true,
@@ -130,11 +131,22 @@ export default function PlantaAdmin() {
   const [filtroNombre, setFiltroNombre] = useState('');
   const [filtroProvincia, setFiltroProvincia] = useState('');
   const [filtroFecha, setFiltroFecha] = useState('');
+  const [filtroCUIT, setFiltroCUIT] = useState('');
 
   // Mensajes de feedback
   const [mensajeFeedback, setMensajeFeedback] = useState('');
+  const [tipoFeedback, setTipoFeedback] = useState('info'); // 'info', 'success', 'error'
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
+  const [provinciasLoading, setProvinciasLoading] = useState(true);
+
+  // Helper: Mostrar feedback en modal
+  const mostrarFeedback = (mensaje, tipo = 'info') => {
+    setMensajeFeedback(mensaje);
+    setTipoFeedback(tipo);
+    setFeedbackModalOpen(true);
+  };
 
   useEffect(() => {
     const handleResize = () => setEsMovil(window.innerWidth < 768);
@@ -153,14 +165,17 @@ export default function PlantaAdmin() {
         const { data } = await api.get('/plantas'); // baseURL ya incluye /api si está configurado
         if (!mounted) return;
         const normalized = Array.isArray(data)
-          ? data.map((p) => ({ ...p, id: p.id ?? p.id_planta }))
+          ? data.map((p) => ({ 
+              ...p, 
+              id: p.id ?? p.id_planta,
+              cuit: p.cuit ?? '' 
+            }))
           : [];
         setPlantas(normalized);
       } catch (err) {
         if (!mounted) return;
         console.error('Error al cargar plantas:', err);
-        setMensajeFeedback('❌ Error al cargar plantas.');
-        setTimeout(() => setMensajeFeedback(''), 4000);
+        mostrarFeedback('❌ Error al cargar plantas.', 'error');
       }
     }
 
@@ -178,14 +193,24 @@ export default function PlantaAdmin() {
 
     async function cargarProvincias() {
       try {
+        setProvinciasLoading(true);
         const { data } = await api.get('/provincias');
         if (!mounted) return;
-        setProvincias(Array.isArray(data) ? data : []);
+        console.log('Provincias cargadas:', data);
+        const normalizadas = Array.isArray(data) 
+          ? data.map((p) => ({ 
+              ...p, 
+              id: p.id ?? p.id_provincia,
+              descripcion: p.descripcion ?? p.nombre
+            }))
+          : [];
+        setProvincias(normalizadas);
+        setProvinciasLoading(false);
       } catch (err) {
         if (!mounted) return;
         console.error('Error al cargar provincias:', err);
-        setMensajeFeedback('❌ Error al cargar provincias.');
-        setTimeout(() => setMensajeFeedback(''), 4000);
+        mostrarFeedback('❌ Error al cargar provincias. ' + err.message, 'error');
+        setProvinciasLoading(false);
       }
     }
 
@@ -213,9 +238,28 @@ export default function PlantaAdmin() {
     return `${dd}/${mm}/${yyyy}`;
   };
 
+  // Helper: Format CUIT (XX-XXXXXXXX-X)
+  const formatCUIT = (value) => {
+    const cleaned = value.replace(/\D/g, '').slice(0, 11);
+    if (cleaned.length === 0) return '';
+    if (cleaned.length <= 2) return cleaned;
+    if (cleaned.length <= 10) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+    return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 10)}-${cleaned.slice(10)}`;
+  };
+
+  // Helper: Get today's date in yyyy-MM-dd format
+  const getTodayDateString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    const val = type === 'checkbox' ? checked : value;
+    let val = type === 'checkbox' ? checked : value;
+    
     setNuevaPlanta((prev) => ({ ...prev, [name]: val }));
   };
 
@@ -227,18 +271,53 @@ export default function PlantaAdmin() {
      Agregar planta (usa api.post)
      --------------------------- */
   const agregarPlanta = async () => {
-    if (!nuevaPlanta.nombre?.trim()) return;
+    // Validaciones
+    if (!nuevaPlanta.nombre?.trim()) {
+      mostrarFeedback('❌ El nombre es obligatorio.', 'error');
+      return;
+    }
+
+    if (!nuevaPlanta.cuit?.trim()) {
+      mostrarFeedback('❌ El CUIT es obligatorio.', 'error');
+      return;
+    }
+
+    // Validar que CUIT tenga 11 dígitos (sin contar guiones)
+    const cuitDigitos = nuevaPlanta.cuit.replace(/\D/g, '');
+    if (cuitDigitos.length !== 11) {
+      mostrarFeedback('❌ El CUIT debe tener 11 dígitos.', 'error');
+      return;
+    }
+
+    if (!nuevaPlanta.fecha_habilitacion?.trim()) {
+      mostrarFeedback('❌ La fecha de habilitación es obligatoria.', 'error');
+      return;
+    }
+
+    // Validar que la fecha no sea futura
+    const fechaIngresada = new Date(nuevaPlanta.fecha_habilitacion);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    if (fechaIngresada > hoy) {
+      mostrarFeedback('❌ La fecha de habilitación no puede ser futura.', 'error');
+      return;
+    }
 
     try {
       const payload = {
-        ...nuevaPlanta,
+        nombre: nuevaPlanta.nombre,
         id_provincia: nuevaPlanta.provincia?.value ?? null,
+        direccion: nuevaPlanta.direccion,
+        cuit: nuevaPlanta.cuit.replace(/\D/g, ''),
+        fecha_habilitacion: nuevaPlanta.fecha_habilitacion,
+        norma_legal: nuevaPlanta.norma_legal,
+        estado: nuevaPlanta.estado,
       };
 
       const { data } = await api.post('/plantas', payload);
 
       // Ensure created item has normalized id field
-      const created = { ...data, id: data.id ?? data.id_planta };
+      const created = { ...data, id: data.id ?? data.id_planta, cuit: data.cuit ?? '' };
       // Actualización segura del estado (no mutar el array original)
       setPlantas((prev) => (Array.isArray(prev) ? [...prev, created] : [created]));
 
@@ -247,14 +326,14 @@ export default function PlantaAdmin() {
         nombre: '',
         provincia: null,
         direccion: '',
+        cuit: '',
         fecha_habilitacion: '',
         norma_legal: '',
         estado: true,
       });
 
       // Feedback de éxito
-      setMensajeFeedback('✅ Planta creada correctamente.');
-      setTimeout(() => setMensajeFeedback(''), 3000);
+      mostrarFeedback('✅ Planta creada correctamente.', 'success');
     } catch (err) {
       console.error('Error al agregar planta:', err);
       const msg =
@@ -262,8 +341,7 @@ export default function PlantaAdmin() {
         err.response?.data?.error ||
         err.message ||
         'Error de conexión con el servidor.';
-      setMensajeFeedback(`❌ Error al crear la planta. ${msg}`);
-      setTimeout(() => setMensajeFeedback(''), 4000);
+      mostrarFeedback(`❌ Error al crear la planta. ${msg}`, 'error');
     }
   };
 
@@ -316,12 +394,46 @@ export default function PlantaAdmin() {
   const guardarEdicion = async () => {
     const targetId = editado?.id ?? editandoId;
 
+    // Validaciones
+    if (!editado?.nombre?.trim()) {
+      mostrarFeedback('❌ El nombre es obligatorio.', 'error');
+      return;
+    }
+
+    if (!editado?.cuit?.trim()) {
+      mostrarFeedback('❌ El CUIT es obligatorio.', 'error');
+      return;
+    }
+
+    // Validar que CUIT tenga 11 dígitos
+    const cuitDigitos = editado.cuit.replace(/\D/g, '');
+    if (cuitDigitos.length !== 11) {
+      mostrarFeedback('❌ El CUIT debe tener 11 dígitos.', 'error');
+      return;
+    }
+
+    if (!editado?.fecha_habilitacion?.trim()) {
+      mostrarFeedback('❌ La fecha de habilitación es obligatoria.', 'error');
+      return;
+    }
+
+    // Validar que la fecha no sea futura
+    const fechaIngresada = new Date(editado.fecha_habilitacion);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    if (fechaIngresada > hoy) {
+      mostrarFeedback('❌ La fecha de habilitación no puede ser futura.', 'error');
+      return;
+    }
+
     const payload = {
-      ...editado,
-      estado: Boolean(editado.estado),
+      nombre: editado.nombre,
       id_provincia: editado?.provincia?.value ?? editado?.id_provincia ?? null,
-      // ensure date has no timezone/time part (yyyy-MM-dd)
+      direccion: editado.direccion,
+      cuit: editado.cuit?.replace(/\D/g, '') || null,
       fecha_habilitacion: editado?.fecha_habilitacion || null,
+      norma_legal: editado.norma_legal,
+      estado: Boolean(editado.estado),
     };
 
     try {
@@ -347,15 +459,13 @@ export default function PlantaAdmin() {
         setEditandoId(null);
         setEditado({});
         setEditModalOpen(false);
-        setMensajeFeedback('✅ Cambios guardados.');
-        setTimeout(() => setMensajeFeedback(''), 3000);
+        mostrarFeedback('✅ Cambios guardados.', 'success');
       } else {
         console.warn('Respuesta inesperada al guardar edición', {
           status,
           data,
         });
-        setMensajeFeedback('❌ No se pudo guardar la edición.');
-        setTimeout(() => setMensajeFeedback(''), 3000);
+        mostrarFeedback('❌ No se pudo guardar la edición.', 'error');
       }
     } catch (err) {
       console.error('Error al guardar edición:', err);
@@ -364,8 +474,7 @@ export default function PlantaAdmin() {
         err.response?.data?.error ||
         err.message ||
         'Error de conexión con el servidor.';
-      setMensajeFeedback(`❌ ${msg}`);
-      setTimeout(() => setMensajeFeedback(''), 4000);
+      mostrarFeedback(`❌ ${msg}`, 'error');
     }
   };
 
@@ -379,21 +488,37 @@ export default function PlantaAdmin() {
 
       if (status >= 200 && status < 300) {
         setPlantas((prev) => prev.map((p) => (String(p.id) === String(id) ? { ...p, estado: false } : p)));
-        setMensajeFeedback('✅ Planta deshabilitada.');
-        setTimeout(() => setMensajeFeedback(''), 3000);
+        mostrarFeedback('✅ Planta deshabilitada.', 'success');
       } else {
         const msg = data?.message || data?.error || 'Error al deshabilitar la planta.';
         console.warn('Delete responded with non-2xx:', status, msg);
-        setMensajeFeedback(`❌ ${msg}`);
-        setTimeout(() => setMensajeFeedback(''), 3000);
+        mostrarFeedback(`❌ ${msg}`, 'error');
       }
     } catch (err) {
       console.error('Error al deshabilitar planta:', err);
       const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Error de conexión con el servidor.';
-      setMensajeFeedback(`❌ ${msg}`);
-      setTimeout(() => setMensajeFeedback(''), 4000);
+      mostrarFeedback(`❌ ${msg}`, 'error');
     } finally {
       setConfirmDelete({ open: false, id: null });
+    }
+  };
+
+  const habilitarPlanta = async (id) => {
+    try {
+      const { status, data } = await api.put(`/plantas/${id}`, { estado: true });
+
+      if (status >= 200 && status < 300) {
+        setPlantas((prev) => prev.map((p) => (String(p.id) === String(id) ? { ...p, estado: true } : p)));
+        mostrarFeedback('✅ Planta habilitada.', 'success');
+      } else {
+        const msg = data?.message || data?.error || 'Error al habilitar la planta.';
+        console.warn('Put responded with non-2xx:', status, msg);
+        mostrarFeedback(`❌ ${msg}`, 'error');
+      }
+    } catch (err) {
+      console.error('Error al habilitar planta:', err);
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Error de conexión con el servidor.';
+      mostrarFeedback(`❌ ${msg}`, 'error');
     }
   };
 
@@ -407,6 +532,7 @@ export default function PlantaAdmin() {
       p.nombre_provincia ||
       '';
     const provinciaStr = provinciaNombre.toString().toLowerCase();
+    const cuit = (p.cuit || '').toString();
 
     const coincideNombre = nombre.includes(filtroNombre.toLowerCase());
     const coincideProvincia = provinciaStr.includes(
@@ -415,7 +541,10 @@ export default function PlantaAdmin() {
     const coincideFecha = filtroFecha
       ? (p.fecha_habilitacion || '').startsWith(filtroFecha)
       : true;
-    return coincideNombre && coincideProvincia && coincideFecha;
+    const coincideCUIT = filtroCUIT
+      ? cuit.includes(filtroCUIT)
+      : true;
+    return coincideNombre && coincideProvincia && coincideFecha && coincideCUIT;
   });
 
   /* ---------------------------
@@ -429,13 +558,11 @@ export default function PlantaAdmin() {
             🏭 Administración de Plantas
           </h1>
 
-          <AppNotification
-            show={Boolean(mensajeFeedback)}
-            message={mensajeFeedback}
-            type={mensajeFeedback.includes('✅') ? 'success' : 'error'}
-            onClose={() => setMensajeFeedback('')}
-            errorTitle="Atencion"
-          />
+          {provinciasLoading && (
+            <div className="mb-4 text-sm text-blue-600">
+              ⏳ Cargando provincias...
+            </div>
+          )}
 
           {/* Formulario */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -464,8 +591,8 @@ export default function PlantaAdmin() {
               }
               onChange={handleProvinciaChange}
               options={provincias.map((p) => ({
-                value: p.id,
-                label: p.descripcion ?? p.nombre ?? String(p.id),
+                value: p.id ?? p.id_provincia,
+                label: p.descripcion ?? p.nombre ?? `Provincia ${p.id}`,
               }))}
               placeholder="Seleccionar provincia"
             />
@@ -485,6 +612,20 @@ export default function PlantaAdmin() {
 
             <div className="flex flex-col">
               <label className="mb-2 font-semibold text-gray-700 text-sm">
+                CUIT
+              </label>
+              <input
+                name="cuit"
+                value={formatCUIT(nuevaPlanta.cuit)}
+                onChange={(e) => setNuevaPlanta((prev) => ({ ...prev, cuit: e.target.value.replace(/\D/g, '') }))}
+                placeholder="XX-XXXXXXXX-X"
+                maxLength="13"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-gray-700 text-sm">
                 Fecha Habilitación
               </label>
               <input
@@ -492,6 +633,7 @@ export default function PlantaAdmin() {
                 name="fecha_habilitacion"
                 value={nuevaPlanta.fecha_habilitacion}
                 onChange={handleChange}
+                max={getTodayDateString()}
                 className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
               />
             </div>
@@ -538,7 +680,10 @@ export default function PlantaAdmin() {
                       label="Provincia"
                       value={editado.provincia ?? null}
                       onChange={(sel) => setEditado((p) => ({ ...p, provincia: sel }))}
-                      options={provincias.map((p) => ({ value: p.id, label: p.descripcion }))}
+                      options={provincias.map((p) => ({ 
+                        value: p.id ?? p.id_provincia, 
+                        label: p.descripcion ?? p.nombre ?? `Provincia ${p.id}`
+                      }))}
                       placeholder="Seleccione..."
                     />
                   </div>
@@ -547,8 +692,12 @@ export default function PlantaAdmin() {
                     <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50" value={editado.direccion || ''} onChange={(e) => setEditado((p) => ({ ...p, direccion: e.target.value }))} />
                   </div>
                   <div>
+                    <label className="mb-2 font-semibold text-gray-700 text-sm">CUIT</label>
+                    <input className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50" value={formatCUIT(editado.cuit?.toString() || '')} onChange={(e) => setEditado((p) => ({ ...p, cuit: e.target.value.replace(/\D/g, '') }))} maxLength="13" placeholder="XX-XXXXXXXX-X" />
+                  </div>
+                  <div>
                     <label className="mb-2 font-semibold text-gray-700 text-sm">Fecha habilitación</label>
-                    <input type="date" className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50" value={editado.fecha_habilitacion || ''} onChange={(e) => setEditado((p) => ({ ...p, fecha_habilitacion: e.target.value }))} />
+                    <input type="date" className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50" value={editado.fecha_habilitacion || ''} onChange={(e) => setEditado((p) => ({ ...p, fecha_habilitacion: e.target.value }))} max={getTodayDateString()} />
                   </div>
                   <div className="sm:col-span-2">
                     <label className="mb-2 font-semibold text-gray-700 text-sm">Norma legal</label>
@@ -578,6 +727,46 @@ export default function PlantaAdmin() {
             </div>
           )}
 
+          {/* Feedback modal overlay */}
+          {feedbackModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setFeedbackModalOpen(false)} />
+              <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 z-10 border border-gray-200">
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl flex-shrink-0">
+                    {tipoFeedback === 'success' && '✅'}
+                    {tipoFeedback === 'error' && '❌'}
+                    {tipoFeedback === 'info' && 'ℹ️'}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className={`text-lg font-semibold mb-2 ${
+                      tipoFeedback === 'success' ? 'text-green-700' : 
+                      tipoFeedback === 'error' ? 'text-red-700' : 
+                      'text-blue-700'
+                    }`}>
+                      {tipoFeedback === 'success' && 'Éxito'}
+                      {tipoFeedback === 'error' && 'Error de validación'}
+                      {tipoFeedback === 'info' && 'Información'}
+                    </h3>
+                    <p className="text-sm text-gray-700">{mensajeFeedback}</p>
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end gap-2">
+                  <button 
+                    onClick={() => setFeedbackModalOpen(false)} 
+                    className={`px-4 py-2 rounded-lg font-semibold transition ${
+                      tipoFeedback === 'success' ? 'bg-green-600 text-white hover:bg-green-700' : 
+                      tipoFeedback === 'error' ? 'bg-red-600 text-white hover:bg-red-700' : 
+                      'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end">
             <button
               onClick={agregarPlanta}
@@ -588,7 +777,7 @@ export default function PlantaAdmin() {
           </div>
 
           {/* Filtros */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <input
               type="text"
               value={filtroNombre}
@@ -604,9 +793,17 @@ export default function PlantaAdmin() {
               className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
             />
             <input
+              type="text"
+              value={filtroCUIT}
+              onChange={(e) => setFiltroCUIT(e.target.value)}
+              placeholder="🔍 Filtrar por CUIT"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+            />
+            <input
               type="date"
               value={filtroFecha}
               onChange={(e) => setFiltroFecha(e.target.value)}
+              max={getTodayDateString()}
               className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
             />
           </div>
@@ -624,6 +821,7 @@ export default function PlantaAdmin() {
                       <p className="font-semibold text-gray-800">{p.nombre}</p>
                       <p>{p.provincia || '—'}</p>
                       <p>{p.direccion || '—'}</p>
+                      <p>CUIT: {formatCUIT(p.cuit?.toString() || '')}</p>
                       <p>Fecha: {formatDateForDisplay(p.fecha_habilitacion)}</p>
                       <p>Norma: {p.norma_legal || '—'}</p>
                       <p>
@@ -638,12 +836,21 @@ export default function PlantaAdmin() {
                       >
                         ✏️ Editar
                       </button>
-                      <button
-                        onClick={() => deshabilitarPlanta(p.id)}
-                        className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                      >
-                        🚫
-                      </button>
+                      {p.estado ? (
+                        <button
+                          onClick={() => deshabilitarPlanta(p.id)}
+                          className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                        >
+                          🚫
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => habilitarPlanta(p.id)}
+                          className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
+                        >
+                          ✅
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -663,6 +870,7 @@ export default function PlantaAdmin() {
                     <th className="px-4 py-3 text-left font-semibold">
                       Dirección
                     </th>
+                    <th className="px-4 py-3 text-left font-semibold">CUIT</th>
                     <th className="px-4 py-3 text-left font-semibold">Fecha</th>
                     <th className="px-4 py-3 text-left font-semibold">
                       Norma Legal
@@ -681,6 +889,7 @@ export default function PlantaAdmin() {
                       <td className="px-4 py-3">{p.nombre}</td>
                       <td className="px-4 py-3">{p.provincia || '—'}</td>
                       <td className="px-4 py-3">{p.direccion || '—'}</td>
+                      <td className="px-4 py-3">{formatCUIT(p.cuit?.toString() || '')}</td>
                         <td className="px-4 py-3">{formatDateForDisplay(p.fecha_habilitacion)}</td>
                       <td className="px-4 py-3">{p.norma_legal || '—'}</td>
                       <td className="px-4 py-3 text-center">{p.estado ? '✅' : '❌'}</td>
@@ -692,12 +901,21 @@ export default function PlantaAdmin() {
                           >
                             ✏️ Editar
                           </button>
-                          <button
-                            onClick={() => deshabilitarPlanta(p.id)}
-                            className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
-                          >
-                            🚫 Deshabilitar
-                          </button>
+                          {p.estado ? (
+                            <button
+                              onClick={() => deshabilitarPlanta(p.id)}
+                              className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                            >
+                              🚫 Deshabilitar
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => habilitarPlanta(p.id)}
+                              className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
+                            >
+                              ✅ Habilitar
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

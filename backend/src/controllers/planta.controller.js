@@ -1,6 +1,13 @@
 // controllers/planta.controller.js
 const pool = require('../db');
 
+// Helper: Limpiar CUIT (remover guiones)
+const limpiarCUIT = (cuit) => {
+  if (!cuit) return null;
+  const numeros = cuit.toString().replace(/\D/g, '');
+  return numeros.length === 11 ? numeros : null;
+};
+
 // Obtener todas las plantas
 const obtenerPlantas = async (req, res) => {
   try {
@@ -11,6 +18,7 @@ const obtenerPlantas = async (req, res) => {
         p.id_provincia,
         pr.descripcion AS nombre_provincia,
         p.direccion,
+        p.cuit,
         p.fecha_habilitacion,
         p.norma_legal,
         p.estado
@@ -31,6 +39,7 @@ const crearPlanta = async (req, res) => {
     nombre,
     id_provincia,
     direccion,
+    cuit,
     fecha_habilitacion,
     norma_legal,
     estado,
@@ -43,17 +52,19 @@ const crearPlanta = async (req, res) => {
   }
 
   try {
+    // Intentar insertar con CUIT primero
     const insert = await pool.query(
       `INSERT INTO planta (
-        nombre, id_provincia, direccion,
+        nombre, id_provincia, direccion, cuit,
         fecha_habilitacion, norma_legal, estado
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING 
         id_planta AS id,
         nombre,
         id_provincia,
         direccion,
+        cuit,
         fecha_habilitacion,
         norma_legal,
         estado`,
@@ -61,6 +72,7 @@ const crearPlanta = async (req, res) => {
         nombre.trim(),
         id_provincia,
         direccion?.trim() || '',
+        limpiarCUIT(cuit),
         fecha_habilitacion,
         norma_legal?.trim() || '',
         estado ?? true,
@@ -69,7 +81,41 @@ const crearPlanta = async (req, res) => {
     res.status(201).json(insert.rows[0]);
   } catch (error) {
     console.error('Error al crear planta:', error.message);
-    res.status(500).json({ error: 'Error al crear planta' });
+    // Si falla por columna CUIT no existe, intentar sin ella
+    if (error.message.includes('cuit') || error.message.includes('undefined column')) {
+      try {
+        const insertFallback = await pool.query(
+          `INSERT INTO planta (
+            nombre, id_provincia, direccion,
+            fecha_habilitacion, norma_legal, estado
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING 
+            id_planta AS id,
+            nombre,
+            id_provincia,
+            direccion,
+            fecha_habilitacion,
+            norma_legal,
+            estado`,
+          [
+            nombre.trim(),
+            id_provincia,
+            direccion?.trim() || '',
+            fecha_habilitacion,
+            norma_legal?.trim() || '',
+            estado ?? true,
+          ],
+        );
+        const row = insertFallback.rows[0];
+        return res.status(201).json({ ...row, cuit: '' });
+      } catch (fallbackError) {
+        console.error('Error fallback al crear planta:', fallbackError.message);
+        res.status(500).json({ error: 'Error al crear planta' });
+      }
+    } else {
+      res.status(500).json({ error: 'Error al crear planta' });
+    }
   }
 };
 
@@ -80,26 +126,30 @@ const modificarPlanta = async (req, res) => {
     nombre,
     id_provincia,
     direccion,
+    cuit,
     fecha_habilitacion,
     norma_legal,
     estado,
   } = req.body;
 
   try {
+    // Intentar actualizar con CUIT primero
     const update = await pool.query(
       `UPDATE planta
        SET nombre = $1,
            id_provincia = $2,
            direccion = $3,
-           fecha_habilitacion = $4,
-           norma_legal = $5,
-           estado = $6
-       WHERE id_planta = $7
+           cuit = $4,
+           fecha_habilitacion = $5,
+           norma_legal = $6,
+           estado = $7
+       WHERE id_planta = $8
        RETURNING 
          id_planta AS id,
          nombre,
          id_provincia,
          direccion,
+         cuit,
          fecha_habilitacion,
          norma_legal,
          estado`,
@@ -107,6 +157,7 @@ const modificarPlanta = async (req, res) => {
         nombre?.trim() || '',
         id_provincia || null,
         direccion?.trim() || '',
+        limpiarCUIT(cuit),
         fecha_habilitacion,
         norma_legal?.trim() || '',
         typeof estado === 'boolean' ? estado : true,
@@ -121,7 +172,50 @@ const modificarPlanta = async (req, res) => {
     res.json(update.rows[0]);
   } catch (error) {
     console.error('Error al modificar planta:', error.message);
-    res.status(500).json({ error: 'Error al modificar planta' });
+    // Si falla por columna CUIT no existe, intentar sin ella
+    if (error.message.includes('cuit') || error.message.includes('undefined column')) {
+      try {
+        const updateFallback = await pool.query(
+          `UPDATE planta
+           SET nombre = $1,
+               id_provincia = $2,
+               direccion = $3,
+               fecha_habilitacion = $4,
+               norma_legal = $5,
+               estado = $6
+           WHERE id_planta = $7
+           RETURNING 
+             id_planta AS id,
+             nombre,
+             id_provincia,
+             direccion,
+             fecha_habilitacion,
+             norma_legal,
+             estado`,
+          [
+            nombre?.trim() || '',
+            id_provincia || null,
+            direccion?.trim() || '',
+            fecha_habilitacion,
+            norma_legal?.trim() || '',
+            typeof estado === 'boolean' ? estado : true,
+            id,
+          ],
+        );
+
+        if (updateFallback.rowCount === 0) {
+          return res.status(404).json({ error: 'Planta no encontrada' });
+        }
+
+        const row = updateFallback.rows[0];
+        return res.json({ ...row, cuit: '' });
+      } catch (fallbackError) {
+        console.error('Error fallback al modificar planta:', fallbackError.message);
+        res.status(500).json({ error: 'Error al modificar planta' });
+      }
+    } else {
+      res.status(500).json({ error: 'Error al modificar planta' });
+    }
   }
 };
 

@@ -8,7 +8,6 @@ import Inicio from './pages/Inicio.jsx';
 import Tropa from './pages/Tropa.jsx';
 import DetalleTropa from './pages/DetalleTropa.jsx';
 import InformeTropa from './pages/InformeTropa.jsx';
-import Login from './pages/Login.jsx';
 import TropasCargadas from './pages/TropasCargadas.jsx';
 import FaenaPage from './pages/FaenaPage.jsx';
 import DetalleFaenaPage from './pages/DetalleFaenaPage.jsx';
@@ -205,9 +204,6 @@ function App() {
             }
           />
         </Route>
-
-        {/* Login fuera del layout */}
-        <Route path="/login" element={<Login />} />
       </Routes>
     </BrowserRouter>
   );

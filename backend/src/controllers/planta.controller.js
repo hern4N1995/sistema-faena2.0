@@ -133,6 +133,28 @@ const modificarPlanta = async (req, res) => {
   } = req.body;
 
   try {
+    // Obtener datos actuales si no se envían en la solicitud
+    const current = await pool.query(
+      `SELECT nombre, id_provincia, direccion, cuit, fecha_habilitacion, norma_legal, estado
+       FROM planta WHERE id_planta = $1`,
+      [id]
+    );
+
+    if (current.rowCount === 0) {
+      return res.status(404).json({ error: 'Planta no encontrada' });
+    }
+
+    const currentData = current.rows[0];
+
+    // Usar valores enviados o mantener los actuales
+    const nuevoNombre = nombre !== undefined ? nombre?.trim() || '' : currentData.nombre;
+    const nuevaProvin = id_provincia !== undefined ? id_provincia : currentData.id_provincia;
+    const nuevaDireccion = direccion !== undefined ? direccion?.trim() || '' : currentData.direccion;
+    const nuevoCUIT = cuit !== undefined ? limpiarCUIT(cuit) : currentData.cuit;
+    const nuevaFecha = fecha_habilitacion !== undefined ? fecha_habilitacion : currentData.fecha_habilitacion;
+    const nuevaNorma = norma_legal !== undefined ? norma_legal?.trim() || '' : currentData.norma_legal;
+    const nuevoEstado = estado !== undefined ? (typeof estado === 'boolean' ? estado : true) : currentData.estado;
+
     // Intentar actualizar con CUIT primero
     const update = await pool.query(
       `UPDATE planta
@@ -154,13 +176,13 @@ const modificarPlanta = async (req, res) => {
          norma_legal,
          estado`,
       [
-        nombre?.trim() || '',
-        id_provincia || null,
-        direccion?.trim() || '',
-        limpiarCUIT(cuit),
-        fecha_habilitacion,
-        norma_legal?.trim() || '',
-        typeof estado === 'boolean' ? estado : true,
+        nuevoNombre,
+        nuevaProvin,
+        nuevaDireccion,
+        nuevoCUIT,
+        nuevaFecha,
+        nuevaNorma,
+        nuevoEstado,
         id,
       ],
     );
@@ -169,12 +191,44 @@ const modificarPlanta = async (req, res) => {
       return res.status(404).json({ error: 'Planta no encontrada' });
     }
 
-    res.json(update.rows[0]);
+    // Obtener provincia_nombre
+    const planta = update.rows[0];
+    let plantaConProvincia = { ...planta };
+    
+    if (planta.id_provincia) {
+      const provRes = await pool.query(
+        `SELECT descripcion FROM provincia WHERE id_provincia = $1`,
+        [planta.id_provincia]
+      );
+      if (provRes.rows[0]) {
+        plantaConProvincia.nombre_provincia = provRes.rows[0].descripcion;
+      }
+    }
+
+    res.json(plantaConProvincia);
   } catch (error) {
     console.error('Error al modificar planta:', error.message);
     // Si falla por columna CUIT no existe, intentar sin ella
     if (error.message.includes('cuit') || error.message.includes('undefined column')) {
       try {
+        const current = await pool.query(
+          `SELECT nombre, id_provincia, direccion, fecha_habilitacion, norma_legal, estado
+           FROM planta WHERE id_planta = $1`,
+          [id]
+        );
+
+        if (current.rowCount === 0) {
+          return res.status(404).json({ error: 'Planta no encontrada' });
+        }
+
+        const currentData = current.rows[0];
+        const nuevoNombre = nombre !== undefined ? nombre?.trim() || '' : currentData.nombre;
+        const nuevaProvin = id_provincia !== undefined ? id_provincia : currentData.id_provincia;
+        const nuevaDireccion = direccion !== undefined ? direccion?.trim() || '' : currentData.direccion;
+        const nuevaFecha = fecha_habilitacion !== undefined ? fecha_habilitacion : currentData.fecha_habilitacion;
+        const nuevaNorma = norma_legal !== undefined ? norma_legal?.trim() || '' : currentData.norma_legal;
+        const nuevoEstado = estado !== undefined ? (typeof estado === 'boolean' ? estado : true) : currentData.estado;
+
         const updateFallback = await pool.query(
           `UPDATE planta
            SET nombre = $1,
@@ -193,12 +247,12 @@ const modificarPlanta = async (req, res) => {
              norma_legal,
              estado`,
           [
-            nombre?.trim() || '',
-            id_provincia || null,
-            direccion?.trim() || '',
-            fecha_habilitacion,
-            norma_legal?.trim() || '',
-            typeof estado === 'boolean' ? estado : true,
+            nuevoNombre,
+            nuevaProvin,
+            nuevaDireccion,
+            nuevaFecha,
+            nuevaNorma,
+            nuevoEstado,
             id,
           ],
         );
@@ -207,8 +261,21 @@ const modificarPlanta = async (req, res) => {
           return res.status(404).json({ error: 'Planta no encontrada' });
         }
 
-        const row = updateFallback.rows[0];
-        return res.json({ ...row, cuit: '' });
+        // Obtener provincia_nombre
+        const planta = updateFallback.rows[0];
+        let plantaConProvincia = { ...planta, cuit: null };
+        
+        if (planta.id_provincia) {
+          const provRes = await pool.query(
+            `SELECT descripcion FROM provincia WHERE id_provincia = $1`,
+            [planta.id_provincia]
+          );
+          if (provRes.rows[0]) {
+            plantaConProvincia.nombre_provincia = provRes.rows[0].descripcion;
+          }
+        }
+
+        return res.json(plantaConProvincia);
       } catch (fallbackError) {
         console.error('Error fallback al modificar planta:', fallbackError.message);
         res.status(500).json({ error: 'Error al modificar planta' });
@@ -227,7 +294,15 @@ const eliminarPlanta = async (req, res) => {
       `UPDATE planta
        SET estado = false
        WHERE id_planta = $1
-       RETURNING id_planta AS id`,
+       RETURNING 
+         id_planta AS id,
+         nombre,
+         id_provincia,
+         direccion,
+         cuit,
+         fecha_habilitacion,
+         norma_legal,
+         estado`,
       [id],
     );
 
@@ -235,10 +310,21 @@ const eliminarPlanta = async (req, res) => {
       return res.status(404).json({ error: 'Planta no encontrada' });
     }
 
-    res.status(200).json({
-      message: 'Planta deshabilitada correctamente',
-      id: update.rows[0].id,
-    });
+    // Obtener provincia_nombre
+    const planta = update.rows[0];
+    let plantaConProvincia = { ...planta };
+    
+    if (planta.id_provincia) {
+      const provRes = await pool.query(
+        `SELECT descripcion FROM provincia WHERE id_provincia = $1`,
+        [planta.id_provincia]
+      );
+      if (provRes.rows[0]) {
+        plantaConProvincia.nombre_provincia = provRes.rows[0].descripcion;
+      }
+    }
+
+    res.status(200).json(plantaConProvincia);
   } catch (error) {
     console.error('Error al deshabilitar planta:', error.message);
     res.status(500).json({ error: 'Error al deshabilitar planta' });

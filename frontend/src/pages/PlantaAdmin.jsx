@@ -487,7 +487,23 @@ export default function PlantaAdmin() {
       const { status, data } = await api.delete(`/plantas/${id}`);
 
       if (status >= 200 && status < 300) {
-        setPlantas((prev) => prev.map((p) => (String(p.id) === String(id) ? { ...p, estado: false } : p)));
+        setPlantas((prev) => {
+          if (!Array.isArray(prev)) return prev;
+          return prev.map((p) => {
+            const pId = p.id ?? p.id_planta ?? null;
+            if (String(pId) === String(id)) {
+              const merged = {
+                ...p,
+                ...data,
+                id: data.id ?? data.id_planta ?? p.id,
+                cuit: data.cuit ?? p.cuit,
+              };
+              if (!merged.id_planta && merged.id) merged.id_planta = merged.id;
+              return merged;
+            }
+            return p;
+          });
+        });
         mostrarFeedback('✅ Planta deshabilitada.', 'success');
       } else {
         const msg = data?.message || data?.error || 'Error al deshabilitar la planta.';
@@ -508,7 +524,23 @@ export default function PlantaAdmin() {
       const { status, data } = await api.put(`/plantas/${id}`, { estado: true });
 
       if (status >= 200 && status < 300) {
-        setPlantas((prev) => prev.map((p) => (String(p.id) === String(id) ? { ...p, estado: true } : p)));
+        setPlantas((prev) => {
+          if (!Array.isArray(prev)) return prev;
+          return prev.map((p) => {
+            const pId = p.id ?? p.id_planta ?? null;
+            if (String(pId) === String(id)) {
+              const merged = {
+                ...p,
+                ...data,
+                id: data.id ?? data.id_planta ?? p.id,
+                cuit: data.cuit ?? p.cuit,
+              };
+              if (!merged.id_planta && merged.id) merged.id_planta = merged.id;
+              return merged;
+            }
+            return p;
+          });
+        });
         mostrarFeedback('✅ Planta habilitada.', 'success');
       } else {
         const msg = data?.message || data?.error || 'Error al habilitar la planta.';
@@ -832,21 +864,21 @@ export default function PlantaAdmin() {
                     <div className="flex gap-2 ml-2">
                       <button
                         onClick={() => iniciarEdicion(p)}
-                        className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                        className="w-24 h-10 px-3 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition flex items-center justify-center"
                       >
                         ✏️ Editar
                       </button>
                       {p.estado ? (
                         <button
                           onClick={() => deshabilitarPlanta(p.id)}
-                          className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                          className="w-24 h-10 px-3 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition flex items-center justify-center"
                         >
                           🚫
                         </button>
                       ) : (
                         <button
                           onClick={() => habilitarPlanta(p.id)}
-                          className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
+                          className="w-24 h-10 px-3 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition flex items-center justify-center"
                         >
                           ✅
                         </button>
@@ -860,58 +892,58 @@ export default function PlantaAdmin() {
             <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200">
               <table className="min-w-full text-sm text-gray-700">
                 <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-semibold">
+                  <tr className="h-16 align-middle">
+                    <th className="px-4 py-3 text-left font-semibold align-middle">
                       Nombre
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold">
+                    <th className="px-4 py-3 text-left font-semibold align-middle">
                       Provincia
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold">
+                    <th className="px-4 py-3 text-left font-semibold align-middle">
                       Dirección
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold">CUIT</th>
-                    <th className="px-4 py-3 text-left font-semibold">Fecha</th>
-                    <th className="px-4 py-3 text-left font-semibold">
+                    <th className="px-4 py-3 text-left font-semibold align-middle">CUIT</th>
+                    <th className="px-4 py-3 text-left font-semibold align-middle">Fecha</th>
+                    <th className="px-4 py-3 text-left font-semibold align-middle">
                       Norma Legal
                     </th>
-                    <th className="px-4 py-3 text-center font-semibold">
+                    <th className="px-4 py-3 text-center font-semibold align-middle">
                       Estado
                     </th>
-                    <th className="px-4 py-3 text-center font-semibold">
+                    <th className="px-4 py-3 text-center font-semibold align-middle">
                       Acciones
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {plantasFiltradas.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50 transition">
-                      <td className="px-4 py-3">{p.nombre}</td>
-                      <td className="px-4 py-3">{p.provincia || '—'}</td>
-                      <td className="px-4 py-3">{p.direccion || '—'}</td>
-                      <td className="px-4 py-3">{formatCUIT(p.cuit?.toString() || '')}</td>
-                        <td className="px-4 py-3">{formatDateForDisplay(p.fecha_habilitacion)}</td>
-                      <td className="px-4 py-3">{p.norma_legal || '—'}</td>
-                      <td className="px-4 py-3 text-center">{p.estado ? '✅' : '❌'}</td>
-                      <td className="px-4 py-3 text-center">
+                    <tr key={p.id} className="hover:bg-gray-50 transition h-16 align-middle">
+                      <td className="px-4 py-3 align-middle">{p.nombre}</td>
+                      <td className="px-4 py-3 align-middle">{p.provincia || '—'}</td>
+                      <td className="px-4 py-3 align-middle">{p.direccion || '—'}</td>
+                      <td className="px-4 py-3 align-middle">{formatCUIT(p.cuit?.toString() || '')}</td>
+                      <td className="px-4 py-3 align-middle">{formatDateForDisplay(p.fecha_habilitacion)}</td>
+                      <td className="px-4 py-3 align-middle">{p.norma_legal || '—'}</td>
+                      <td className="px-4 py-3 text-center align-middle">{p.estado ? '✅' : '❌'}</td>
+                      <td className="px-4 py-3 text-center align-middle">
                         <div className="flex justify-center gap-2">
                           <button
                             onClick={() => iniciarEdicion(p)}
-                            className="px-3 py-2 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition"
+                            className="w-28 h-10 px-3 rounded-lg bg-yellow-600 text-white text-sm hover:bg-yellow-700 transition flex items-center justify-center"
                           >
                             ✏️ Editar
                           </button>
                           {p.estado ? (
                             <button
                               onClick={() => deshabilitarPlanta(p.id)}
-                              className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                              className="w-28 h-10 px-3 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition flex items-center justify-center"
                             >
                               🚫 Deshabilitar
                             </button>
                           ) : (
                             <button
                               onClick={() => habilitarPlanta(p.id)}
-                              className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition"
+                              className="w-28 h-10 px-3 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition flex items-center justify-center"
                             >
                               ✅ Habilitar
                             </button>

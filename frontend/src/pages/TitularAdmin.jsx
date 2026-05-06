@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Select from 'react-select';
 import api from 'src/services/api';
 import AppNotification from 'src/components/AppNotification';
@@ -118,6 +118,7 @@ export default function TitularAdmin() {
   const [editingPayload, setEditingPayload] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
   const [paginaActual, setPaginaActual] = useState(1);
+  const [busqueda, setBusqueda] = useState('');
   const itemsPorPagina = esMovil ? 4 : 6;
 
   useEffect(() => {
@@ -374,8 +375,24 @@ export default function TitularAdmin() {
     }
   };
 
-  const totalPaginas = Math.ceil(titulares.length / itemsPorPagina);
-  const visibles = titulares.slice(
+  const titularesFiltrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return titulares;
+    return titulares.filter((t) => {
+      const cuitRaw = String(t.cuit || t.documento || '').toLowerCase();
+      const cuitFmt = formatearCuit(t.cuit || t.documento || '').toLowerCase();
+      return (
+        (t.nombre || '').toLowerCase().includes(q) ||
+        (t.localidad || '').toLowerCase().includes(q) ||
+        (t.provincia || '').toLowerCase().includes(q) ||
+        cuitRaw.includes(q) ||
+        cuitFmt.includes(q)
+      );
+    });
+  }, [titulares, busqueda]);
+
+  const totalPaginas = Math.ceil(titularesFiltrados.length / itemsPorPagina);
+  const visibles = titularesFiltrados.slice(
     (paginaActual - 1) * itemsPorPagina,
     paginaActual * itemsPorPagina
   );
@@ -567,6 +584,41 @@ export default function TitularAdmin() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Buscador */}
+        <div className="relative">
+          <span className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+          </span>
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => { setBusqueda(e.target.value); setPaginaActual(1); }}
+            placeholder="Buscar por nombre, CUIT, localidad o provincia…"
+            className="w-full pl-12 pr-10 py-3 rounded-xl border-2 border-gray-200 bg-white text-sm shadow-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 placeholder-gray-400"
+          />
+          {busqueda && (
+            <button
+              onClick={() => { setBusqueda(''); setPaginaActual(1); }}
+              className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 transition"
+              aria-label="Limpiar búsqueda"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {busqueda && (
+          <p className="-mt-6 text-xs text-gray-500">
+            {titularesFiltrados.length === 0
+              ? 'Sin resultados para esa búsqueda.'
+              : `${titularesFiltrados.length} resultado${titularesFiltrados.length !== 1 ? 's' : ''} encontrado${titularesFiltrados.length !== 1 ? 's' : ''}.`}
+          </p>
         )}
 
         {/* Listado */}

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import api from 'src/services/api';
+import AppNotification from 'src/components/AppNotification';
 
 /* ------------------------------------------------------------------ */
 /*  SelectField con estilos visuales unificados                      */
@@ -428,12 +429,13 @@ export default function PlantaAdmin() {
             🏭 Administración de Plantas
           </h1>
 
-          {/* Feedback */}
-          {mensajeFeedback && (
-            <div className="mb-4 text-sm">
-              <strong>{mensajeFeedback}</strong>
-            </div>
-          )}
+          <AppNotification
+            show={Boolean(mensajeFeedback)}
+            message={mensajeFeedback}
+            type={mensajeFeedback.includes('✅') ? 'success' : 'error'}
+            onClose={() => setMensajeFeedback('')}
+            errorTitle="Atencion"
+          />
 
           {/* Formulario */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

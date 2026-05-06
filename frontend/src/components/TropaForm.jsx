@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api'; // tu instancia axios
+import AppNotification from './AppNotification';
 
 /* ---------- Visual constants ---------- */
 const INPUT_BASE_CLASS =
@@ -200,7 +201,7 @@ function InlineCreateModal({
         id_provincia: '',
         localidad: '',
         direccion: '',
-        documento: '',
+        cuit: '',
       };
     return {};
   });
@@ -301,6 +302,11 @@ function InlineCreateModal({
       if (onNotify) onNotify('error', 'Completá los campos obligatorios.');
       return;
     }
+    if (type === 'titular' && values.cuit && values.cuit.length !== 11) {
+      setError('El CUIT debe tener exactamente 11 dígitos.');
+      if (onNotify) onNotify('error', 'El CUIT debe tener 11 dígitos.');
+      return;
+    }
     setLoading(true);
     try {
       const endpoint =
@@ -323,7 +329,7 @@ function InlineCreateModal({
               id_provincia: Number(values.id_provincia),
               localidad: values.localidad.trim(),
               direccion: values.direccion || null,
-              documento: values.documento || null,
+              cuit: values.cuit || null,
             };
 
       const res = await api.post(endpoint, payload, {
@@ -548,18 +554,19 @@ function InlineCreateModal({
           />
 
           <label className="block text-sm font-medium text-gray-700">
-            Documento (opcional)
+            CUIT (opcional)
           </label>
           <input
-            name="documento"
-            value={values.documento}
+            name="cuit"
+            value={values.cuit}
             onChange={handleChange}
             onKeyDown={onlyDigitsKeyDown}
             onPaste={onlyDigitsPaste}
             inputMode="numeric"
-            pattern="\d*"
+            pattern="\d{11}"
+            maxLength={11}
             className={INPUT_BASE_CLASS + ' mb-2'}
-            placeholder="Solo números"
+            placeholder="11 dígitos"
           />
         </>
       )}
@@ -1108,17 +1115,13 @@ export default function TropaForm({ onCreated }) {
         onSubmit={handleSubmit}
         className="max-w-5xl mx-auto bg-white p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100 space-y-6"
       >
-        {toast && (
-          <div
-            className={`text-sm text-center font-medium py-2 rounded ${
-              toast.type === 'success'
-                ? 'text-white bg-green-600'
-                : 'text-white bg-red-600'
-            }`}
-          >
-            {toast.text}
-          </div>
-        )}
+        <AppNotification
+          show={Boolean(toast)}
+          message={toast?.text || ''}
+          type={toast?.type === 'success' ? 'success' : 'error'}
+          onClose={() => setToast(null)}
+          errorTitle="Atencion"
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <SelectField

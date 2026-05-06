@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 import api from 'src/services/api';
+import AppNotification from 'src/components/AppNotification';
 
 const InputField = ({
   label,
@@ -298,6 +299,14 @@ export default function ProvinciaAdmin() {
           🗺️ Administración de Provincias
         </h1>
 
+        <AppNotification
+          show={Boolean(mensajeFeedback)}
+          message={mensajeFeedback}
+          type={mensajeFeedback.includes('✅') ? 'success' : 'error'}
+          onClose={() => setMensajeFeedback('')}
+          errorTitle="Atencion"
+        />
+
         {/* Formulario */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -332,17 +341,6 @@ export default function ProvinciaAdmin() {
             </div>
           </div>
 
-          {mensajeFeedback && (
-            <span
-              className={`text-sm mt-2 block ${
-                mensajeFeedback.includes('✅')
-                  ? 'text-green-600'
-                  : 'text-red-600'
-              }`}
-            >
-              {mensajeFeedback}
-            </span>
-          )}
         </div>
 
         {/* Tabla de provincias */}

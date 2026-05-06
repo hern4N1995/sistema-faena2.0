@@ -1,6 +1,7 @@
 // components/AltaDepartamento.jsx
 import { useState } from 'react';
 import api from '../services/api.js'; // ajustar la ruta si hace falta
+import AppNotification from './AppNotification';
 
 export default function AltaDepartamento({
   provinciasDB = [],
@@ -53,6 +54,14 @@ export default function AltaDepartamento({
 
   return (
     <div className="space-y-4">
+      <AppNotification
+        show={Boolean(mensajeFeedback)}
+        message={mensajeFeedback}
+        type={mensajeFeedback.includes('✅') ? 'success' : 'error'}
+        onClose={() => setMensajeFeedback('')}
+        errorTitle="Atencion"
+      />
+
       <h2 className="text-lg font-semibold">Agregar nuevo departamento</h2>
 
       <div>
@@ -93,16 +102,6 @@ export default function AltaDepartamento({
       >
         Agregar
       </button>
-
-      {mensajeFeedback && (
-        <p
-          className={`text-sm ${
-            mensajeFeedback.includes('✅') ? 'text-green-600' : 'text-red-600'
-          }`}
-        >
-          {mensajeFeedback}
-        </p>
-      )}
     </div>
   );
 }

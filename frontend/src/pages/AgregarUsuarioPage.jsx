@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Select from 'react-select';
 import api from '../services/api.js';
+import AppNotification from 'src/components/AppNotification';
 
 /* ------------------------------------------------------------------ */
 /*  UI helpers: Modal + Toast                                         */
@@ -29,20 +30,15 @@ function Modal({ open, title, children, onClose, actions }) {
   );
 }
 
-function Toast({ show, type = 'success', text }) {
-  if (!show) return null;
-  const base =
-    type === 'success'
-      ? 'bg-green-700 text-white'
-      : type === 'warning'
-      ? 'bg-amber-600 text-white'
-      : 'bg-red-600 text-white';
+function Toast({ show, type = 'success', text, onClose }) {
   return (
-    <div
-      className={`fixed bottom-6 right-6 px-4 py-2 rounded shadow ${base} z-50`}
-    >
-      {text}
-    </div>
+    <AppNotification
+      show={show}
+      message={text}
+      type={type === 'success' ? 'success' : 'error'}
+      onClose={onClose}
+      errorTitle="Atencion"
+    />
   );
 }
 
@@ -1040,7 +1036,12 @@ const AgregarUsuarioPage = () => {
       </Modal>
 
       {/* Toast */}
-      <Toast show={toast.show} type={toast.type} text={toast.text} />
+      <Toast
+        show={toast.show}
+        type={toast.type}
+        text={toast.text}
+        onClose={() => setToast({ show: false, type: 'success', text: '' })}
+      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Select from 'react-select';
 import api from 'src/services/api';
+import AppNotification from 'src/components/AppNotification';
 
 function SelectField({ label, value, onChange, options, placeholder }) {
   const [isFocusing, setIsFocusing] = useState(false);
@@ -102,7 +103,7 @@ export default function TitularAdmin() {
     provincia: null,
     localidad: '',
     direccion: '',
-    documento: '',
+    cuit: '',
   });
   const formRef = useRef(null);
   const [editandoId, setEditandoId] = useState(null);
@@ -110,6 +111,8 @@ export default function TitularAdmin() {
   const [esMovil, setEsMovil] = useState(window.innerWidth < 768);
 
   const [mensajeFeedback, setMensajeFeedback] = useState('');
+  const [tipoFeedback, setTipoFeedback] = useState('success');
+  const feedbackTimeoutRef = useRef(null);
   // Modal state for edit and confirm
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingPayload, setEditingPayload] = useState(null);
@@ -122,6 +125,21 @@ export default function TitularAdmin() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const mostrarFeedback = (mensaje, tipo = 'success', duracion = 3200) => {
+    setTipoFeedback(tipo);
+    setMensajeFeedback(mensaje);
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    feedbackTimeoutRef.current = setTimeout(() => setMensajeFeedback(''), duracion);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -146,10 +164,11 @@ export default function TitularAdmin() {
         // Ignorar cancelaciones si las hubiera
         if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
         console.error('Error al cargar datos:', err);
-        setMensajeFeedback(
-          '❌ Error al cargar datos. Revisá la conexión o el servidor.'
+        mostrarFeedback(
+          'No pudimos cargar la información. Revisá internet e intentá de nuevo.',
+          'error',
+          4000
         );
-        setTimeout(() => setMensajeFeedback(''), 4000);
       }
     }
 
@@ -160,9 +179,22 @@ export default function TitularAdmin() {
     };
   }, []);
 
+  const normalizarCuit = (value) => value.replace(/\D/g, '').slice(0, 11);
+  const formatearCuit = (value) => {
+    const digits = normalizarCuit(String(value || ''));
+    if (!digits) return '';
+    const p1 = digits.slice(0, 2);
+    const p2 = digits.slice(2, 10);
+    const p3 = digits.slice(10, 11);
+    if (digits.length <= 2) return p1;
+    if (digits.length <= 10) return `${p1}-${p2}`;
+    return `${p1}-${p2}-${p3}`;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setNuevoTitular({ ...nuevoTitular, [name]: value });
+    const nextValue = name === 'cuit' ? normalizarCuit(value) : value;
+    setNuevoTitular({ ...nuevoTitular, [name]: nextValue });
   };
 
   const handleProvinciaChange = (selected) => {
@@ -181,7 +213,12 @@ export default function TitularAdmin() {
       !nuevoTitular.provincia ||
       !nuevoTitular.localidad
     ) {
-      alert('Por favor complete los campos obligatorios');
+      mostrarFeedback('Faltan datos: completá nombre, provincia y localidad.', 'error');
+      return;
+    }
+
+    if (nuevoTitular.cuit && nuevoTitular.cuit.length !== 11) {
+      mostrarFeedback('El CUIT debe tener 11 números.', 'error');
       return;
     }
 
@@ -195,7 +232,7 @@ export default function TitularAdmin() {
           ) || null,
         localidad: nuevoTitular.localidad,
         direccion: nuevoTitular.direccion || '',
-        documento: nuevoTitular.documento || '',
+        cuit: normalizarCuit(nuevoTitular.cuit || ''),
       };
 
       const res = await api.post('/titulares-faena', payload, {
@@ -225,19 +262,24 @@ export default function TitularAdmin() {
           provincia: null,
           localidad: '',
           direccion: '',
-          documento: '',
+          cuit: '',
         });
         setPaginaActual(1);
+        mostrarFeedback('Listo. El titular se agregó correctamente.');
       } else {
         // fallback: recargar lista si la API no devuelve el recurso creado
         const listRes = await api.get('/titulares-faena', { timeout: 10000 });
         setTitulares(Array.isArray(listRes.data) ? listRes.data : []);
         setPaginaActual(1);
+        mostrarFeedback('Listo. El titular se agregó correctamente.');
       }
     } catch (error) {
       console.error('Error al agregar titular:', error);
-      // mostrar feedback al usuario si querés:
-      // openErrorModal('No se pudo agregar titular', error?.response?.data?.message || error.message);
+      mostrarFeedback(
+        'No pudimos agregar el titular. Probá de nuevo en unos segundos.',
+        'error',
+        4200
+      );
     }
   };
 
@@ -249,7 +291,7 @@ export default function TitularAdmin() {
       provincia: null,
       localidad: '',
       direccion: '',
-      documento: '',
+      cuit: '',
     });
   };
 
@@ -264,7 +306,7 @@ export default function TitularAdmin() {
       provincia: provinciaOption ? { value: provinciaOption.id, label: provinciaOption.descripcion } : null,
       localidad: t.localidad || '',
       direccion: t.direccion || '',
-      documento: t.documento || '',
+      cuit: normalizarCuit(String(t.cuit || t.documento || '')),
     };
     setEditingPayload(payload);
     setEditModalOpen(true);
@@ -279,8 +321,13 @@ export default function TitularAdmin() {
         id_provincia: Number.parseInt(editingPayload.provincia?.value ?? editingPayload.provincia, 10) || null,
         localidad: editingPayload.localidad,
         direccion: editingPayload.direccion || '',
-        documento: editingPayload.documento || '',
+        cuit: normalizarCuit(editingPayload.cuit || ''),
       };
+
+      if (payload.cuit && payload.cuit.length !== 11) {
+        mostrarFeedback('El CUIT debe tener 11 números.', 'error');
+        return;
+      }
 
       const res = await api.put(`/titulares-faena/${editingPayload.id}`, payload, { timeout: 10000 });
       let updated = res?.data ?? { ...payload, id: editingPayload.id };
@@ -290,10 +337,14 @@ export default function TitularAdmin() {
       setTitulares((prev) => (Array.isArray(prev) ? prev.map((t) => (String(t.id) === String(editingPayload.id) ? { ...t, ...updated } : t)) : prev));
       setEditModalOpen(false);
       setEditingPayload(null);
-      setMensajeFeedback('✅ Cambios guardados.');
-      setTimeout(() => setMensajeFeedback(''), 3000);
+      mostrarFeedback('Listo. Los cambios se guardaron correctamente.');
     } catch (error) {
       console.error('Error al guardar edición:', error);
+      mostrarFeedback(
+        'No pudimos guardar los cambios. Probá de nuevo.',
+        'error',
+        4200
+      );
     }
   };
 
@@ -309,11 +360,15 @@ export default function TitularAdmin() {
       if (status >= 200 && status < 300) {
         setTitulares((prev) => (Array.isArray(prev) ? prev.filter((t) => String(t.id) !== String(id)) : []));
         setPaginaActual(1);
-        setMensajeFeedback('✅ Titular eliminado.');
-        setTimeout(() => setMensajeFeedback(''), 3000);
+        mostrarFeedback('Listo. El titular fue eliminado.');
       }
     } catch (error) {
       console.error('Error al eliminar titular:', error);
+      mostrarFeedback(
+        'No pudimos eliminar el titular. Probá de nuevo.',
+        'error',
+        4200
+      );
     } finally {
       setConfirmDelete({ open: false, id: null });
     }
@@ -335,6 +390,14 @@ export default function TitularAdmin() {
         <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow">
           🧾 Administración de Titulares de Faena
         </h1>
+
+        <AppNotification
+          show={Boolean(mensajeFeedback)}
+          message={mensajeFeedback}
+          type={tipoFeedback}
+          onClose={() => setMensajeFeedback('')}
+          errorTitle="Atencion"
+        />
 
         {/* Formulario */}
         <div
@@ -396,13 +459,16 @@ export default function TitularAdmin() {
 
             <div className="flex flex-col">
               <label className="mb-2 font-semibold text-gray-700 text-sm">
-                DNI / CUIT
+                CUIT
               </label>
               <input
-                name="documento"
-                value={nuevoTitular.documento}
+                name="cuit"
+                value={formatearCuit(nuevoTitular.cuit)}
                 onChange={handleChange}
-                placeholder="Ej. 12345678 o 20-12345678-3"
+                maxLength={13}
+                inputMode="numeric"
+                pattern="\d{2}-\d{8}-\d{1}"
+                placeholder="Ej. 20-12345678-9"
                 className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
             </div>
@@ -466,11 +532,17 @@ export default function TitularAdmin() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">DNI/CUIT</label>
+                  <label className="block text-sm font-medium text-gray-700">CUIT</label>
                   <input
                     className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
-                    value={editingPayload.documento}
-                    onChange={(e) => setEditingPayload((p) => ({ ...p, documento: e.target.value }))}
+                    value={formatearCuit(editingPayload.cuit)}
+                    onChange={(e) =>
+                      setEditingPayload((p) => ({ ...p, cuit: normalizarCuit(e.target.value) }))
+                    }
+                    maxLength={13}
+                    inputMode="numeric"
+                    pattern="\d{2}-\d{8}-\d{1}"
+                    placeholder="Ej. 20-12345678-9"
                   />
                 </div>
               </div>
@@ -512,7 +584,7 @@ export default function TitularAdmin() {
                       {t.provincia} — {t.localidad}
                     </p>
                     <p>{t.direccion}</p>
-                    <p>DNI/CUIT: {t.documento}</p>
+                    <p>CUIT: {t.cuit || t.documento ? formatearCuit(t.cuit || t.documento) : '—'}</p>
                   </div>
                   <div className="flex gap-2 ml-2">
                     <button
@@ -548,7 +620,7 @@ export default function TitularAdmin() {
                     Dirección
                   </th>
                   <th className="px-4 py-3 text-left font-semibold">
-                    DNI/CUIT
+                    CUIT
                   </th>
                   <th className="px-4 py-3 text-center font-semibold">
                     Acciones
@@ -562,7 +634,7 @@ export default function TitularAdmin() {
                     <td className="px-4 py-3">{t.provincia}</td>
                     <td className="px-4 py-3">{t.localidad}</td>
                     <td className="px-4 py-3">{t.direccion}</td>
-                    <td className="px-4 py-3">{t.documento}</td>
+                    <td className="px-4 py-3">{t.cuit || t.documento ? formatearCuit(t.cuit || t.documento) : '—'}</td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex justify-center gap-2">
                         <button

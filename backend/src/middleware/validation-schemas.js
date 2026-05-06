@@ -171,11 +171,11 @@ module.exports = {
   // Titulares de Faena
   titularFaenaCreate: {
     nombre: { type: 'string', required: true, minLength: 2, maxLength: 100 },
-    documento: { type: 'string', required: true, pattern: /^\d{8,}$/ },
+    cuit: { type: 'string', pattern: /^\d{11}$/ },
   },
 
   titularFaenaUpdate: {
     nombre: { type: 'string', minLength: 2, maxLength: 100 },
-    documento: { type: 'string', pattern: /^\d{8,}$/ },
+    cuit: { type: 'string', pattern: /^\d{11}$/ },
   },
 };

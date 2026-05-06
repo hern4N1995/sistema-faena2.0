@@ -1,5 +1,10 @@
 const pool = require('../db');
 
+const normalizarCuit = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  return String(value).replace(/\D/g, '');
+};
+
 // Obtener todos los titulares
 const obtenerTitulares = async (req, res) => {
   try {
@@ -8,7 +13,7 @@ const obtenerTitulares = async (req, res) => {
               tf.nombre,
               tf.localidad,
               tf.direccion,
-              tf.documento,
+              tf.cuit,
               p.descripcion AS provincia,
               p.id_provincia 
        FROM titular_faena tf
@@ -24,25 +29,30 @@ const obtenerTitulares = async (req, res) => {
 
 // Crear titular
 const crearTitular = async (req, res) => {
-  const { nombre, id_provincia, localidad, direccion, documento } = req.body;
+  const { nombre, id_provincia, localidad, direccion, cuit, documento } = req.body;
   if (!nombre || !id_provincia || !localidad) {
     return res
       .status(400)
       .json({ error: 'Nombre, provincia y localidad son obligatorios' });
   }
 
+  const cuitNormalizado = normalizarCuit(cuit ?? documento);
+  if (cuitNormalizado && !/^\d{11}$/.test(cuitNormalizado)) {
+    return res.status(400).json({ error: 'El CUIT debe tener exactamente 11 dígitos' });
+  }
+
   try {
     // Insertar titular
     const insert = await pool.query(
-      `INSERT INTO titular_faena (nombre, id_provincia, localidad, direccion, documento)
+      `INSERT INTO titular_faena (nombre, id_provincia, localidad, direccion, cuit)
        VALUES ($1, $2, $3, $4, $5)
-       RETURNING id_titular_faena AS id, nombre, localidad, direccion, documento, id_provincia`,
+       RETURNING id_titular_faena AS id, nombre, localidad, direccion, cuit, id_provincia`,
       [
         nombre.trim(),
         id_provincia,
         localidad.trim(),
         direccion || null,
-        documento || null,
+        cuitNormalizado,
       ],
     );
 
@@ -68,20 +78,25 @@ const crearTitular = async (req, res) => {
 // Modificar titular
 const modificarTitular = async (req, res) => {
   const { id } = req.params;
-  const { nombre, id_provincia, localidad, direccion, documento } = req.body;
+  const { nombre, id_provincia, localidad, direccion, cuit, documento } = req.body;
+
+  const cuitNormalizado = normalizarCuit(cuit ?? documento);
+  if (cuitNormalizado && !/^\d{11}$/.test(cuitNormalizado)) {
+    return res.status(400).json({ error: 'El CUIT debe tener exactamente 11 dígitos' });
+  }
 
   try {
     const update = await pool.query(
       `UPDATE titular_faena
-       SET nombre = $1, id_provincia = $2, localidad = $3, direccion = $4, documento = $5
+       SET nombre = $1, id_provincia = $2, localidad = $3, direccion = $4, cuit = $5
        WHERE id_titular_faena = $6
-       RETURNING id_titular_faena AS id, nombre, localidad, direccion, documento, id_provincia`,
+       RETURNING id_titular_faena AS id, nombre, localidad, direccion, cuit, id_provincia`,
       [
         nombre.trim(),
         id_provincia,
         localidad.trim(),
         direccion || null,
-        documento || null,
+        cuitNormalizado,
         id,
       ],
     );

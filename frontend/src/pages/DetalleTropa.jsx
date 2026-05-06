@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
+import AppNotification from '../components/AppNotification';
 
 const INPUT_BASE_CLASS =
   'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
@@ -2303,17 +2304,13 @@ export default function DetalleTropa() {
         </div>
       )}
 
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 px-4 py-2 rounded shadow ${
-            toast.type === 'success'
-              ? 'bg-green-700 text-white'
-              : 'bg-red-600 text-white'
-          }`}
-        >
-          {toast.text}
-        </div>
-      )}
+      <AppNotification
+        show={Boolean(toast)}
+        message={toast?.text || ''}
+        type={toast?.type === 'success' ? 'success' : 'error'}
+        onClose={() => setToast(null)}
+        errorTitle="Atencion"
+      />
     </div>
   );
 }

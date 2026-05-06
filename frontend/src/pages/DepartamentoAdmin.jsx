@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Select from 'react-select';
 import api from 'src/services/api';
+import AppNotification from 'src/components/AppNotification';
 
 /* ---------- SelectField (estilos consistentes) ---------- */
 function SelectField({
@@ -585,6 +586,14 @@ export default function DepartamentoAdmin() {
           🗂️ Administración de Departamentos
         </h1>
 
+        <AppNotification
+          show={Boolean(mensajeFeedback)}
+          message={mensajeFeedback}
+          type={mensajeFeedback.includes('✅') ? 'success' : 'error'}
+          onClose={() => setMensajeFeedback('')}
+          errorTitle="Atencion"
+        />
+
         {/* Formulario agregar */}
         <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -641,17 +650,6 @@ export default function DepartamentoAdmin() {
             </div>
           </div>
 
-          {mensajeFeedback && (
-            <p
-              className={`text-sm font-medium text-center ${
-                mensajeFeedback.includes('✅')
-                  ? 'text-green-700'
-                  : 'text-red-700'
-              }`}
-            >
-              {mensajeFeedback}
-            </p>
-          )}
         </div>
 
         {/* Listado */}

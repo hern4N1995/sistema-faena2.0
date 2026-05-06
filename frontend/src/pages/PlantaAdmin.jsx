@@ -128,10 +128,9 @@ export default function PlantaAdmin() {
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
 
-  const [filtroNombre, setFiltroNombre] = useState('');
-  const [filtroProvincia, setFiltroProvincia] = useState('');
-  const [filtroFecha, setFiltroFecha] = useState('');
-  const [filtroCUIT, setFiltroCUIT] = useState('');
+  const [filtroGeneral, setFiltroGeneral] = useState('');
+  const [filtroFechaDesde, setFiltroFechaDesde] = useState('');
+  const [filtroFechaHasta, setFiltroFechaHasta] = useState('');
 
   // Mensajes de feedback
   const [mensajeFeedback, setMensajeFeedback] = useState('');
@@ -558,6 +557,7 @@ export default function PlantaAdmin() {
      Filtrado seguro de plantas
      --------------------------- */
   const plantasFiltradas = plantas.filter((p) => {
+    const filtroGenLower = filtroGeneral.toLowerCase();
     const nombre = (p.nombre || '').toString().toLowerCase();
     const provinciaNombre =
       (p.provincia && (p.provincia.nombre || p.provincia.label)) ||
@@ -566,17 +566,25 @@ export default function PlantaAdmin() {
     const provinciaStr = provinciaNombre.toString().toLowerCase();
     const cuit = (p.cuit || '').toString();
 
-    const coincideNombre = nombre.includes(filtroNombre.toLowerCase());
-    const coincideProvincia = provinciaStr.includes(
-      filtroProvincia.toLowerCase()
-    );
-    const coincideFecha = filtroFecha
-      ? (p.fecha_habilitacion || '').startsWith(filtroFecha)
-      : true;
-    const coincideCUIT = filtroCUIT
-      ? cuit.includes(filtroCUIT)
-      : true;
-    return coincideNombre && coincideProvincia && coincideFecha && coincideCUIT;
+    // Filtro general busca en nombre, provincia y CUIT
+    const coincideGeneral = 
+      nombre.includes(filtroGenLower) ||
+      provinciaStr.includes(filtroGenLower) ||
+      cuit.includes(filtroGenLower);
+
+    // Filtro de fecha por rango
+    const fecha = (p.fecha_habilitacion || '').split('T')[0]; // Solo la fecha sin hora
+    const coincideFecha = (() => {
+      if (!filtroFechaDesde && !filtroFechaHasta) return true;
+      if (filtroFechaDesde && filtroFechaHasta) {
+        return fecha >= filtroFechaDesde && fecha <= filtroFechaHasta;
+      }
+      if (filtroFechaDesde) return fecha >= filtroFechaDesde;
+      if (filtroFechaHasta) return fecha <= filtroFechaHasta;
+      return true;
+    })();
+
+    return coincideGeneral && coincideFecha;
   });
 
   /* ---------------------------
@@ -809,35 +817,39 @@ export default function PlantaAdmin() {
           </div>
 
           {/* Filtros */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <input
-              type="text"
-              value={filtroNombre}
-              onChange={(e) => setFiltroNombre(e.target.value)}
-              placeholder="🔍 Filtrar por nombre"
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-            />
-            <input
-              type="text"
-              value={filtroProvincia}
-              onChange={(e) => setFiltroProvincia(e.target.value)}
-              placeholder="🔍 Filtrar por provincia"
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-            />
-            <input
-              type="text"
-              value={filtroCUIT}
-              onChange={(e) => setFiltroCUIT(e.target.value)}
-              placeholder="🔍 Filtrar por CUIT"
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-            />
-            <input
-              type="date"
-              value={filtroFecha}
-              onChange={(e) => setFiltroFecha(e.target.value)}
-              max={getTodayDateString()}
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-gray-600 ml-1 invisible">Filtrar</label>
+              <input
+                type="text"
+                value={filtroGeneral}
+                onChange={(e) => setFiltroGeneral(e.target.value)}
+                placeholder="🔍 Filtrar por nombre, provincia o CUIT"
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+              />
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-gray-600 ml-1">Desde</label>
+                <input
+                  type="date"
+                  value={filtroFechaDesde}
+                  onChange={(e) => setFiltroFechaDesde(e.target.value)}
+                  max={getTodayDateString()}
+                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-gray-600 ml-1">Hasta</label>
+                <input
+                  type="date"
+                  value={filtroFechaHasta}
+                  onChange={(e) => setFiltroFechaHasta(e.target.value)}
+                  max={getTodayDateString()}
+                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Lista de plantas */}
@@ -851,7 +863,7 @@ export default function PlantaAdmin() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1 space-y-1 text-sm text-gray-700">
                       <p className="font-semibold text-gray-800">{p.nombre}</p>
-                      <p>{p.provincia || '—'}</p>
+                      <p>{p.nombre_provincia || '—'}</p>
                       <p>{p.direccion || '—'}</p>
                       <p>CUIT: {formatCUIT(p.cuit?.toString() || '')}</p>
                       <p>Fecha: {formatDateForDisplay(p.fecha_habilitacion)}</p>
@@ -919,7 +931,7 @@ export default function PlantaAdmin() {
                   {plantasFiltradas.map((p) => (
                     <tr key={p.id} className="hover:bg-gray-50 transition h-16 align-middle">
                       <td className="px-4 py-3 align-middle">{p.nombre}</td>
-                      <td className="px-4 py-3 align-middle">{p.provincia || '—'}</td>
+                      <td className="px-4 py-3 align-middle">{p.nombre_provincia || '—'}</td>
                       <td className="px-4 py-3 align-middle">{p.direccion || '—'}</td>
                       <td className="px-4 py-3 align-middle">{formatCUIT(p.cuit?.toString() || '')}</td>
                       <td className="px-4 py-3 align-middle">{formatDateForDisplay(p.fecha_habilitacion)}</td>

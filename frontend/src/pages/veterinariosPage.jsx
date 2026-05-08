@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Select from 'react-select';
 import api from 'src/services/api';
+import AppNotification from 'src/components/AppNotification';
 
 function SelectField({
   label,
@@ -104,6 +105,13 @@ function SelectField({
 
 const estados = ['Activo', 'Inactivo'];
 
+const normalizarEstado = (estado) => {
+  if (typeof estado === 'boolean') return estado ? 'Activo' : 'Inactivo';
+  const valor = String(estado || '').toLowerCase().trim();
+  if (valor === 'activo' || valor === 'true' || valor === '1') return 'Activo';
+  return 'Inactivo';
+};
+
 export default function VeterinariosPage() {
   const [form, setForm] = useState({
     nombre: '',
@@ -120,8 +128,10 @@ export default function VeterinariosPage() {
   const [veterinarios, setVeterinarios] = useState([]);
   const [plantas, setPlantas] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
-  const [mensaje, setMensaje] = useState('');
-  const [error, setError] = useState('');
+  const [mensajeFeedback, setMensajeFeedback] = useState('');
+  const [tipoFeedback, setTipoFeedback] = useState('success');
+  const feedbackTimeoutRef = useRef(null);
+  const [confirmAction, setConfirmAction] = useState({ open: false, vet: null, nuevoEstado: null });
   const [filtro, setFiltro] = useState('');
   const [esMovil, setEsMovil] = useState(
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
@@ -134,6 +144,19 @@ export default function VeterinariosPage() {
   }, []);
 
   useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    };
+  }, []);
+
+  const mostrarFeedback = (mensaje, tipo = 'success', duracion = 3200) => {
+    setTipoFeedback(tipo);
+    setMensajeFeedback(mensaje);
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    feedbackTimeoutRef.current = setTimeout(() => setMensajeFeedback(''), duracion);
+  };
+
+  useEffect(() => {
     fetchVeterinarios();
     fetchPlantas();
   }, []);
@@ -141,10 +164,13 @@ export default function VeterinariosPage() {
   const fetchVeterinarios = async () => {
     try {
       const { data } = await api.get('/veterinarios');
-      setVeterinarios(Array.isArray(data) ? data : []);
+      const lista = Array.isArray(data)
+        ? data.map((v) => ({ ...v, estado: normalizarEstado(v.estado) }))
+        : [];
+      setVeterinarios(lista);
     } catch (err) {
       console.error('Error al cargar veterinarios:', err);
-      setError('No se pudieron cargar los veterinarios');
+      mostrarFeedback('No se pudieron cargar los veterinarios', 'error');
       setVeterinarios([]);
     }
   };
@@ -155,7 +181,7 @@ export default function VeterinariosPage() {
       setPlantas(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error al cargar plantas:', err);
-      setError('No se pudieron cargar las plantas');
+      mostrarFeedback('No se pudieron cargar las plantas', 'error');
       setPlantas([]);
     }
   };
@@ -181,38 +207,34 @@ export default function VeterinariosPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMensaje('');
-    setError('');
 
     if (
       !form.nombre.trim() ||
       !form.apellido.trim() ||
       !form.matricula.trim()
     ) {
-      setError('Nombre, apellido y matrícula son obligatorios');
+      mostrarFeedback('Nombre, apellido y matrícula son obligatorios', 'error');
       return;
     }
 
     try {
       if (editandoId) {
         await api.put(`/veterinarios/${editandoId}`, form);
-        setMensaje('✅ Veterinario actualizado correctamente');
+        mostrarFeedback('Veterinario actualizado correctamente');
       } else {
         await api.post('/veterinarios', form);
-        setMensaje('✅ Veterinario creado correctamente');
+        mostrarFeedback('Veterinario creado correctamente');
       }
       resetForm();
       setEditandoId(null);
       await fetchVeterinarios();
-      setTimeout(() => setMensaje(''), 3000);
     } catch (err) {
       console.error('Error al guardar:', err);
       const msg =
         err.response?.data?.message ||
         err.message ||
         'Error al guardar el veterinario';
-      setError(`❌ ${msg}`);
-      setTimeout(() => setError(''), 4000);
+      mostrarFeedback(msg, 'error');
     }
   };
 
@@ -224,32 +246,45 @@ export default function VeterinariosPage() {
       dni: v.dni || '',
       email: v.email || '',
       n_telefono: v.n_telefono || '',
-      estado: v.estado || 'Activo',
+      estado: normalizarEstado(v.estado),
       id_planta: v.id_planta || '',
       planta_nombre: v.planta_nombre || '',
     });
     setEditandoId(v.id_veterinario || v.id);
   };
 
-  const eliminarVeterinario = async (id) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este veterinario?'))
-      return;
+  const cambiarEstadoVeterinario = async (v, nuevoEstado) => {
+    const id = v.id_veterinario || v.id;
 
     try {
-      await api.delete(`/veterinarios/${id}`);
-      setMensaje('✅ Veterinario eliminado correctamente');
+      await api.patch(`/veterinarios/${id}/estado`, { estado: nuevoEstado });
+      mostrarFeedback(
+        nuevoEstado === 'Activo'
+          ? 'Veterinario habilitado correctamente'
+          : 'Veterinario deshabilitado correctamente'
+      );
+      if (editandoId === id) {
+        resetForm();
+        setEditandoId(null);
+      }
       await fetchVeterinarios();
-      setTimeout(() => setMensaje(''), 3000);
     } catch (err) {
-      console.error('Error al eliminar:', err);
+      console.error('Error al cambiar estado:', err);
       const msg =
         err.response?.data?.message ||
         err.message ||
-        'Error al eliminar el veterinario';
-      setError(`❌ ${msg}`);
-      setTimeout(() => setError(''), 4000);
+        'Error al cambiar el estado del veterinario';
+      mostrarFeedback(msg, 'error');
+    } finally {
+      setConfirmAction({ open: false, vet: null, nuevoEstado: null });
     }
   };
+
+  const solicitarCambioEstado = (v, nuevoEstado) => {
+    setConfirmAction({ open: true, vet: v, nuevoEstado });
+  };
+
+  const eliminarVeterinario = (v) => solicitarCambioEstado(v, 'Inactivo');
 
   const veterinariosFiltrados = veterinarios.filter((v) => {
     const texto = filtro.toLowerCase();
@@ -273,15 +308,49 @@ export default function VeterinariosPage() {
             👩‍⚕️ {editandoId ? 'Modificar Veterinario' : 'Agregar Veterinario'}
           </h1>
 
-          {/* Feedback */}
-          {mensaje && (
-            <div className="mb-4 text-sm text-green-600">
-              <strong>{mensaje}</strong>
-            </div>
-          )}
-          {error && (
-            <div className="mb-4 text-sm text-red-600">
-              <strong>{error}</strong>
+          <AppNotification
+            show={Boolean(mensajeFeedback)}
+            message={mensajeFeedback}
+            type={tipoFeedback}
+            onClose={() => setMensajeFeedback('')}
+            errorTitle="Atención"
+          />
+
+          {/* Modal de confirmación de cambio de estado */}
+          {confirmAction.open && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-black/40"
+                onClick={() => setConfirmAction({ open: false, vet: null, nuevoEstado: null })}
+              />
+              <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                  {confirmAction.nuevoEstado === 'Inactivo' ? 'Deshabilitar veterinario' : 'Habilitar veterinario'}
+                </h3>
+                <p className="text-sm text-gray-700 mb-6">
+                  {'¿Estás seguro que querés '}
+                  {confirmAction.nuevoEstado === 'Inactivo' ? 'deshabilitar' : 'habilitar'} a{' '}
+                  <strong>{confirmAction.vet?.nombre} {confirmAction.vet?.apellido}</strong>?
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setConfirmAction({ open: false, vet: null, nuevoEstado: null })}
+                    className="px-4 py-2 border rounded text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => cambiarEstadoVeterinario(confirmAction.vet, confirmAction.nuevoEstado)}
+                    className={`px-4 py-2 text-white text-sm rounded ${
+                      confirmAction.nuevoEstado === 'Inactivo'
+                        ? 'bg-red-600 hover:bg-red-700'
+                        : 'bg-emerald-600 hover:bg-emerald-700'
+                    }`}
+                  >
+                    {confirmAction.nuevoEstado === 'Inactivo' ? 'Deshabilitar' : 'Habilitar'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -465,11 +534,17 @@ export default function VeterinariosPage() {
                         </button>
                         <button
                           onClick={() =>
-                            eliminarVeterinario(v.id_veterinario || v.id)
+                            v.estado === 'Activo'
+                              ? eliminarVeterinario(v)
+                              : solicitarCambioEstado(v, 'Activo')
                           }
-                          className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                          className={`px-3 py-2 rounded-lg text-white text-sm transition ${
+                            v.estado === 'Activo'
+                              ? 'bg-red-600 hover:bg-red-700'
+                              : 'bg-emerald-600 hover:bg-emerald-700'
+                          }`}
                         >
-                          🗑️
+                          {v.estado === 'Activo' ? '🗑️' : '♻️'}
                         </button>
                       </div>
                     </div>
@@ -529,7 +604,7 @@ export default function VeterinariosPage() {
                         </td>
                         <td className="px-3 py-2 truncate">
                           {v.planta_nombre || `ID ${v.id_planta || ''}`} ·{' '}
-                          {v.estado === 'Activo' ? '✅' : '❌'}
+                          {normalizarEstado(v.estado) === 'Activo' ? '✅' : '❌'}
                         </td>
                         <td className="px-3 py-2 text-center">
                           <div className="flex justify-center gap-2">
@@ -541,11 +616,17 @@ export default function VeterinariosPage() {
                             </button>
                             <button
                               onClick={() =>
-                                eliminarVeterinario(v.id_veterinario || v.id)
+                                v.estado === 'Activo'
+                                  ? eliminarVeterinario(v)
+                                  : solicitarCambioEstado(v, 'Activo')
                               }
-                              className="px-2 py-1 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition"
+                              className={`px-2 py-1 rounded-lg text-white text-sm transition ${
+                                v.estado === 'Activo'
+                                  ? 'bg-red-600 hover:bg-red-700'
+                                  : 'bg-emerald-600 hover:bg-emerald-700'
+                              }`}
                             >
-                              🗑️
+                              {v.estado === 'Activo' ? '🗑️' : '♻️'}
                             </button>
                           </div>
                         </td>

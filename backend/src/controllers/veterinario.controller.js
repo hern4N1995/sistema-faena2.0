@@ -1,6 +1,14 @@
 const pool = require('../db');
 
-// Listar veterinarios activos (mapeando columnas reales a los nombres que usa el frontend)
+const parseEstado = (estado) => {
+  if (typeof estado === 'boolean') return estado;
+  const valor = String(estado || '').toLowerCase().trim();
+  if (valor === 'activo' || valor === 'true' || valor === '1') return true;
+  if (valor === 'inactivo' || valor === 'false' || valor === '0') return false;
+  return true;
+};
+
+// Listar veterinarios (activos e inactivos) mapeando columnas reales a los nombres que usa el frontend
 const obtenerVeterinarios = async (req, res) => {
   try {
     const q = `
@@ -15,7 +23,6 @@ const obtenerVeterinarios = async (req, res) => {
         estado,
         fecha_creacion AS creado_en
       FROM veterinario
-      WHERE estado = true
       ORDER BY apellido_vet, nombre_vet
     `;
     const result = await pool.query(q);
@@ -43,7 +50,7 @@ const obtenerVeterinarioPorId = async (req, res) => {
         estado,
         fecha_creacion AS creado_en
       FROM veterinario
-      WHERE id_veterinario = $1 AND estado = true
+      WHERE id_veterinario = $1
     `;
     const result = await pool.query(q, [id]);
     if (result.rowCount === 0)
@@ -73,10 +80,7 @@ const crearVeterinario = async (req, res) => {
         .json({ error: 'nombre, apellido y matricula son obligatorios' });
     }
 
-    const estadoBooleano =
-      typeof estado === 'boolean'
-        ? estado
-        : String(estado).toLowerCase() === 'activo';
+    const estadoBooleano = parseEstado(estado);
 
     // Prevenir duplicado por matrícula
     const dup = await pool.query(
@@ -144,10 +148,7 @@ const actualizarVeterinario = async (req, res) => {
         .json({ error: 'nombre, apellido y matricula son obligatorios' });
     }
 
-    const estadoBooleano =
-      typeof estado === 'boolean'
-        ? estado
-        : String(estado).toLowerCase() === 'activo';
+    const estadoBooleano = parseEstado(estado);
 
     const q = `
       UPDATE veterinario SET
@@ -191,9 +192,57 @@ const actualizarVeterinario = async (req, res) => {
   }
 };
 
+const actualizarEstadoVeterinario = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID invalido' });
+
+  const { estado } = req.body;
+  if (typeof estado === 'undefined') {
+    return res.status(400).json({ error: 'El estado es obligatorio' });
+  }
+
+  try {
+    const estadoBooleano = parseEstado(estado);
+    const result = await pool.query(
+      `
+      UPDATE veterinario
+      SET estado = $1
+      WHERE id_veterinario = $2
+      RETURNING
+        id_veterinario,
+        nombre_vet   AS nombre,
+        apellido_vet AS apellido,
+        matricula,
+        dni,
+        email,
+        n_telefono,
+        estado,
+        fecha_creacion AS creado_en
+      `,
+      [estadoBooleano, id],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Veterinario no encontrado' });
+    }
+
+    res.json({
+      message: estadoBooleano
+        ? 'Veterinario habilitado correctamente'
+        : 'Veterinario deshabilitado correctamente',
+      veterinario: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Error al actualizar estado de veterinario:', error);
+    res
+      .status(500)
+      .json({ error: 'Error al actualizar estado del veterinario' });
+  }
+};
+
 const eliminarVeterinario = async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+  if (isNaN(id)) return res.status(400).json({ error: 'ID invalido' });
 
   try {
     const result = await pool.query(
@@ -202,7 +251,7 @@ const eliminarVeterinario = async (req, res) => {
     );
     if (result.rowCount === 0)
       return res.status(404).json({ error: 'Veterinario no encontrado' });
-    res.json({ message: 'Veterinario eliminado correctamente' });
+    res.json({ message: 'Veterinario deshabilitado correctamente' });
   } catch (error) {
     console.error('Error al eliminar veterinario:', error);
     res.status(500).json({ error: 'Error al eliminar veterinario' });
@@ -214,5 +263,6 @@ module.exports = {
   obtenerVeterinarioPorId,
   crearVeterinario,
   actualizarVeterinario,
+  actualizarEstadoVeterinario,
   eliminarVeterinario,
 };

@@ -216,7 +216,7 @@ export default function TropasCargadas() {
 
         const ordenadas = arr
           .sort((a, b) => {
-            const dateCompare = new Date(b.fecha) - new Date(a.fecha);
+            const dateCompare = new Date(b.fecha_ingreso) - new Date(a.fecha_ingreso);
             if (dateCompare !== 0) return dateCompare;
             return (b.id_tropa || 0) - (a.id_tropa || 0);
           })
@@ -270,16 +270,16 @@ export default function TropasCargadas() {
     if (startDate) {
       const s = new Date(startDate);
       filtered = filtered.filter((t) => {
-        if (!t.fecha) return false;
-        const d = new Date(t.fecha);
+        if (!t.fecha_ingreso) return false;
+        const d = new Date(t.fecha_ingreso);
         return d.setHours(0, 0, 0, 0) >= new Date(s).setHours(0, 0, 0, 0);
       });
     }
     if (endDate) {
       const e = new Date(endDate);
       filtered = filtered.filter((t) => {
-        if (!t.fecha) return false;
-        const d = new Date(t.fecha);
+        if (!t.fecha_ingreso) return false;
+        const d = new Date(t.fecha_ingreso);
         return d.setHours(0, 0, 0, 0) <= new Date(e).setHours(0, 0, 0, 0);
       });
     }
@@ -310,7 +310,7 @@ export default function TropasCargadas() {
     }
 
     const ordenadas = filtered.sort((a, b) => {
-      const dateCompare = new Date(b.fecha) - new Date(a.fecha);
+      const dateCompare = new Date(b.fecha_ingreso) - new Date(a.fecha_ingreso);
       if (dateCompare !== 0) return dateCompare;
       return (b.id_tropa || 0) - (a.id_tropa || 0);
     });
@@ -540,8 +540,8 @@ export default function TropasCargadas() {
                           {tropa.n_tropa}
                         </td>
                         <td className="px-2 sm:px-3 py-2">
-                          {tropa.fecha
-                            ? new Date(tropa.fecha).toLocaleDateString('es-AR')
+                          {tropa.fecha_ingreso
+                            ? new Date(tropa.fecha_ingreso).toLocaleDateString('es-AR')
                             : '—'}
                         </td>
                         <td className="px-2 sm:px-3 py-2">
@@ -583,8 +583,8 @@ export default function TropasCargadas() {
                           {tropa.n_tropa}
                         </span>
                         <span className="px-1.5 py-0.5 bg-green-100 text-green-800 text-[10px] font-medium rounded-full">
-                          {tropa.fecha
-                            ? new Date(tropa.fecha).toLocaleDateString('es-AR')
+                          {tropa.fecha_ingreso
+                            ? new Date(tropa.fecha_ingreso).toLocaleDateString('es-AR')
                             : '—'}
                         </span>
                       </div>

@@ -15,7 +15,8 @@ exports.getAll = async (req, res) => {
       SELECT
         t.id_tropa AS id,
         t.n_tropa,
-        t.fecha,
+        t.fecha_alta,
+        t.fecha_ingreso,
         t.dte_dtu,
         tf.nombre AS titular,
         pr.nombre AS productor_nombre,
@@ -25,7 +26,7 @@ exports.getAll = async (req, res) => {
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
       LEFT JOIN productor pr ON t.id_productor = pr.id_productor
       LEFT JOIN planta p ON t.id_planta = p.id_planta
-      ORDER BY t.fecha DESC
+      ORDER BY t.fecha_alta DESC
     `);
     res.json(result.rows);
   } catch (err) {
@@ -42,7 +43,8 @@ exports.getTodosLosDetalles = async (req, res) => {
         td.id_tropa_detalle AS id,
         td.id_tropa,
         t.n_tropa,
-        t.fecha,
+        t.fecha_alta,
+        t.fecha_ingreso,
         t.dte_dtu,
         tf.nombre AS titular,
         e.descripcion AS nombre_especie,
@@ -53,7 +55,7 @@ exports.getTodosLosDetalles = async (req, res) => {
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
       JOIN especie e ON td.id_especie = e.id_especie
       JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
-      ORDER BY t.fecha DESC, e.descripcion, ce.descripcion
+      ORDER BY t.fecha_alta DESC, e.descripcion, ce.descripcion
     `);
     res.json(result.rows);
   } catch (err) {
@@ -67,7 +69,8 @@ exports.createTropa = async (req, res) => {
   const {
     dte_dtu,
     guia_policial,
-    fecha,
+    fecha_alta,
+    fecha_ingreso,
     id_titular_faena,
     n_tropa,
     id_departamento,
@@ -78,16 +81,17 @@ exports.createTropa = async (req, res) => {
   try {
     const result = await pool.query(
       `INSERT INTO tropa (
-        dte_dtu, guia_policial, fecha,
+        dte_dtu, guia_policial, fecha_alta, fecha_ingreso,
         id_titular_faena, n_tropa,
         id_departamento, id_productor, id_planta
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id_tropa AS id`,
       [
         dte_dtu,
         guia_policial,
-        fecha || new Date(),
+        fecha_alta || new Date(),
+        fecha_ingreso || null,
         id_titular_faena,
         n_tropa,
         id_departamento,
@@ -123,7 +127,8 @@ exports.getById = async (req, res) => {
         t.id_tropa AS id,
         t.n_tropa,
         t.dte_dtu,
-        t.fecha,
+        t.fecha_alta,
+        t.fecha_ingreso,
         tf.nombre AS titular,
         p.nombre AS planta,
         pr.nombre AS productor
@@ -190,25 +195,9 @@ exports.getDetalle = async (req, res) => {
 };
 
 /* Obtener detalle agrupado (ej. sumar cantidades por especie/categoría) */
-// controllers/tropa.controller.js (reemplazar getDetalleAgrupado)
 exports.getDetalleAgrupado = async (req, res) => {
-  // Aceptar varios nombres de parámetro y loguear para debugging
   const rawId =
     req.params.tropaId ?? req.params.id ?? req.params.tropa_id ?? null;
-  console.log(
-    '[getDetalleAgrupado] originalUrl=',
-    req.originalUrl,
-    'method=',
-    req.method,
-  );
-  console.log(
-    '[getDetalleAgrupado] params=',
-    req.params,
-    'rawId=',
-    rawId,
-    'query=',
-    req.query,
-  );
 
   const tropaId = Number(rawId);
   if (!Number.isInteger(tropaId) || tropaId <= 0) {
@@ -221,7 +210,8 @@ exports.getDetalleAgrupado = async (req, res) => {
       SELECT 
         t.n_tropa, 
         t.dte_dtu, 
-        t.fecha, 
+        t.fecha_alta, 
+        t.fecha_ingreso,
         tf.nombre AS titular
       FROM tropa t
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
@@ -234,7 +224,7 @@ exports.getDetalleAgrupado = async (req, res) => {
       return res.status(404).json({ error: 'Tropa no encontrada' });
     }
 
-    const { n_tropa, dte_dtu, fecha, titular } = tropaRes.rows[0];
+    const { n_tropa, dte_dtu, fecha_alta, fecha_ingreso, titular } = tropaRes.rows[0];
 
     const detalleRes = await pool.query(
       `
@@ -268,7 +258,8 @@ exports.getDetalleAgrupado = async (req, res) => {
       tropaId,
       n_tropa,
       dte_dtu,
-      fecha,
+      fecha_alta,
+      fecha_ingreso,
       titular,
       especie: categorias[0]?.especie || '',
       categorias,
@@ -331,22 +322,12 @@ exports.saveDetalle = async (req, res) => {
           `UPDATE tropa_detalle SET cantidad = $1 WHERE id_tropa_detalle = $2 RETURNING *`,
           [newCantidad, existing.id_tropa_detalle],
         );
-        console.log(
-          '[saveDetalle] Updated existing row:',
-          existing.id_tropa_detalle,
-          'new cantidad:',
-          newCantidad,
-        );
       } else {
         // Row doesn't exist: insert it
         result = await pool.query(
           `INSERT INTO tropa_detalle (id_tropa, id_especie, id_cat_especie, cantidad)
            VALUES ($1, $2, $3, $4) RETURNING *`,
           [parseInt(tropaId, 10), id_especie, id_cat_especie, cantidadNum],
-        );
-        console.log(
-          '[saveDetalle] Inserted new row:',
-          result.rows[0]?.id_tropa_detalle,
         );
       }
 
@@ -390,7 +371,8 @@ exports.getByUsuarioPlanta = async (req, res) => {
       SELECT
         t.id_tropa AS id,
         t.n_tropa,
-        t.fecha,
+        t.fecha_alta,
+        t.fecha_ingreso,
         t.dte_dtu,
         t.guia_policial,
         t.id_planta,
@@ -404,7 +386,7 @@ exports.getByUsuarioPlanta = async (req, res) => {
       LEFT JOIN productor pr ON t.id_productor = pr.id_productor
       LEFT JOIN departamento d ON t.id_departamento = d.id_departamento
       WHERE t.id_planta = $1
-      ORDER BY t.fecha DESC
+      ORDER BY t.fecha_alta DESC
     `;
     const result = await pool.query(q, [id_planta]);
     res.json(result.rows);

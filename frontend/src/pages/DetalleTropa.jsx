@@ -250,7 +250,7 @@ export default function DetalleTropa() {
       // Extraer datos con múltiples fallbacks
       const n_tropa = data.n_tropa ?? data.numero_tropa ?? data.numero ?? '';
       const dte_dtu = data.dte_dtu ?? data.dte ?? data.dtu ?? '';
-      const fecha = data.fecha ?? '';
+      const fecha = data.fecha_ingreso ?? data.fecha ?? '';
       const titular = data.titular ?? data.titular_nombre ?? '';
       const planta =
         data.planta ?? data.planta_nombre ?? data.nombre_planta ?? '';
@@ -1599,7 +1599,7 @@ export default function DetalleTropa() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Nº Tropa', value: tropaInfo.numero_tropa },
-            { label: 'Fecha', value: tropaInfo.fecha?.split('T')[0] || '' },
+            { label: 'Fecha Ingreso', value: tropaInfo.fecha ? new Date(tropaInfo.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '' },
             { label: 'DTE/DTU', value: tropaInfo.dte },
             { label: 'Titular', value: tropaInfo.titular },
           ].map(({ label, value }) => (

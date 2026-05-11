@@ -597,7 +597,8 @@ function InlineCreateModal({
 export default function TropaForm({ onCreated }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    fecha: '',
+    fecha_alta: '',
+    fecha_ingreso: '',
     dte_dtu: '',
     guia_policial: '',
     n_tropa: '',
@@ -921,8 +922,8 @@ export default function TropaForm({ onCreated }) {
     }
 
     // --- Validación de unicidad: nro de tropa por año ---
-    // obtenemos año desde form.fecha; si no existe usamos el año actual
-    const fecha = form.fecha ? new Date(form.fecha) : null;
+    // obtenemos año desde form.fecha_alta; si no existe usamos el año actual
+    const fecha = form.fecha_alta ? new Date(form.fecha_alta) : null;
     const year =
       fecha && !isNaN(fecha) ? fecha.getFullYear() : new Date().getFullYear();
     const plantaIdForCheck =
@@ -961,7 +962,8 @@ export default function TropaForm({ onCreated }) {
 
         // Limpiar formulario
         setForm({
-          fecha: '',
+          fecha_alta: '',
+          fecha_ingreso: '',
           dte_dtu: '',
           guia_policial: '',
           n_tropa: '',
@@ -1134,6 +1136,19 @@ export default function TropaForm({ onCreated }) {
             placeholder="Seleccione una planta"
             isDisabled={isPlantaLocked}
           />
+
+          <div className="flex flex-col">
+            <label className="mb-2 font-semibold text-gray-700 text-sm">
+              Fecha Ingreso
+            </label>
+            <input
+              name="fecha_ingreso"
+              type="date"
+              value={form.fecha_ingreso}
+              onChange={handleChange}
+              className={INPUT_BASE_CLASS}
+            />
+          </div>
 
           <div className="flex flex-col">
             <label className="mb-2 font-semibold text-gray-700 text-sm">

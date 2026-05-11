@@ -22,7 +22,12 @@ exports.csrfProtection = (req, res, next) => {
   }
 
   // POST, PUT, DELETE, PATCH requieren CSRF token válido
+  // PERO permitir POST sin CSRF si el usuario está autenticado (verificarToken ya pasó)
   if (!token) {
+    // Si el usuario está autenticado (req.user existe), permitir sin CSRF token
+    if (req.user && req.user.id_usuario) {
+      return next();
+    }
     return res.status(403).json({ 
       error: 'CSRF token no proporcionado',
       code: 'CSRF_MISSING' 

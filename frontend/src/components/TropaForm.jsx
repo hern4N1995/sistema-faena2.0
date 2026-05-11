@@ -219,7 +219,7 @@ function InlineCreateModal({
   const validate = () => {
     if (type === 'departamento')
       return values.nombre_departamento?.trim() && values.id_provincia;
-    if (type === 'productor') return values.nombre?.trim();
+    if (type === 'productor') return values.nombre?.trim() && values.cuit?.trim() && values.cuit.replace(/\D/g, '').length === 11;
     if (type === 'titular')
       return (
         values.nombre?.trim() && values.id_provincia && values.localidad?.trim()
@@ -233,10 +233,28 @@ function InlineCreateModal({
     setError(null);
   };
 
+  // Formatear CUIT mientras se escribe (mostrar con guiones)
+  const handleCuitChange = (e) => {
+    const { value } = e.target;
+    // Limpiar a solo números
+    const cleaned = value.replace(/\D/g, '').slice(0, 11);
+    // Formatear con guiones
+    let formatted = cleaned;
+    if (cleaned.length > 2) {
+      formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+    }
+    if (cleaned.length > 10) {
+      formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2, 10)}-${cleaned.slice(10)}`;
+    }
+    setValues((p) => ({ ...p, cuit: formatted }));
+    setError(null);
+  };
+
   // headers con token para llamadas del modal
   const getTokenHeaders = () => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    // El interceptor de api.js maneja automáticamente el token,
+    // así que no es necesario pasar headers manualmente
+    return {};
   };
 
   // provOptions para SelectField dentro del modal
@@ -256,7 +274,7 @@ function InlineCreateModal({
       let list = [];
       for (const p of candidates) {
         try {
-          const res = await api.get(p, { headers: getTokenHeaders() });
+          const res = await api.get(p);
           if (res && Array.isArray(res.data)) {
             list = res.data;
             break;
@@ -302,7 +320,12 @@ function InlineCreateModal({
       if (onNotify) onNotify('error', 'Completá los campos obligatorios.');
       return;
     }
-    if (type === 'titular' && values.cuit && values.cuit.length !== 11) {
+    if (type === 'productor' && values.cuit && values.cuit.replace(/\D/g, '').length !== 11) {
+      setError('El CUIT debe tener exactamente 11 dígitos.');
+      if (onNotify) onNotify('error', 'El CUIT debe tener 11 dígitos.');
+      return;
+    }
+    if (type === 'titular' && values.cuit && values.cuit.replace(/\D/g, '').length !== 11) {
       setError('El CUIT debe tener exactamente 11 dígitos.');
       if (onNotify) onNotify('error', 'El CUIT debe tener 11 dígitos.');
       return;
@@ -323,18 +346,16 @@ function InlineCreateModal({
               id_provincia: Number(values.id_provincia),
             }
           : type === 'productor'
-          ? { nombre: values.nombre.trim(), cuit: values.cuit || null }
+          ? { nombre: values.nombre.trim(), cuit: values.cuit.replace(/\D/g, '') || null }
           : {
               nombre: values.nombre.trim(),
               id_provincia: Number(values.id_provincia),
               localidad: values.localidad.trim(),
               direccion: values.direccion || null,
-              cuit: values.cuit || null,
+              cuit: values.cuit ? values.cuit.replace(/\D/g, '') : null,
             };
 
-      const res = await api.post(endpoint, payload, {
-        headers: getTokenHeaders(),
-      });
+      const res = await api.post(endpoint, payload);
       console.log(
         '[InlineCreateModal] POST',
         endpoint,
@@ -487,18 +508,19 @@ function InlineCreateModal({
             placeholder="Ej. Establecimiento Pérez"
           />
           <label className="block text-sm font-medium text-gray-700">
-            CUIT (opcional)
+            CUIT
           </label>
           <input
             name="cuit"
             value={values.cuit}
-            onChange={handleChange}
+            onChange={handleCuitChange}
             onKeyDown={onlyDigitsKeyDown}
             onPaste={onlyDigitsPaste}
             inputMode="numeric"
-            pattern="\d*"
+            pattern="\d{11}"
+            maxLength={14}
             className={INPUT_BASE_CLASS + ' mb-2'}
-            placeholder="Solo números"
+            placeholder="XX-XXXXXXXX-X"
           />
         </>
       )}
@@ -559,14 +581,14 @@ function InlineCreateModal({
           <input
             name="cuit"
             value={values.cuit}
-            onChange={handleChange}
+            onChange={handleCuitChange}
             onKeyDown={onlyDigitsKeyDown}
             onPaste={onlyDigitsPaste}
             inputMode="numeric"
             pattern="\d{11}"
-            maxLength={11}
+            maxLength={14}
             className={INPUT_BASE_CLASS + ' mb-2'}
-            placeholder="11 dígitos"
+            placeholder="XX-XXXXXXXX-X"
           />
         </>
       )}
@@ -676,7 +698,7 @@ export default function TropaForm({ onCreated }) {
           api.get('/usuarios/usuario-actual').catch(() => ({ data: null })),
           api.get('/departamentos').catch(() => ({ data: [] })),
           api.get('/plantas').catch(() => ({ data: [] })),
-          tryFetchProductoresList().catch(() => []),
+          api.get('/productores').catch(() => ({ data: [] })),
           api.get('/titulares-faena').catch(() => ({ data: [] })),
           api.get('/provincias').catch(() => ({ data: [] })),
         ]);
@@ -714,10 +736,10 @@ export default function TropaForm({ onCreated }) {
         })
         .filter((p) => p.id_planta != null);
 
-      const prodsRaw = Array.isArray(prodsRes)
-        ? prodsRes
-        : Array.isArray(prodsRes.data)
+      const prodsRaw = Array.isArray(prodsRes.data)
         ? prodsRes.data
+        : Array.isArray(prodsRes.data?.data)
+        ? prodsRes.data.data
         : [];
       const prods = prodsRaw.map((p) => ({
         id_productor: p.id_productor ?? p.id ?? null,
@@ -775,6 +797,17 @@ export default function TropaForm({ onCreated }) {
       return null;
     }
   }
+
+  // Helper: Formatear CUIT (XX-XXXXXXXX-X)
+  const formatCUIT = (value) => {
+    if (!value) return '';
+    const cleaned = String(value).replace(/\D/g, '').slice(0, 11);
+    if (cleaned.length === 0) return '';
+    if (cleaned.length <= 2) return cleaned;
+    if (cleaned.length <= 10) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+    return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 10)}-${cleaned.slice(10)}`;
+  };
+
   const deptOptions = useMemo(
     () =>
       departamentos.map((d) => ({
@@ -798,7 +831,7 @@ export default function TropaForm({ onCreated }) {
       productores
         .map((p) => ({
           value: String(p.id_productor ?? p.id ?? ''),
-          label: p.nombre || '',
+          label: p.cuit ? `${p.nombre} (${formatCUIT(p.cuit)})` : p.nombre || '',
         }))
         .sort((a, b) => a.label.localeCompare(b.label)),
     [productores]

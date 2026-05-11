@@ -566,11 +566,11 @@ export default function PlantaAdmin() {
     const provinciaStr = provinciaNombre.toString().toLowerCase();
     const cuit = (p.cuit || '').toString();
 
-    // Filtro general busca en nombre, provincia y CUIT
+    // Filtro general busca en nombre, provincia y CUIT (solo los que comienzan con)
     const coincideGeneral = 
-      nombre.includes(filtroGenLower) ||
-      provinciaStr.includes(filtroGenLower) ||
-      cuit.includes(filtroGenLower);
+      nombre.startsWith(filtroGenLower) ||
+      provinciaStr.startsWith(filtroGenLower) ||
+      cuit.startsWith(filtroGenLower);
 
     // Filtro de fecha por rango
     const fecha = (p.fecha_habilitacion || '').split('T')[0]; // Solo la fecha sin hora

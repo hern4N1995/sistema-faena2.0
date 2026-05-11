@@ -31,7 +31,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { id_usuario: usuario.id_usuario, rol: usuario.id_rol },
       JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '30d' }
     );
 
     // 4. Devolver token + user básico
@@ -53,6 +53,7 @@ exports.login = async (req, res) => {
     console.log("Usuario encontrado:", usuario.email);
     console.log("Rol del usuario:", usuario.id_rol);
     console.log(`Login exitoso para ${usuario.email} con rol ${usuario.id_rol}`);
+    console.log(`Token generado con expiración: 30 días`);
 
 
   } catch (error) {

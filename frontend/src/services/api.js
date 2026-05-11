@@ -47,7 +47,12 @@ api.interceptors.request.use(
       // Agregar token JWT
       const token = localStorage.getItem('token');
       config.headers = config.headers || {};
-      if (token) config.headers.Authorization = `Bearer ${token}`;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+        console.log('[API] Token agregado al header:', `Bearer ${token.substring(0, 20)}...`);
+      } else {
+        console.warn('[API] No hay token en localStorage para:', config.url);
+      }
 
       // Agregar CSRF token en requests de modificación
       const method = config.method?.toUpperCase();

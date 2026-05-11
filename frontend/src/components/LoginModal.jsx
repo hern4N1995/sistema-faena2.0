@@ -60,6 +60,17 @@ export default function LoginModal({ isOpen, onClose }) {
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('token', data.token);
 
+      // Obtener CSRF token después del login
+      try {
+        const csrfRes = await api.post('/auth/csrf-token');
+        if (csrfRes.data?.csrfToken) {
+          localStorage.setItem('csrfToken', csrfRes.data.csrfToken);
+        }
+      } catch (csrfErr) {
+        console.warn('Error al obtener CSRF token:', csrfErr);
+        // No es crítico si falla el CSRF token
+      }
+
       handleCloseModal();
 
       // redirigir según rol (ajustá los casos si es necesario)

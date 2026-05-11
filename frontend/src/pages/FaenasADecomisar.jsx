@@ -30,6 +30,12 @@ export default function FaenasADecomisar() {
   // filtro por día relativo: 'actual' | 'anterior' | 'siguiente' | 'todas'
   const [dayFilterMode, setDayFilterMode] = useState('todas');
 
+  // filtros de fecha y hora
+  const [filterDateStart, setFilterDateStart] = useState('');
+  const [filterDateEnd, setFilterDateEnd] = useState('');
+  const [filterTimeStart, setFilterTimeStart] = useState('');
+  const [filterTimeEnd, setFilterTimeEnd] = useState('');
+
   // Obtener rol y planta del usuario desde localStorage
   useEffect(() => {
     try {
@@ -134,15 +140,58 @@ export default function FaenasADecomisar() {
 
   // filtrar por la fecha seleccionada (si aplica)
   const filteredFaenas = useMemo(() => {
-    if (!selectedDateForFilter) return faenas;
-    return faenas.filter((f) => {
-      if (!f?.fecha_faena) return false;
-      return (
-        new Date(f.fecha_faena).toISOString().slice(0, 10) ===
-        selectedDateForFilter
-      );
-    });
-  }, [faenas, selectedDateForFilter]);
+    let result = faenas;
+
+    // Filtro por día relativo
+    if (selectedDateForFilter) {
+      result = result.filter((f) => {
+        if (!f?.fecha_faena) return false;
+        return (
+          new Date(f.fecha_faena).toISOString().slice(0, 10) ===
+          selectedDateForFilter
+        );
+      });
+    }
+
+    // Filtro por rango de fechas y horas
+    if (filterDateStart || filterDateEnd || filterTimeStart || filterTimeEnd) {
+      result = result.filter((f) => {
+        if (!f?.fecha_faena) return false;
+
+        const faenaDateTime = new Date(f.fecha_faena);
+        const faenaDate = faenaDateTime.toISOString().slice(0, 10);
+        const faenaTime = faenaDateTime.toISOString().slice(11, 19);
+
+        // Filtro por fecha inicio
+        if (filterDateStart && faenaDate < filterDateStart) {
+          return false;
+        }
+
+        // Filtro por fecha fin
+        if (filterDateEnd && faenaDate > filterDateEnd) {
+          return false;
+        }
+
+        // Filtro por hora inicio (solo si están en el mismo día o en el de inicio)
+        if (filterTimeStart && filterDateStart === faenaDate) {
+          if (faenaTime < filterTimeStart) {
+            return false;
+          }
+        }
+
+        // Filtro por hora fin (solo si están en el mismo día o en el de fin)
+        if (filterTimeEnd && filterDateEnd === faenaDate) {
+          if (faenaTime > filterTimeEnd) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+    }
+
+    return result;
+  }, [faenas, selectedDateForFilter, filterDateStart, filterDateEnd, filterTimeStart, filterTimeEnd]);
 
   // paginación calculada
   const totalPages = Math.max(
@@ -158,7 +207,7 @@ export default function FaenasADecomisar() {
   // reset página al cambiar filtro o cuando cambian los datos
   useEffect(() => {
     setCurrentPage(1);
-  }, [dayFilterMode, selectedDateForFilter, rowsPerPage, faenas.length]);
+  }, [dayFilterMode, selectedDateForFilter, rowsPerPage, faenas.length, filterDateStart, filterDateEnd, filterTimeStart, filterTimeEnd]);
 
   const paginatedFaenas = useMemo(() => {
     const start = (currentPage - 1) * rowsPerPage;
@@ -317,191 +366,270 @@ export default function FaenasADecomisar() {
           🩺 Decomisos
         </h1>
 
-        {/* Controles: leyenda con casillas redondeadas (solo el recuadro es clickable) */}
-        <div className="flex justify-center mb-4">
-          <div className="w-full max-w-3xl">
-            <div className="flex items-center gap-4 justify-center flex-wrap">
-              <div className="flex items-center gap-2 select-none">
-                <span className="text-sm text-slate-700">Actual</span>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={dayFilterMode === 'actual'}
-                  onClick={() => handleToggle('actual')}
-                  onKeyDown={(e) =>
-                    (e.key === 'Enter' || e.key === ' ') &&
-                    handleToggle('actual')
-                  }
-                  className={`w-6 h-6 rounded-md flex items-center justify-center transition ml-1 cursor-pointer ${
-                    dayFilterMode === 'actual'
-                      ? 'bg-green-700'
-                      : 'bg-white border border-slate-300'
+        {/* Controles: Filtros de Fecha y Hora + Selector de Filas */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="max-w-5xl mx-auto space-y-4">
+            {/* Fila 1: Filtro de Fecha */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <div>
+                <label htmlFor="filterDateStart" className="block text-xs font-semibold text-slate-700 mb-2">
+                  Fecha Inicio
+                </label>
+                <input
+                  id="filterDateStart"
+                  type="date"
+                  value={filterDateStart}
+                  onChange={(e) => setFilterDateStart(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                />
+              </div>
+              <div>
+                <label htmlFor="filterDateEnd" className="block text-xs font-semibold text-slate-700 mb-2">
+                  Fecha Fin
+                </label>
+                <input
+                  id="filterDateEnd"
+                  type="date"
+                  value={filterDateEnd}
+                  onChange={(e) => setFilterDateEnd(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                />
+              </div>
+              <div>
+                <label htmlFor="filterTimeStart" className="block text-xs font-semibold text-slate-700 mb-2">
+                  Hora Inicio
+                </label>
+                <input
+                  id="filterTimeStart"
+                  type="time"
+                  value={filterTimeStart}
+                  onChange={(e) => setFilterTimeStart(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                />
+              </div>
+              <div>
+                <label htmlFor="filterTimeEnd" className="block text-xs font-semibold text-slate-700 mb-2">
+                  Hora Fin
+                </label>
+                <input
+                  id="filterTimeEnd"
+                  type="time"
+                  value={filterTimeEnd}
+                  onChange={(e) => setFilterTimeEnd(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                />
+              </div>
+            </div>
+
+            {/* Fila 2: Filtro por Día Relativo + Selector de Filas */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200">
+              {/* Filtros de Día */}
+              <div className="flex items-center gap-4 justify-center flex-wrap">
+                <div className="flex items-center gap-2 select-none">
+                  <span className="text-sm text-slate-700">Actual</span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={dayFilterMode === 'actual'}
+                    onClick={() => handleToggle('actual')}
+                    onKeyDown={(e) =>
+                      (e.key === 'Enter' || e.key === ' ') &&
+                      handleToggle('actual')
+                    }
+                    className={`w-6 h-6 rounded-md flex items-center justify-center transition ml-1 cursor-pointer ${
+                      dayFilterMode === 'actual'
+                        ? 'bg-green-700'
+                        : 'bg-white border border-slate-300'
+                    }`}
+                    title="Mostrar faenas del día más reciente"
+                    style={{ outline: 'none' }}
+                  >
+                    {dayFilterMode === 'actual' ? (
+                      <svg
+                        width="12"
+                        height="9"
+                        viewBox="0 0 12 9"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        <path
+                          d="M1 4L4 7L11 1"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : null}
+                  </span>
+                </div>
+
+                <div
+                  className={`flex items-center gap-2 select-none ${
+                    !previousDate ? 'opacity-50' : ''
                   }`}
-                  title="Mostrar faenas del día más reciente"
-                  style={{ outline: 'none' }}
                 >
-                  {dayFilterMode === 'actual' ? (
-                    <svg
-                      width="12"
-                      height="9"
-                      viewBox="0 0 12 9"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      <path
-                        d="M1 4L4 7L11 1"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : null}
-                </span>
+                  <span className="text-sm text-slate-700">Anterior</span>
+                  <span
+                    role="button"
+                    tabIndex={previousDate ? 0 : -1}
+                    aria-pressed={dayFilterMode === 'anterior'}
+                    onClick={() => previousDate && handleToggle('anterior')}
+                    onKeyDown={(e) =>
+                      previousDate &&
+                      (e.key === 'Enter' || e.key === ' ') &&
+                      handleToggle('anterior')
+                    }
+                    className={`w-6 h-6 rounded-md flex items-center justify-center transition ml-1 cursor-pointer ${
+                      dayFilterMode === 'anterior'
+                        ? 'bg-green-700'
+                        : 'bg-white border border-slate-300'
+                    }`}
+                    title={
+                      previousDate
+                        ? `Mostrar faenas de ${formatDate(previousDate)}`
+                        : 'No hay fecha anterior disponible'
+                    }
+                    style={{ outline: 'none' }}
+                  >
+                    {dayFilterMode === 'anterior' ? (
+                      <svg
+                        width="12"
+                        height="9"
+                        viewBox="0 0 12 9"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        <path
+                          d="M1 4L4 7L11 1"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : null}
+                  </span>
+                </div>
+
+                <div
+                  className={`flex items-center gap-2 select-none ${
+                    !nextDate ? 'opacity-50' : ''
+                  }`}
+                >
+                  <span className="text-sm text-slate-700">Siguiente</span>
+                  <span
+                    role="button"
+                    tabIndex={nextDate ? 0 : -1}
+                    aria-pressed={dayFilterMode === 'siguiente'}
+                    onClick={() => nextDate && handleToggle('siguiente')}
+                    onKeyDown={(e) =>
+                      nextDate &&
+                      (e.key === 'Enter' || e.key === ' ') &&
+                      handleToggle('siguiente')
+                    }
+                    className={`w-6 h-6 rounded-md flex items-center justify-center transition ml-1 cursor-pointer ${
+                      dayFilterMode === 'siguiente'
+                        ? 'bg-green-700'
+                        : 'bg-white border border-slate-300'
+                    }`}
+                    title={
+                      nextDate
+                        ? `Mostrar faenas de ${formatDate(nextDate)}`
+                        : 'No hay fecha siguiente disponible'
+                    }
+                    style={{ outline: 'none' }}
+                  >
+                    {dayFilterMode === 'siguiente' ? (
+                      <svg
+                        width="12"
+                        height="9"
+                        viewBox="0 0 12 9"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        <path
+                          d="M1 4L4 7L11 1"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : null}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 select-none">
+                  <span className="text-sm text-slate-700">Todas</span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={dayFilterMode === 'todas'}
+                    onClick={() => handleToggle('todas')}
+                    onKeyDown={(e) =>
+                      (e.key === 'Enter' || e.key === ' ') &&
+                      handleToggle('todas')
+                    }
+                    className={`w-6 h-6 rounded-md flex items-center justify-center transition ml-1 cursor-pointer ${
+                      dayFilterMode === 'todas'
+                        ? 'bg-green-700'
+                        : 'bg-white border border-slate-300'
+                    }`}
+                    title="Mostrar todas las faenas"
+                    style={{ outline: 'none' }}
+                  >
+                    {dayFilterMode === 'todas' ? (
+                      <svg
+                        width="12"
+                        height="9"
+                        viewBox="0 0 12 9"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        <path
+                          d="M1 4L4 7L11 1"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : null}
+                  </span>
+                </div>
               </div>
 
-              <div
-                className={`flex items-center gap-2 select-none ${
-                  !previousDate ? 'opacity-50' : ''
-                }`}
-              >
-                <span className="text-sm text-slate-700">Anterior</span>
-                <span
-                  role="button"
-                  tabIndex={previousDate ? 0 : -1}
-                  aria-pressed={dayFilterMode === 'anterior'}
-                  onClick={() => previousDate && handleToggle('anterior')}
-                  onKeyDown={(e) =>
-                    previousDate &&
-                    (e.key === 'Enter' || e.key === ' ') &&
-                    handleToggle('anterior')
-                  }
-                  className={`w-6 h-6 rounded-md flex items-center justify-center transition ml-1 cursor-pointer ${
-                    dayFilterMode === 'anterior'
-                      ? 'bg-green-700'
-                      : 'bg-white border border-slate-300'
-                  }`}
-                  title={
-                    previousDate
-                      ? `Mostrar faenas de ${formatDate(previousDate)}`
-                      : 'No hay fecha anterior disponible'
-                  }
-                  style={{ outline: 'none' }}
+              {/* Selector de Filas */}
+              <div className="flex items-center gap-2">
+                <label htmlFor="rowsPerPageSelect" className="text-sm font-semibold text-slate-700">
+                  Filas:
+                </label>
+                <select
+                  id="rowsPerPageSelect"
+                  value={rowsPerPage}
+                  onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 bg-white"
                 >
-                  {dayFilterMode === 'anterior' ? (
-                    <svg
-                      width="12"
-                      height="9"
-                      viewBox="0 0 12 9"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      <path
-                        d="M1 4L4 7L11 1"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : null}
-                </span>
+                  <option value={3}>3</option>
+                  <option value={6}>6</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
               </div>
+            </div>
 
-              <div
-                className={`flex items-center gap-2 select-none ${
-                  !nextDate ? 'opacity-50' : ''
-                }`}
-              >
-                <span className="text-sm text-slate-700">Siguiente</span>
-                <span
-                  role="button"
-                  tabIndex={nextDate ? 0 : -1}
-                  aria-pressed={dayFilterMode === 'siguiente'}
-                  onClick={() => nextDate && handleToggle('siguiente')}
-                  onKeyDown={(e) =>
-                    nextDate &&
-                    (e.key === 'Enter' || e.key === ' ') &&
-                    handleToggle('siguiente')
-                  }
-                  className={`w-6 h-6 rounded-md flex items-center justify-center transition ml-1 cursor-pointer ${
-                    dayFilterMode === 'siguiente'
-                      ? 'bg-green-700'
-                      : 'bg-white border border-slate-300'
-                  }`}
-                  title={
-                    nextDate
-                      ? `Mostrar faenas de ${formatDate(nextDate)}`
-                      : 'No hay fecha siguiente disponible'
-                  }
-                  style={{ outline: 'none' }}
-                >
-                  {dayFilterMode === 'siguiente' ? (
-                    <svg
-                      width="12"
-                      height="9"
-                      viewBox="0 0 12 9"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      <path
-                        d="M1 4L4 7L11 1"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : null}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2 select-none">
-                <span className="text-sm text-slate-700">Todas</span>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={dayFilterMode === 'todas'}
-                  onClick={() => handleToggle('todas')}
-                  onKeyDown={(e) =>
-                    (e.key === 'Enter' || e.key === ' ') &&
-                    handleToggle('todas')
-                  }
-                  className={`w-6 h-6 rounded-md flex items-center justify-center transition ml-1 cursor-pointer ${
-                    dayFilterMode === 'todas'
-                      ? 'bg-green-700'
-                      : 'bg-white border border-slate-300'
-                  }`}
-                  title="Mostrar todas las faenas"
-                  style={{ outline: 'none' }}
-                >
-                  {dayFilterMode === 'todas' ? (
-                    <svg
-                      width="12"
-                      height="9"
-                      viewBox="0 0 12 9"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      <path
-                        d="M1 4L4 7L11 1"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : null}
-                </span>
-              </div>
-
+            {/* Fila 3: Resumen de Resultados */}
+            <div className="flex justify-center pt-4 border-t border-slate-200">
               <div className="flex flex-col items-center">
                 <span className="text-xs text-slate-500">Resultados</span>
-                <div className="text-sm text-slate-700">
+                <div className="text-sm font-semibold text-green-700">
                   {filteredFaenas.length} registro(s)
                 </div>
               </div>

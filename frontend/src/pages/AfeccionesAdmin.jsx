@@ -119,9 +119,36 @@ const AfeccionesAdmin = () => {
   const [paginaActual, setPaginaActual] = useState(1);
   const itemsPorPagina = window.innerWidth < 768 ? 2 : 4;
 
+  // Modal de resultado después de guardar
+  const [modalResultado, setModalResultado] = useState({ abierto: false, tipo: '', mensaje: '' });
+
+  // Filtro
+  const [filtro, setFiltro] = useState('');
+
   const getTokenHeaders = () => {
     const token = localStorage.getItem('token');
     return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  // Verificar si una afección ya existe (para evitar duplicados)
+  // Nota: Esta función ya no se usa, la validación se hace directamente contra datos frescos del servidor
+  const afeccionExiste = (descripcion, idEspecie, excludeId = null) => {
+    const idEspecieNum = parseInt(idEspecie, 10);
+    const descLower = descripcion.toLowerCase().trim();
+    
+    return afecciones.some((a) => {
+      const aId = a.id_afeccion ?? a.id;
+      if (excludeId && aId === excludeId) return false;
+      
+      let aEspecieId = a.id_especie;
+      if (!aEspecieId) aEspecieId = a.id_especie_id;
+      if (!aEspecieId) aEspecieId = a.especie_id;
+      
+      aEspecieId = parseInt(aEspecieId ?? 0, 10);
+      const aDesc = (a.descripcion ?? '').toLowerCase().trim();
+      
+      return aDesc === descLower && aEspecieId === idEspecieNum;
+    });
   };
 
   useEffect(() => {
@@ -168,12 +195,18 @@ const AfeccionesAdmin = () => {
 
   const iniciarEdicion = (a) => {
     const id = a.id_afeccion ?? a.id;
-    const especieId = a.id_especie ?? especies.find((e) => e.descripcion === a.especie)?.id;
+    // Buscar el id_especie comparando por nombre
+    const nombreEspecie = a.especie ?? a.nombre_especie ?? '';
+    const especieEncontrada = especies.find(
+      (e) => (e.descripcion ?? e.nombre ?? '').toLowerCase() === nombreEspecie.toLowerCase()
+    );
+    const especieId = a.id_especie ?? a.id_especie_id ?? especieEncontrada?.id_especie ?? especieEncontrada?.id;
+    
     setEditingPayload({
       id,
       descripcion: a.descripcion || '',
-      id_especie: especieId ? String(especieId) : '',
-      especie: a.especie ?? a.nombre_especie ?? '',
+      id_especie: String(especieId || ''),
+      especie: nombreEspecie,
     });
     setEditModalOpen(true);
   };
@@ -186,49 +219,183 @@ const AfeccionesAdmin = () => {
 
   const guardarEdicion = async () => {
     if (!editingPayload?.id_especie || !editingPayload?.descripcion.trim()) return;
-    setError('');
-    setMensaje('');
-    const payload = {
-      descripcion: editingPayload.descripcion.trim(),
-      id_especie: parseInt(editingPayload.id_especie, 10),
-    };
+
+    const descripcionNorm = normalizarTexto(editingPayload.descripcion);
+    const idEspecieNum = parseInt(editingPayload.id_especie, 10);
+
+    // Obtener el nombre de la especie seleccionada
+    const especieSeleccionada = especies.find(
+      (e) => (e.id_especie ?? e.id) === idEspecieNum
+    );
+    const nombreEspecieSeleccionada = especieSeleccionada?.descripcion ?? especieSeleccionada?.nombre ?? '';
+
     try {
-      const res = await api.put(`/afecciones/${editingPayload.id}`, payload, { timeout: 10000 });
-      if (!(res && res.status >= 200 && res.status < 300)) throw new Error('Error al guardar');
-      setAfecciones((prev) =>
-        prev.map((a) => {
-          const aId = a.id_afeccion ?? a.id;
-          return aId === editingPayload.id ? { ...a, ...payload } : a;
-        })
+      // Traer afecciones frescas del backend
+      const resAfecciones = await api.get('/afecciones', { timeout: 10000 });
+      const afeccionesActuales = Array.isArray(resAfecciones?.data) ? resAfecciones.data : [];
+
+      console.log('Validando edición:', { descripcion: descripcionNorm, especie: nombreEspecieSeleccionada });
+
+      // Validar que no sea un duplicado (excluyendo el actual)
+      const existe = afeccionesActuales.some((a) => {
+        const aId = a.id_afeccion ?? a.id;
+        if (aId === editingPayload.id) return false; // Excluir el mismo registro
+
+        const aDescNorm = normalizarTexto(a.descripcion);
+        const aEspecieNorm = normalizarTexto(a.especie || '');
+        const especieNorm = normalizarTexto(nombreEspecieSeleccionada);
+
+        console.log('Comparando en edición:', { aDescNorm, descripcionNorm, aEspecieNorm, especieNorm });
+
+        return aDescNorm === descripcionNorm && aEspecieNorm === especieNorm;
+      });
+
+      if (existe) {
+        setModalResultado({
+          abierto: true,
+          tipo: 'error',
+          mensaje: '❌ Esta afección ya existe para esta especie',
+        });
+        return;
+      }
+
+      // Encontrar la afección original
+      const afeccionOriginal = afeccionesActuales.find(
+        (a) => (a.id_afeccion ?? a.id) === editingPayload.id
       );
-      setMensaje('✅ Afección actualizada');
-      setTimeout(() => setMensaje(''), 3000);
-      setEditModalOpen(false);
-      setEditingPayload(null);
+
+      const huboChanges =
+        normalizarTexto(afeccionOriginal?.descripcion) !== descripcionNorm ||
+        normalizarTexto(afeccionOriginal?.especie || '') !== normalizarTexto(nombreEspecieSeleccionada);
+
+      const payload = {
+        descripcion: descripcionNorm.charAt(0).toUpperCase() + descripcionNorm.slice(1),
+        id_especie: idEspecieNum,
+      };
+
+      const res = await api.put(`/afecciones/${editingPayload.id}`, payload, {
+        timeout: 10000,
+      });
+      if (!(res && res.status >= 200 && res.status < 300))
+        throw new Error('Error al guardar');
+
+      // Actualizar state
+      await fetchAfecciones();
+
+      setModalResultado({
+        abierto: true,
+        tipo: 'exito',
+        mensaje: huboChanges
+          ? '✅ Afección actualizada con éxito'
+          : '⚠️ No hubo cambios en la afección',
+      });
+
+      setTimeout(() => {
+        setEditModalOpen(false);
+        setEditingPayload(null);
+      }, 1500);
     } catch (err) {
       console.error('Error saving afección:', err);
-      setError('❌ No se pudo guardar la afección');
+      setModalResultado({
+        abierto: true,
+        tipo: 'error',
+        mensaje: '❌ No se pudo guardar la afección',
+      });
     }
+  };
+
+  // Normalizar string: remove acentos y espacios extras
+  const normalizarTexto = (texto) => {
+    return (texto ?? '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD') // Descomponer acentos
+      .replace(/[\u0300-\u036f]/g, ''); // Remover marcas diacríticas
   };
 
   const handleGuardar = async () => {
     if (!idEspecie || !descripcion.trim()) return;
 
-    const payload = {
-      descripcion: descripcion.trim(),
-      id_especie: parseInt(idEspecie, 10),
-    };
+    const descripcionNorm = normalizarTexto(descripcion);
+    const idEspecieNum = parseInt(idEspecie, 10);
+    
+    // Obtener el nombre de la especie seleccionada
+    const especieSeleccionada = especies.find(
+      (e) => (e.id_especie ?? e.id) === idEspecieNum
+    );
+    const nombreEspecieSeleccionada = especieSeleccionada?.descripcion ?? especieSeleccionada?.nombre ?? '';
 
     try {
+      // Primero traer afecciones frescas del backend
+      const resAfecciones = await api.get('/afecciones', { timeout: 10000 });
+      const afeccionesActuales = Array.isArray(resAfecciones?.data) ? resAfecciones.data : [];
+      
+      console.log('=== VALIDANDO DUPLICADO ===');
+      console.log('Buscando:', { 
+        descripcion: descripcionNorm, 
+        especie: nombreEspecieSeleccionada 
+      });
+
+      // Validar duplicado COMPARANDO POR NOMBRE DE ESPECIE
+      const existe = afeccionesActuales.some((a) => {
+        const aDescNorm = normalizarTexto(a.descripcion);
+        const aEspecieNorm = normalizarTexto(a.especie || '');
+        const especieNorm = normalizarTexto(nombreEspecieSeleccionada);
+        
+        const esIgual = aDescNorm === descripcionNorm && aEspecieNorm === especieNorm;
+        
+        console.log('Comparando:', { 
+          aDesc: a.descripcion,
+          aDescNorm,
+          descripcionNorm,
+          aEspecie: a.especie,
+          aEspecieNorm,
+          especieNorm,
+          match: esIgual
+        });
+        
+        return esIgual;
+      });
+
+      if (existe) {
+        console.log('❌ Duplicado detectado');
+        setModalResultado({
+          abierto: true,
+          tipo: 'error',
+          mensaje: '❌ Esta afección ya existe para esta especie. No se pueden guardar duplicados',
+        });
+        return;
+      }
+
+      console.log('✅ No es duplicado, guardando...');
+
+      const payload = {
+        descripcion: descripcionNorm.charAt(0).toUpperCase() + descripcionNorm.slice(1),
+        id_especie: idEspecieNum,
+      };
+
       const res = await api.post('/afecciones', payload, { timeout: 10000 });
-      if (!(res && res.status >= 200 && res.status < 300)) throw new Error('Error al guardar');
+      if (!(res && res.status >= 200 && res.status < 300))
+        throw new Error('Error al guardar');
+
+      // Actualizar state con datos frescos
       await fetchAfecciones();
-      setMensaje('✅ Afección registrada');
-      setTimeout(() => setMensaje(''), 3000);
-      cancelarEdicion();
+      
+      setDescripcion('');
+      setIdEspecie('');
+      
+      setModalResultado({
+        abierto: true,
+        tipo: 'exito',
+        mensaje: '✅ Afección registrada con éxito',
+      });
     } catch (err) {
       console.error('Error saving afección:', err);
-      setError('❌ No se pudo guardar la afección');
+      setModalResultado({
+        abierto: true,
+        tipo: 'error',
+        mensaje: '❌ No se pudo guardar la afección',
+      });
     }
   };
 
@@ -237,29 +404,55 @@ const AfeccionesAdmin = () => {
   };
 
   const performDeleteAfeccion = async (id) => {
-    setError('');
     try {
       const res = await api.delete(`/afecciones/${id}`, { timeout: 10000 });
       if (!(res && res.status >= 200 && res.status < 300)) throw new Error('Error al eliminar');
       setAfecciones((prev) => prev.filter((a) => (a.id_afeccion ?? a.id) !== id));
-      setMensaje('✅ Afección eliminada');
-      setTimeout(() => setMensaje(''), 3000);
+      setModalResultado({
+        abierto: true,
+        tipo: 'exito',
+        mensaje: '✅ Afección eliminada con éxito',
+      });
     } catch (err) {
       console.error('Error deleting afección:', err);
-      setError('❌ No se pudo eliminar la afección');
+      setModalResultado({
+        abierto: true,
+        tipo: 'error',
+        mensaje: '❌ No se pudo eliminar la afección',
+      });
     } finally {
       setConfirmDelete({ open: false, id: null });
     }
   };
 
   const visibles = useMemo(() => {
-    return afecciones.slice(
+    // Filtrar por descripción y especie
+    const filtroNorm = normalizarTexto(filtro);
+    const filtradas = afecciones.filter((a) => {
+      const descNorm = normalizarTexto(a.descripcion);
+      const especieNorm = normalizarTexto(a.especie ?? a.nombre_especie ?? '');
+      
+      return descNorm.includes(filtroNorm) || especieNorm.includes(filtroNorm);
+    });
+    
+    // Luego aplicar paginación
+    return filtradas.slice(
       (paginaActual - 1) * itemsPorPagina,
       paginaActual * itemsPorPagina
     );
-  }, [afecciones, paginaActual]);
+  }, [afecciones, paginaActual, filtro]);
 
-  const totalPaginas = Math.ceil(afecciones.length / itemsPorPagina);
+  const totalPaginas = useMemo(() => {
+    const filtroNorm = normalizarTexto(filtro);
+    const filtradas = afecciones.filter((a) => {
+      const descNorm = normalizarTexto(a.descripcion);
+      const especieNorm = normalizarTexto(a.especie ?? a.nombre_especie ?? '');
+      
+      return descNorm.includes(filtroNorm) || especieNorm.includes(filtroNorm);
+    });
+    
+    return Math.ceil(filtradas.length / itemsPorPagina);
+  }, [afecciones, filtro]);
   const irPagina = (n) =>
     setPaginaActual(Math.min(Math.max(n, 1), totalPaginas));
 
@@ -269,6 +462,7 @@ const AfeccionesAdmin = () => {
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
           🧬 Administración de Afecciones
         </h1>
+
         {/* Formulario institucional con sombra visible */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-4 mt-6 relative z-10">
           <h2 className="text-lg font-semibold text-gray-800">
@@ -350,29 +544,35 @@ const AfeccionesAdmin = () => {
         </div>
 
         {/* Edit modal overlay */}
-        {editModalOpen && editingPayload && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setEditModalOpen(false)} />
-            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Editar Afección</h3>
-              <div className="space-y-4">
-                <SelectField
-                  label="Especie"
-                  value={
-                    especies.find((e) => String(e.id_especie ?? e.id) === editingPayload.id_especie)
-                      ? {
-                          value: editingPayload.id_especie,
-                          label: especies.find((e) => String(e.id_especie ?? e.id) === editingPayload.id_especie)?.descripcion ?? 'Especie',
-                        }
-                      : null
-                  }
-                  onChange={(selected) => setEditingPayload((p) => ({ ...p, id_especie: selected?.value || '' }))}
-                  options={especies.map((e) => ({
-                    value: String(e.id_especie ?? e.id),
-                    label: e.descripcion ?? e.nombre ?? '',
-                  }))}
-                  placeholder="Seleccionar especie"
-                />
+        {editModalOpen && editingPayload && (() => {
+          // Encontrar la especie seleccionada comparando números
+          const especieSeleccionada = editingPayload.id_especie
+            ? especies.find((e) => {
+                const eId = parseInt(e.id_especie ?? e.id ?? 0, 10);
+                const pId = parseInt(editingPayload.id_especie ?? 0, 10);
+                return eId === pId && eId !== 0;
+              })
+            : null;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setEditModalOpen(false)} />
+              <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Editar Afección</h3>
+                <div className="space-y-4">
+                  <SelectField
+                    label="Especie"
+                    value={especieSeleccionada ? {
+                      value: String(especieSeleccionada.id_especie ?? especieSeleccionada.id),
+                      label: especieSeleccionada.descripcion ?? especieSeleccionada.nombre ?? 'Especie'
+                    } : null}
+                    onChange={(selected) => setEditingPayload((p) => ({ ...p, id_especie: selected?.value || '' }))}
+                    options={especies.map((e) => ({
+                      value: String(e.id_especie ?? e.id),
+                      label: e.descripcion ?? e.nombre ?? '',
+                    }))}
+                    placeholder="Seleccionar especie"
+                  />
                 <div className="flex flex-col">
                   <label className="mb-2 font-semibold text-gray-700 text-sm">Descripción</label>
                   <input
@@ -390,7 +590,8 @@ const AfeccionesAdmin = () => {
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Delete confirmation modal */}
         {confirmDelete.open && (
@@ -406,6 +607,59 @@ const AfeccionesAdmin = () => {
             </div>
           </div>
         )}
+
+        {/* Modal de resultado después de guardar */}
+        {modalResultado.abierto && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setModalResultado({ abierto: false, tipo: '', mensaje: '' })}
+            />
+            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm p-8 z-10 animate-in">
+              <div
+                className={`text-center space-y-4 ${
+                  modalResultado.tipo === 'exito'
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}
+              >
+                <div className="text-5xl">
+                  {modalResultado.tipo === 'exito' ? '✅' : '❌'}
+                </div>
+                <p className="text-lg font-semibold text-gray-800">
+                  {modalResultado.mensaje}
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  setModalResultado({ abierto: false, tipo: '', mensaje: '' })
+                }
+                className="w-full mt-6 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Filtro de búsqueda */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6">
+          <div className="flex flex-col">
+            <label className="mb-2 font-semibold text-gray-700 text-sm">
+              🔍 Filtrar por Afección o Especie
+            </label>
+            <input
+              type="text"
+              placeholder="Buscar por nombre de afección o especie..."
+              value={filtro}
+              onChange={(e) => {
+                setFiltro(e.target.value);
+                setPaginaActual(1);
+              }}
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+            />
+          </div>
+        </div>
 
         {/* Tarjetas responsivas en móvil */}
         <div className="sm:hidden space-y-4">
@@ -428,7 +682,6 @@ const AfeccionesAdmin = () => {
                       {a.especie ?? a.nombre_especie ?? ''}
                     </span>
                   </p>
-                  <p className="text-gray-500">ID: {id}</p>
                 </div>
                 <div className="mt-3 flex gap-2">
                   <button
@@ -454,9 +707,8 @@ const AfeccionesAdmin = () => {
           <table className="min-w-full text-sm text-gray-700">
             <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold">ID</th>
                 <th className="px-4 py-3 text-left font-semibold">
-                  Descripción
+                  Afección
                 </th>
                 <th className="px-4 py-3 text-left font-semibold">Especie</th>
                 <th className="px-4 py-3 text-center font-semibold">
@@ -469,7 +721,6 @@ const AfeccionesAdmin = () => {
                 const id = a.id_afeccion ?? a.id;
                 return (
                   <tr key={id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3">{id}</td>
                     <td className="px-4 py-3">{a.descripcion}</td>
                     <td className="px-4 py-3">
                       {a.especie ?? a.nombre_especie ?? ''}

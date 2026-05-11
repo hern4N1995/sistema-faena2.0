@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
   const [fecha, setFecha] = useState('');
+  const [hora, setHora] = useState('');
   const [faenaPorCategoria, setFaenaPorCategoria] = useState({});
   const [feedback, setFeedback] = useState('');
   const [erroresPorCategoria, setErroresPorCategoria] = useState({});
@@ -88,12 +89,13 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
     setFeedback('✅ Datos listos para enviar');
     setResumenFaena({
       fecha,
+      hora,
       n_tropa: faena.n_tropa,
       especie: faena.especie,
       categorias: detalles,
     });
 
-    onSubmit({ fecha, categorias: detalles });
+    onSubmit({ fecha, hora, categorias: detalles });
   };
 
   const preventDotAndMinus = (e) => {
@@ -114,6 +116,9 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
           </p>
           <p>
             <strong>Fecha:</strong> {resumenFaena.fecha}
+          </p>
+          <p>
+            <strong>Hora:</strong> {resumenFaena.hora || '—'}
           </p>
           <p>
             <strong>Especie:</strong> {resumenFaena.especie}
@@ -147,6 +152,18 @@ const DetalleFaenaForm = ({ modo = 'crear', faena = {}, onSubmit }) => {
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
               required
+              className="w-full md:w-auto rounded-lg border-2 border-gray-200 px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Hora de faena (opcional)
+            </label>
+            <input
+              type="time"
+              value={hora}
+              onChange={(e) => setHora(e.target.value)}
               className="w-full md:w-auto rounded-lg border-2 border-gray-200 px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
             />
           </div>

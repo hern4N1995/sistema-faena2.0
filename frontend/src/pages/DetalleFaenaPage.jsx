@@ -105,6 +105,7 @@ const DetableFaenaPage = () => {
     const payload = {
       id_tropa: faena.id_tropa,
       fecha_faena: datos.fecha,
+      hora_faena: datos.hora || null,
       categorias: datos.categorias
         .filter((c) => c.cantidad > 0)
         .map((c) => ({
@@ -129,6 +130,7 @@ const DetableFaenaPage = () => {
       setResumen({
         id_faena: res.data.id_faena,
         fecha: datos.fecha,
+        hora: datos.hora,
         n_tropa: faena.n_tropa,
         especie: faena.especie,
         categorias: datos.categorias,

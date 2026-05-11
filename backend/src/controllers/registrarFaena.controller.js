@@ -1,7 +1,7 @@
 const pool = require('../db');
 
 const registrarFaena = async (req, res) => {
-  const { id_tropa, fecha_faena, categorias } = req.body;
+  const { id_tropa, fecha_faena, hora_faena, categorias } = req.body;
 
   if (
     !id_tropa ||
@@ -13,14 +13,24 @@ const registrarFaena = async (req, res) => {
   }
 
   try {
-    // Normalizar fecha: si viene como "YYYY-MM-DD", convertir a timestamp con hora 00:00:00 en UTC
+    // Normalizar fecha y hora: construir timestamp completo
     let fechaNormalizada = fecha_faena;
+    let horaFormato = hora_faena || '00:00:00'; // Por defecto 00:00:00 si no se proporciona
+    
     if (typeof fecha_faena === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha_faena)) {
-      // Es una fecha sin hora, convertir a timestamp UTC (T00:00:00Z)
-      fechaNormalizada = `${fecha_faena}T00:00:00Z`;
+      // Es una fecha sin hora en formato YYYY-MM-DD
+      // Construir timestamp: YYYY-MM-DDTHH:mm:ssZ
+      if (typeof hora_faena === 'string' && /^\d{2}:\d{2}/.test(hora_faena)) {
+        // Hora en formato HH:mm:ss
+        horaFormato = hora_faena.substring(0, 8); // Tomar HH:mm:ss
+      }
+      fechaNormalizada = `${fecha_faena}T${horaFormato}Z`;
+    } else if (typeof fecha_faena === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(fecha_faena)) {
+      // Ya es un timestamp, usar tal cual
+      fechaNormalizada = fecha_faena;
     }
     
-    console.log('[registrarFaena] Fecha recibida:', fecha_faena, 'Normalizada:', fechaNormalizada);
+    console.log('[registrarFaena] Fecha recibida:', fecha_faena, 'Hora:', hora_faena, 'Normalizada:', fechaNormalizada);
     
     // Insertar faena principal
     const faenaRes = await pool.query(
@@ -76,6 +86,7 @@ const registrarFaena = async (req, res) => {
       id_faena,
       id_tropa,
       fecha_faena,
+      hora_faena: horaFormato,
       detalles: detallesInsertados,
     });
   } catch (err) {

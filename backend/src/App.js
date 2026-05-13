@@ -279,7 +279,7 @@ app.use((req, res, next) => {
       );
       res.setHeader(
         'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, X-Requested-With, X-CSRF-Token',
+        'Content-Type, Authorization, X-Requested-With',
       );
       if (req.method === 'OPTIONS') return res.sendStatus(204);
       return next();

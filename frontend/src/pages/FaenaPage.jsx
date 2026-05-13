@@ -17,6 +17,7 @@ const useMediaQuery = (query) => {
 
 const FaenaPage = () => {
   const [tropas, setTropas] = useState([]);
+  const [filtroBusqueda, setFiltroBusqueda] = useState('');
   const [totalFaenar, setTotalFaenar] = useState(0);
   const [loading, setLoading] = useState(true);
   const [redirigiendoId, setRedirigiendoId] = useState(null);
@@ -27,7 +28,7 @@ const FaenaPage = () => {
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
-  const rowsPerPage = isMobile ? 3 : isTablet ? 5 : 7;
+  const rowsPerPage = 20;
 
   // Normaliza datos básicos de la tropa (lo mínimo)
   const normalizeBasic = (r) => {
@@ -277,6 +278,26 @@ const FaenaPage = () => {
     return t.planta_nombre ?? t.planta ?? '—';
   };
 
+  const normalizeText = (value) =>
+    String(value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+  const tropasFiltradas = tropas.filter((t) => {
+    const query = normalizeText(filtroBusqueda.trim());
+    if (!query) return true;
+
+    const searchable = normalizeText(
+      [t.n_tropa, t.productor, t.departamento, t.especie].join(' ')
+    );
+    return searchable.includes(query);
+  });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filtroBusqueda]);
+
   const TropaCard = ({ t }) => (
     <div
       className={`rounded-xl shadow border p-4 mb-4 ${
@@ -330,8 +351,8 @@ const FaenaPage = () => {
     </div>
   );
 
-  const totalPages = Math.max(1, Math.ceil(tropas.length / rowsPerPage));
-  const paginatedTropas = tropas.slice(
+  const totalPages = Math.max(1, Math.ceil(tropasFiltradas.length / rowsPerPage));
+  const paginatedTropas = tropasFiltradas.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
@@ -342,11 +363,29 @@ const FaenaPage = () => {
         <h1 className="text-xl md:text-2xl font-extrabold text-center text-slate-800 drop-shadow mb-3">
           📋 Tropas a Faenar
         </h1>
-        <div className="mt-1 mr-10 flex justify-end">
-          <p className="text-sm font-semibold text-green-700">
-            Total general a faenar:{' '}
-            <span className="text-green-900">{totalFaenar}</span>
-          </p>
+        <div className="max-w-7xl mx-auto px-1 mb-3 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+          <div className="w-full md:max-w-xl">
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Buscar por tropa, productor, departamento o especie
+            </label>
+            <input
+              type="text"
+              value={filtroBusqueda}
+              onChange={(e) => setFiltroBusqueda(e.target.value)}
+              placeholder="Ej: 852, Carlos Rodríguez, Barranqueras, Bovinos"
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 text-sm bg-white transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+            />
+          </div>
+
+          <div className="md:text-right">
+            <p className="text-sm font-semibold text-green-700">
+              Total general a faenar:{' '}
+              <span className="text-green-900">{totalFaenar}</span>
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Registros visibles: {tropasFiltradas.length}
+            </p>
+          </div>
         </div>
       </header>
 
@@ -354,7 +393,7 @@ const FaenaPage = () => {
         <div className="flex justify-center items-center h-40">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-700" />
         </div>
-      ) : tropas.length === 0 ? (
+      ) : tropasFiltradas.length === 0 ? (
         <div className="text-center text-slate-500 mt-10">
           <p className="text-lg">No hay tropas disponibles para faenar.</p>
         </div>
@@ -368,9 +407,9 @@ const FaenaPage = () => {
           ))}
         </div>
       ) : (
-        <div className="flex justify-center px-4">
-          <div className="w-full max-w-5xl overflow-x-auto overflow-y-auto max-h-[500px] rounded-xl shadow-xl ring-1 ring-slate-200">
-            <table className="min-w-[1100px] w-full text-sm text-center text-slate-700">
+        <div className="flex justify-center px-2 md:px-4">
+          <div className="w-full max-w-7xl overflow-x-auto overflow-y-auto max-h-[560px] rounded-xl shadow-xl ring-1 ring-slate-200 bg-white">
+            <table className="w-full table-auto text-sm text-center text-slate-700">
               <thead className="bg-green-700 text-white uppercase tracking-wider text-xs">
                 <tr>
                   <th className="px-3 py-2">Fecha</th>
@@ -433,7 +472,7 @@ const FaenaPage = () => {
         </div>
       )}
 
-      {tropas.length > rowsPerPage && (
+      {tropasFiltradas.length > rowsPerPage && (
         <div className="mt-4 flex justify-center items-center gap-2 flex-wrap">
           <button
             onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}

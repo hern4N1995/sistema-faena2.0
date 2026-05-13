@@ -4,7 +4,6 @@ const jwt = require('jsonwebtoken');
 
 // Clave secreta para firmar el token (usala desde .env en producción)
 const JWT_SECRET = process.env.JWT_SECRET; // <-- Cambiala en producción
-const isProduction = process.env.NODE_ENV === 'production';
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
@@ -48,15 +47,13 @@ exports.login = async (req, res) => {
       },
     });
 
-    if (!isProduction) {
-      console.log('[AUTH] Login exitoso:', {
-        id_usuario: usuario.id_usuario,
-        email: usuario.email,
-        rol: usuario.id_rol,
-        id_planta: usuario.id_planta,
-        token_expira_en: '30d',
-      });
-    }
+    console.log(req.body);
+    console.log("Email recibido:", email);
+    console.log("Resultado DB:", result.rows);
+    console.log("Usuario encontrado:", usuario.email);
+    console.log("Rol del usuario:", usuario.id_rol);
+    console.log(`Login exitoso para ${usuario.email} con rol ${usuario.id_rol}`);
+    console.log(`Token generado con expiración: 30 días`);
 
 
   } catch (error) {

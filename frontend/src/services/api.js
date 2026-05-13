@@ -2,9 +2,6 @@
 import axios from 'axios';
 import { getResponseCache, getRequestDeduplicator } from './cache';
 
-const isDevelopment = import.meta.env.DEV;
-const explicitApiBase = import.meta.env.VITE_API_BASE_URL?.trim();
-
 /**
  * Determina la base del API en RUNTIME:
  * - Si el hostname es sifadeco.vercel.app → usa backend remoto (onrender.com)
@@ -12,38 +9,30 @@ const explicitApiBase = import.meta.env.VITE_API_BASE_URL?.trim();
  * - Fallback: /api
  */
 function getApiBase() {
-  if (explicitApiBase) {
-    return explicitApiBase;
-  }
-
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
 
-    // Despliegues públicos: usar backend remoto por defecto.
-    if (hostname.endsWith('.vercel.app')) {
-      if (isDevelopment) {
-        console.log('[API] Detectado despliegue Vercel, usando backend remoto');
-      }
+    // Vercel: siempre usar backend remoto
+    if (hostname === 'sifadeco.vercel.app') {
+      console.log('[API] Detectado Vercel, usando backend remoto');
       return 'https://sifadeco.onrender.com/api';
     }
 
     // Localhost: usar /api relativo
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      if (isDevelopment) {
-        console.log('[API] Detectado localhost, usando /api');
-      }
+      console.log('[API] Detectado localhost, usando /api');
       return '/api';
     }
   }
 
-  return 'https://sifadeco.onrender.com/api';
+  // Fallback
+  return '/api';
 }
 
 const API_BASE = getApiBase();
 
-if (isDevelopment) {
-  console.log('[API] Base URL configurada:', API_BASE);
-}
+// Log temporal para debugging (elimina en producción)
+console.log('API base (build):', API_BASE);
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -60,7 +49,8 @@ api.interceptors.request.use(
       config.headers = config.headers || {};
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-      } else if (isDevelopment) {
+        console.log('[API] Token agregado al header:', `Bearer ${token.substring(0, 20)}...`);
+      } else {
         console.warn('[API] No hay token en localStorage para:', config.url);
       }
 
@@ -70,7 +60,7 @@ api.interceptors.request.use(
         const csrfToken = localStorage.getItem('csrfToken');
         if (csrfToken) {
           config.headers['X-CSRF-Token'] = csrfToken;
-        } else if (isDevelopment) {
+        } else {
           console.warn('[API] CSRF token no encontrado. Algunas operaciones pueden fallar.');
         }
       }

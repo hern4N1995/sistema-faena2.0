@@ -32,7 +32,7 @@ CREATE INDEX IF NOT EXISTS idx_faena_fecha ON faena(fecha);
 
 -- Índices para tabla DECOMISO
 CREATE INDEX IF NOT EXISTS idx_decomiso_id_faena_detalle ON decomiso(id_faena_detalle);
-CREATE INDEX IF NOT EXISTS idx_decomiso_fecha ON decomiso(fecha_creacion);
+CREATE INDEX IF NOT EXISTS idx_decomiso_fecha ON decomiso(fecha_decomiso);
 
 -- Índices para tabla DECOMISO_DETALLE
 CREATE INDEX IF NOT EXISTS idx_decomiso_detalle_id_decomiso ON decomiso_detalle(id_decomiso);

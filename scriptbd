@@ -161,6 +161,7 @@ CREATE TABLE IF NOT EXISTS decomiso(
     id_decomiso SERIAL INTEGER PRIMARY KEY,
     id_faena INTEGER NOT NULL,
     cantidad_afectados SMALLINT,
+    fecha_decomiso TIMESTAMP DEFAULT NOW(),
 
     CONSTRAINT FK_id_faena FOREIGN KEY (id_faena) REFERENCES faena(id_faena),
 );

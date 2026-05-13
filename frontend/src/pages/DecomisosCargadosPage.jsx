@@ -75,6 +75,7 @@ const DecomisosCargadosPage = () => {
               id_decomiso: row.id_decomiso,
               id_faena: row.id_faena,
               fecha_faena: row.fecha_faena || row.fecha,
+              fecha_decomiso: row.fecha_decomiso,
               n_tropa: row.n_tropa,
               dte_dtu: row.dte_dtu,
               id_planta: row.id_planta,
@@ -251,7 +252,7 @@ const DecomisosCargadosPage = () => {
     <div className="rounded-xl shadow-sm border p-4 mb-4 bg-white border-slate-200 transition hover:shadow-md">
       <div className="flex justify-between items-start mb-2">
         <span className="text-xs text-slate-500">
-          {formatFecha(d.fecha_faena)}
+          {formatFecha(d.fecha_decomiso)}
         </span>
         <span className="text-sm font-semibold text-green-800">
           Faena #{d.n_tropa}
@@ -358,7 +359,7 @@ const DecomisosCargadosPage = () => {
                 <table className="min-w-[900px] w-full text-sm text-center text-slate-700">
                   <thead className="bg-green-700 text-white uppercase tracking-wide text-xs">
                     <tr>
-                      <th className="px-3 py-3">Fecha Faena</th>
+                      <th className="px-3 py-3">Fecha Decomiso</th>
                       <th className="px-3 py-3">N° Tropa</th>
                       <th className="px-3 py-3">Planta</th>
                       <th className="px-3 py-3">DTE / DTU</th>
@@ -379,7 +380,7 @@ const DecomisosCargadosPage = () => {
                             onClick={() => setExpandedDecomiso(isExpanded ? null : d.id_decomiso)}
                           >
                             <td className="px-3 py-3">
-                              {formatFecha(d.fecha_faena)}
+                              {formatFecha(d.fecha_decomiso)}
                             </td>
                             <td className="px-3 py-3 font-semibold text-green-800">
                               {d.n_tropa}

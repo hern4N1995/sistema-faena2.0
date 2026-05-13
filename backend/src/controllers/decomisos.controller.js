@@ -108,9 +108,9 @@ const listarDecomisos = async (req, res) => {
     const result = await pool.query(`
       SELECT 
         d.id_decomiso,
+        d.fecha_decomiso,
         f.id_faena,
         f.fecha_faena,
-        f.fecha_faena AS fecha,
         t.n_tropa,
         t.dte_dtu,
         t.id_planta,
@@ -136,7 +136,7 @@ const listarDecomisos = async (req, res) => {
       LEFT JOIN parte_decomisada pd ON dd.id_parte_decomisada = pd.id_parte_decomisada
       LEFT JOIN tipo_parte_deco tp ON pd.id_tipo_parte_deco = tp.id_tipo_parte_deco
       LEFT JOIN afeccion a ON dd.id_afeccion = a.id_afeccion
-      ORDER BY f.fecha_faena DESC, d.id_decomiso DESC
+      ORDER BY d.fecha_decomiso DESC, d.id_decomiso DESC
       LIMIT $1;
     `, [limit]);
 

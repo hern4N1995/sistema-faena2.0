@@ -95,16 +95,41 @@ function SelectField({
 }
 
 const useMediaQuery = (query) => {
-  const [matches, setMatches] = useState(
-    () => window.matchMedia(query).matches
-  );
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia(query).matches;
+  });
+
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
     const media = window.matchMedia(query);
     const listener = () => setMatches(media.matches);
+    listener();
     media.addEventListener('change', listener);
     return () => media.removeEventListener('change', listener);
   }, [query]);
+
   return matches;
+};
+
+const decodeJwtPayload = (token) => {
+  try {
+    const payload = token?.split('.')?.[1];
+    if (!payload) {
+      return null;
+    }
+
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    return JSON.parse(window.atob(padded));
+  } catch {
+    return null;
+  }
 };
 
 export default function FaenasRealizadasPage() {
@@ -115,6 +140,8 @@ export default function FaenasRealizadasPage() {
   const [loading, setLoading] = useState(true);
   const [rol, setRol] = useState(null);
   const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [error, setError] = useState('');
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
@@ -131,114 +158,155 @@ export default function FaenasRealizadasPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalFaenados, setTotalFaenados] = useState(0);
 
-  // Obtener rol y planta del usuario desde localStorage
+  // Obtener rol y planta del usuario desde localStorage; si falta, recuperar desde token.
   useEffect(() => {
-    try {
-      const userData = JSON.parse(localStorage.getItem('user'));
-      if (userData) {
-        const userRol = userData.rol || userData.id_rol;
-        setRol(parseInt(userRol));
-        
-        // Usar id_planta del usuario (viene del backend)
-        if (parseInt(userRol) !== 1) {
-          setPlantaDelUsuario(userData.id_planta);
+    let cancelled = false;
+
+    const loadUserContext = async () => {
+      try {
+        const rawUser = localStorage.getItem('user');
+        if (rawUser) {
+          const userData = JSON.parse(rawUser);
+          const userRol = Number(userData.rol ?? userData.id_rol);
+
+          if (Number.isFinite(userRol)) {
+            if (!cancelled) {
+              setRol(userRol);
+              setPlantaDelUsuario(userRol !== 1 ? userData.id_planta ?? null : null);
+              setError('');
+              setSessionReady(true);
+            }
+            return;
+          }
+        }
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+          if (!cancelled) {
+            setError('Sesión no encontrada. Volvé a iniciar sesión.');
+            setSessionReady(true);
+            setLoading(false);
+          }
+          return;
+        }
+
+        const payload = decodeJwtPayload(token);
+        const tokenRol = Number(payload?.rol);
+
+        if (!Number.isFinite(tokenRol)) {
+          if (!cancelled) {
+            setError('No se pudo validar la sesión. Iniciá sesión nuevamente.');
+            setSessionReady(true);
+            setLoading(false);
+          }
+          return;
+        }
+
+        let idPlanta = null;
+        if (tokenRol !== 1) {
+          const profileRes = await api.get('/usuarios/usuario-actual');
+          idPlanta = profileRes.data?.id_planta ?? null;
+
+          if (!idPlanta) {
+            throw new Error('No se pudo determinar la planta del usuario');
+          }
+        }
+
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            rol: tokenRol,
+            id_planta: idPlanta,
+          })
+        );
+
+        if (!cancelled) {
+          setRol(tokenRol);
+          setPlantaDelUsuario(idPlanta);
+          setError('');
+          setSessionReady(true);
+        }
+      } catch (err) {
+        console.error('[FaenasRealizadasPage] Error al obtener usuario:', err);
+        if (!cancelled) {
+          setError('No se pudo cargar la sesión del usuario. Volvé a iniciar sesión.');
+          setSessionReady(true);
+          setLoading(false);
         }
       }
-    } catch (err) {
-      console.error('[FaenasRealizadasPage] Error al obtener usuario:', err);
-      setRol(1); // Default a admin para mostrar datos
-    }
+    };
+
+    loadUserContext();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const fetchFaenas = async () => {
     setLoading(true);
     try {
+      if (rol !== 1 && !plantaDelUsuario) {
+        setFaenas([]);
+        setTotalFaenados(0);
+        setCurrentPage(1);
+        setError('No se pudo determinar la planta del usuario. Volvé a iniciar sesión.');
+        return;
+      }
+
       const params = {};
       const desde = filtro.desde?.trim();
       const hasta = filtro.hasta?.trim();
-      if (desde && hasta) {
-        params.desde = desde;
-        params.hasta = hasta;
-      } else if (desde) {
-        params.fecha = desde;
-      } else if (hasta) {
-        params.fecha = hasta;
+
+      if (desde) params.desde = desde;
+      if (hasta) params.hasta = hasta;
+      if (filtro.n_tropa?.trim()) params.n_tropa = filtro.n_tropa.trim();
+      if (rol !== 1 && plantaDelUsuario) {
+        params.id_planta = String(plantaDelUsuario);
       }
-      if (filtro.n_tropa?.trim()) params.n_tropa = filtro.n_tropa;
 
       console.log('[FaenasRealizadasPage] Cargando con params:', params);
-      
+
       const res = await api.get('/faena/faenas-realizadas', { params });
       console.log('[FaenasRealizadasPage] Respuesta recibida:', res.data);
-      
+
       const data = res.data;
-      let arr = Array.isArray(data)
+      const arr = Array.isArray(data)
         ? data
         : Array.isArray(data?.faenas)
         ? data.faenas
         : Array.isArray(data?.data)
         ? data.data
         : [];
-      
-      console.log('[FaenasRealizadasPage] Array procesado:', arr.length, 'faenas');
-
-      // Log para debug: mostrar id_planta de las faenas
-      if (arr.length > 0) {
-        console.log('[FaenasRealizadasPage] Primeras faenas con id_planta:', arr.slice(0, 3).map(f => ({
-          id_faena: f.id_faena,
-          n_tropa: f.n_tropa,
-          id_planta: f.id_planta,
-          fecha: f.fecha_faena
-        })));
-      }
-
-      // Filtrar por planta del usuario (si no es admin)
-      if (rol !== 1 && plantaDelUsuario) {
-        console.log('[FaenasRealizadasPage] Filtrando por planta del usuario:', plantaDelUsuario, 'Tipo:', typeof plantaDelUsuario);
-        console.log('[FaenasRealizadasPage] Faenas ANTES de filtrar:', arr.length);
-        arr = arr.filter((f) => {
-          const match = String(f.id_planta) === String(plantaDelUsuario);
-          if (!match) {
-            console.log('[FaenasRealizadasPage] Faena RECHAZADA:', {
-              id_faena: f.id_faena,
-              id_planta: f.id_planta,
-              plantaDelUsuario: plantaDelUsuario,
-              match: match
-            });
-          }
-          return match;
-        });
-        console.log('[FaenasRealizadasPage] Después de filtrar:', arr.length, 'faenas');
-      } else if (rol === 1) {
-        console.log('[FaenasRealizadasPage] Admin - mostrando todas las faenas');
-      } else {
-        console.log('[FaenasRealizadasPage] Warning - Rol no es admin pero no hay plantaDelUsuario. Rol:', rol, 'Planta:', plantaDelUsuario);
-      }
 
       setFaenas(arr);
-
-      const total = arr.reduce((acc, item) => {
-        const v = Number(item.total_faenado ?? 0);
-        return acc + (Number.isFinite(v) ? v : 0);
-      }, 0);
-      setTotalFaenados(total);
+      setTotalFaenados(Number(data?.total_faenados) || 0);
       setCurrentPage(1);
+      setError('');
     } catch (err) {
       console.error('[FaenasRealizadasPage] Error al cargar faenas:', err?.response?.data || err.message);
       setFaenas([]);
       setTotalFaenados(0);
       setCurrentPage(1);
+      setError('No se pudieron cargar las faenas.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (rol !== null) {
-      fetchFaenas();
+    if (!sessionReady) {
+      return;
     }
+
+    if (rol === null) {
+      setLoading(false);
+      return;
+    }
+
+    fetchFaenas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtro, rol, plantaDelUsuario]);
+  }, [filtro, rol, plantaDelUsuario, sessionReady]);
 
   useEffect(() => setCurrentPage(1), [rowsPerPage, sortOrder]);
 
@@ -459,6 +527,11 @@ export default function FaenasRealizadasPage() {
       {loading ? (
         <div className="flex justify-center items-center h-40">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-700"></div>
+        </div>
+      ) : error ? (
+        <div className="text-center mt-10 max-w-xl mx-auto bg-red-50 border border-red-200 text-red-700 rounded-xl px-6 py-5">
+          <p className="text-lg font-semibold">No se pudo cargar la página</p>
+          <p className="mt-2">{error}</p>
         </div>
       ) : paginatedFaenas.length === 0 ? (
         <div className="text-center text-slate-500 mt-10">

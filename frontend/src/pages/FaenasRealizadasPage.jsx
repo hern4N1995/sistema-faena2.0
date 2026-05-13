@@ -258,8 +258,13 @@ export default function FaenasRealizadasPage() {
     }
   };
 
-  const handleDecomisar = (id_faena) =>
-    navigate(`/decomisos/nuevo/${id_faena}`);
+  const handleDecomisar = (event, id_faena) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const targetPath = `/decomisos/nuevo/${id_faena}`;
+    window.open(targetPath, '_blank', 'noopener,noreferrer');
+  };
 
   const sortedFaenas = useMemo(() => {
     const copy = Array.isArray(faenas) ? [...faenas] : [];
@@ -509,7 +514,7 @@ export default function FaenasRealizadasPage() {
                       <td className="px-2 py-2 text-[12px] font-bold">{f.total_faenado}</td>
                       <td className="px-2 py-2">
                         <button
-                          onClick={() => handleDecomisar(f.id_faena)}
+                          onClick={(e) => handleDecomisar(e, f.id_faena)}
                           className="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition whitespace-nowrap"
                         >
                           Decomisar
@@ -572,7 +577,7 @@ export default function FaenasRealizadasPage() {
                 </div>
                 <div className="mt-4 flex justify-end">
                   <button
-                    onClick={() => handleDecomisar(f.id_faena)}
+                    onClick={(e) => handleDecomisar(e, f.id_faena)}
                     className="text-sm px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition"
                   >
                     Decomisar

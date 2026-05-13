@@ -27,6 +27,10 @@ export default function FaenasADecomisar() {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [rowsPerPage, setRowsPerPage] = useState(isMobile ? 3 : 6);
 
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewFaena, setPreviewFaena] = useState(null);
+  const [previewDetalles, setPreviewDetalles] = useState([]);
+
   // filtro por día relativo: 'actual' | 'anterior' | 'siguiente' | 'todas'
   const [dayFilterMode, setDayFilterMode] = useState('todas');
 
@@ -110,6 +114,35 @@ export default function FaenasADecomisar() {
   const handleDecomisar = (f) => {
     setRedirigiendoId(f.id_faena);
     navigate(`/decomisos/nuevo/${f.id_faena}`);
+  };
+
+  const handlePreview = async (f) => {
+    try {
+      console.log('[FaenasADecomisar] Cargando detalles de faena:', f.id_faena);
+      const res = await api.get(`/tropas/${f.id_tropa}/detalle`);
+      console.log('[FaenasADecomisar] Detalles faena:', res.data);
+      
+      let detalles = res.data;
+      if (detalles && typeof detalles === 'object') {
+        if (Array.isArray(detalles)) {
+          setPreviewDetalles(detalles);
+        } else if (Array.isArray(detalles.data)) {
+          setPreviewDetalles(detalles.data);
+        } else if (Array.isArray(detalles.categorias)) {
+          setPreviewDetalles(detalles.categorias);
+        } else {
+          setPreviewDetalles([]);
+        }
+      } else if (Array.isArray(detalles)) {
+        setPreviewDetalles(detalles);
+      }
+      
+      setPreviewFaena(f);
+      setPreviewOpen(true);
+    } catch (err) {
+      console.error('[FaenasADecomisar] Error al cargar detalles:', err);
+      setPreviewDetalles([]);
+    }
   };
 
   // --- fechas únicas (YYYY-MM-DD) descendentes ---
@@ -331,7 +364,14 @@ export default function FaenasADecomisar() {
           <strong>Total faenado:</strong> {f.total_faenado ?? '—'}
         </p>
       </div>
-      <div className="mt-3 flex justify-end">
+      <div className="mt-3 flex justify-end gap-2">
+        <button
+          onClick={() => handlePreview(f)}
+          className="text-sm px-3 py-2 rounded font-semibold bg-blue-100 text-blue-800 hover:bg-blue-200 transition"
+          title="Previsualizar datos"
+        >
+          Ver
+        </button>
         <button
           onClick={() => handleDecomisar(f)}
           disabled={redirigiendoId === f.id_faena}
@@ -716,19 +756,28 @@ export default function FaenasADecomisar() {
                           {f.total_faenado ?? '—'}
                         </td>
                         <td className="px-3 py-2">
-                          <button
-                            onClick={() => handleDecomisar(f)}
-                            disabled={redirigiendoId === f.id_faena}
-                            className={`text-xs px-3 py-1 rounded font-semibold transition ${
-                              redirigiendoId === f.id_faena
-                                ? 'bg-green-300 text-white cursor-not-allowed'
-                                : 'bg-green-100 text-green-800 hover:bg-green-200'
-                            }`}
-                          >
-                            {redirigiendoId === f.id_faena
-                              ? 'Redirigiendo...'
-                              : 'Decomisar'}
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handlePreview(f)}
+                              className="text-xs px-3 py-1 rounded font-semibold bg-blue-100 text-blue-800 hover:bg-blue-200 transition"
+                              title="Previsualizar datos"
+                            >
+                              Ver
+                            </button>
+                            <button
+                              onClick={() => handleDecomisar(f)}
+                              disabled={redirigiendoId === f.id_faena}
+                              className={`text-xs px-3 py-1 rounded font-semibold transition ${
+                                redirigiendoId === f.id_faena
+                                  ? 'bg-green-300 text-white cursor-not-allowed'
+                                  : 'bg-green-100 text-green-800 hover:bg-green-200'
+                              }`}
+                            >
+                              {redirigiendoId === f.id_faena
+                                ? 'Redirigiendo...'
+                                : 'Decomisar'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -771,6 +820,109 @@ export default function FaenasADecomisar() {
             </div>
           )}
         </>
+      )}
+
+      {/* Modal Preview */}
+      {previewOpen && previewFaena && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-slate-800">
+                📋 Vista Previa - Faena #{previewFaena.id_faena}
+              </h2>
+              <button
+                onClick={() => setPreviewOpen(false)}
+                className="text-2xl text-slate-500 hover:text-slate-700 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Información General */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pb-6 border-b">
+              <div className="bg-slate-50 rounded-lg p-4">
+                <p className="text-xs text-slate-600 font-semibold">N° Tropa</p>
+                <p className="text-lg font-bold text-slate-800">{previewFaena.n_tropa}</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <p className="text-xs text-slate-600 font-semibold">Fecha Faena</p>
+                <p className="text-lg font-bold text-slate-800">
+                  {previewFaena.fecha_faena ? new Date(previewFaena.fecha_faena).toLocaleDateString('es-AR') : '—'}
+                </p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <p className="text-xs text-slate-600 font-semibold">Especie</p>
+                <p className="text-lg font-bold text-slate-800">{previewFaena.especie || '—'}</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <p className="text-xs text-slate-600 font-semibold">Total Faenado</p>
+                <p className="text-lg font-bold text-green-700">{previewFaena.total_faenado || 0}</p>
+              </div>
+            </div>
+
+            {/* Categorías y Cantidades */}
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 mb-4">🐄 Categorías y Cantidades</h3>
+              
+              {previewDetalles.length > 0 ? (
+                <div className="space-y-3">
+                  {previewDetalles.map((det, idx) => (
+                    <div key={idx} className="border-l-4 border-green-500 bg-green-50 rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-semibold text-slate-800">
+                            {det.nombre || det.nombre_categoria || det.categoria || `Categoría ${idx + 1}`}
+                          </p>
+                          {det.especie && (
+                            <p className="text-sm text-slate-600">
+                              Especie: {det.especie}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-green-700">
+                            {det.cantidad || det.remanente || 0}
+                          </p>
+                          <p className="text-xs text-slate-600">animales</p>
+                        </div>
+                      </div>
+                      {det.remanente !== undefined && (
+                        <div className="mt-2 pt-2 border-t border-green-200 text-sm">
+                          <p className="text-slate-700">
+                            Remanente: <span className="font-semibold">{det.remanente}</span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-slate-500 py-8">
+                  <p>No hay categorías disponibles</p>
+                </div>
+              )}
+            </div>
+
+            {/* Botones de acción */}
+            <div className="mt-8 flex gap-3">
+              <button
+                onClick={() => setPreviewOpen(false)}
+                className="flex-1 px-4 py-2 bg-slate-200 text-slate-800 rounded-lg font-semibold hover:bg-slate-300 transition"
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={() => {
+                  setPreviewOpen(false);
+                  handleDecomisar(previewFaena);
+                }}
+                className="flex-1 px-4 py-2 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-800 transition"
+              >
+                Proceder a Decomisar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

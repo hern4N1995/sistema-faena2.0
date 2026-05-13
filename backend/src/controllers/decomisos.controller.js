@@ -189,16 +189,20 @@ const registrarDecomiso = async (req, res) => {
       return res.status(400).json({ error: 'Payload inválido o vacío' });
     }
 
-    const { id_faena_detalle } = detalles[0];
+    const { id_faena_detalle, fecha_decomiso } = detalles[0];
 
     if (!id_faena_detalle) {
       return res.status(400).json({ error: 'Falta id_faena_detalle' });
     }
 
-    // Paso 1: Insertar en decomiso
+    if (!fecha_decomiso) {
+      return res.status(400).json({ error: 'Falta fecha_decomiso' });
+    }
+
+    // Paso 1: Insertar en decomiso con fecha_decomiso
     const result = await pool.query(
-      `INSERT INTO decomiso (id_faena_detalle) VALUES ($1) RETURNING id_decomiso`,
-      [id_faena_detalle],
+      `INSERT INTO decomiso (id_faena_detalle, fecha_decomiso) VALUES ($1, $2) RETURNING id_decomiso`,
+      [id_faena_detalle, fecha_decomiso],
     );
 
     const id_decomiso = result.rows[0].id_decomiso;

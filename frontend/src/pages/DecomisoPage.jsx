@@ -360,6 +360,9 @@ export default function DecomisoPage() {
   const [reviewPayload, setReviewPayload] = useState([]);
   const [reviewServerErrors, setReviewServerErrors] = useState([]);
 
+  const [fechaDecomiso, setFechaDecomiso] = useState('');
+  const [fechaFaenaRaw, setFechaFaenaRaw] = useState('');
+
   useEffect(() => {
     const fetchDatos = async () => {
       try {
@@ -371,6 +374,14 @@ export default function DecomisoPage() {
         
         const faena = resFaena.data;
         if (Array.isArray(faena) && faena.length > 0) {
+          // Obtener fecha raw para validación
+          const fechaRaw = faena[0].fecha_faena
+            ? new Date(faena[0].fecha_faena).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0];
+          
+          setFechaFaenaRaw(fechaRaw);
+          setFechaDecomiso(new Date().toISOString().split('T')[0]); // Fecha actual del decomiso
+
           setInfoFaena({
             id_faena_detalle: faena[0].id_faena_detalle,
             n_tropa: faena[0].n_tropa,
@@ -518,6 +529,16 @@ export default function DecomisoPage() {
     setSuccess(null);
 
     const validationErrors = [];
+
+    // Validar fecha del decomiso
+    if (!fechaDecomiso) {
+      validationErrors.push('La fecha del decomiso es obligatoria.');
+    } else if (fechaFaenaRaw && fechaDecomiso < fechaFaenaRaw) {
+      validationErrors.push(
+        `La fecha del decomiso no puede ser anterior a la fecha de faena (${new Date(fechaFaenaRaw).toLocaleDateString('es-AR')}).`
+      );
+    }
+
     const preview = detalles.map((d, i) => {
       const row = i + 1;
       if (!d.id_parte_decomisada)
@@ -620,6 +641,7 @@ export default function DecomisoPage() {
       const pesoNum = Number.isFinite(parsedPeso) ? parsedPeso : 0;
       return {
         id_faena_detalle: infoFaena.id_faena_detalle,
+        fecha_decomiso: fechaDecomiso,
         id_tipo_parte_deco: d.id_tipo_parte_deco || null,
         id_parte_decomisada: d.id_parte_decomisada,
         id_afeccion: d.id_afeccion,
@@ -723,6 +745,26 @@ export default function DecomisoPage() {
             </div>
           </div>
         )}
+
+        {/* Selector de Fecha del Decomiso */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 mb-6">
+          <label className="block text-sm font-semibold text-slate-700 mb-3">
+            📅 Fecha del Decomiso
+          </label>
+          <input
+            type="date"
+            value={fechaDecomiso}
+            onChange={(e) => setFechaDecomiso(e.target.value)}
+            min={fechaFaenaRaw}
+            required
+            className="w-full md:w-64 rounded-lg border-2 border-gray-200 px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+          />
+          {fechaDecomiso && fechaFaenaRaw && fechaDecomiso < fechaFaenaRaw && (
+            <p className="text-xs text-red-600 mt-2 font-semibold">
+              ⚠️ La fecha del decomiso no puede ser anterior a la fecha de faena ({new Date(fechaFaenaRaw).toLocaleDateString('es-AR')})
+            </p>
+          )}
+        </div>
 
         <div className="space-y-4">
           {detalles.map((detalle, idx) => {

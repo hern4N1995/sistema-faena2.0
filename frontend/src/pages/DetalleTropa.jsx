@@ -1,6 +1,6 @@
 // DetalleTropa.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
 import AppNotification from '../components/AppNotification';
@@ -129,6 +129,7 @@ function SelectField({
 
 export default function DetalleTropa() {
   const { tropaId } = useParams();
+  const navigate = useNavigate();
 
   // Normalizar el ID: si viene como string, convertir a número
   // tropaId debería ser un string como "137", lo pasamos al endpoint como está
@@ -2255,6 +2256,19 @@ export default function DetalleTropa() {
             )}
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           </div>
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              window.scrollTo(0, 0);
+              navigate('/tropa');
+            }}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+          >
+            Volver a ingresar tropa
+          </button>
         </div>
       </div>
 

@@ -11,10 +11,10 @@ const registrarAfeccion = async (req, res) => {
     const query = `
       INSERT INTO afeccion (descripcion, id_especie)
       VALUES ($1, $2)
-      RETURNING id_afeccion
+      RETURNING id_afeccion, descripcion, id_especie
     `;
     const result = await pool.query(query, [descripcion, id_especie]);
-    res.status(201).json({ id_afeccion: result.rows[0].id_afeccion });
+    res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Error al registrar afección:', err.message);
     res.status(500).json({ error: 'Error al registrar afección' });

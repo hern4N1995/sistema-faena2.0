@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
@@ -156,6 +156,264 @@ function InputField({
         step={step}
         className={INPUT_BASE_CLASS}
       />
+    </div>
+  );
+}
+
+/* Modal para crear afecciones */
+function Modal({ children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black opacity-30" onClick={onClose} />
+      <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md z-10">
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+        >
+          ✖
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* InlineCreateModal para Afecciones */
+function InlineCreateModalAfeccion({
+  especies = [],
+  onCancel,
+  onCreated,
+  onNotify,
+  afecciones = [],
+}) {
+  const [values, setValues] = useState({
+    id_especie: '',
+    descripcion: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isFocusing, setIsFocusing] = useState(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  const validate = () => {
+    return values.id_especie && values.descripcion?.trim();
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setValues((p) => ({ ...p, [name]: value }));
+    setError(null);
+  };
+
+  const handleCreate = async () => {
+    if (!validate()) {
+      setError('Completá los campos obligatorios correctamente.');
+      if (onNotify) onNotify('error', 'Completá los campos obligatorios.');
+      return;
+    }
+
+    // Verificar que no esté duplicada
+    const descripcionNormalizada = values.descripcion.trim().toLowerCase();
+    const especieStr = String(values.id_especie);
+    const exists = afecciones.some(
+      (a) =>
+        String(a.id_especie ?? a.especie_id) === especieStr &&
+        (a.descripcion ?? a.nombre ?? '').trim().toLowerCase() === descripcionNormalizada
+    );
+
+    if (exists) {
+      setError('Esta afección ya está cargada.');
+      if (onNotify) onNotify('error', 'Esta afección ya está cargada.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        id_especie: Number(values.id_especie),
+        descripcion: values.descripcion.trim(),
+      };
+
+      const res = await api.post('/afecciones', payload);
+      console.log('[InlineCreateModalAfeccion] POST /afecciones', 'payload:', payload, 'resp:', res?.data);
+
+      const raw = res?.data?.data ?? res?.data ?? null;
+      const normalized =
+        raw && typeof raw === 'object'
+          ? {
+              ...raw,
+              id_afeccion: raw.id_afeccion ?? raw.id ?? raw.insertId ?? raw.id_insertado,
+              id_especie: raw.id_especie ?? values.id_especie,
+              descripcion: raw.descripcion ?? values.descripcion,
+            }
+          : null;
+
+      if (
+        res.status >= 200 &&
+        res.status < 300 &&
+        normalized &&
+        normalized.id_afeccion
+      ) {
+        if (onNotify) onNotify('success', 'Afección creada correctamente');
+        if (mounted.current && onCreated) await onCreated(normalized);
+        setLoading(false);
+        onCancel();
+        return;
+      }
+
+      const errMsg =
+        (raw && (raw.error || raw.mensaje || raw.message)) ||
+        'Respuesta inesperada del servidor';
+      setError(errMsg);
+      if (onNotify) onNotify('error', errMsg);
+      setLoading(false);
+    } catch (err) {
+      console.error('POST afeccion modal error', err);
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        (typeof err?.response?.data === 'string' ? err.response.data : null) ||
+        err?.message ||
+        'Error del servidor';
+      setError(msg);
+      if (onNotify) onNotify('error', msg);
+      setLoading(false);
+    }
+  };
+
+  const especieOptions = especies.map((e) => ({
+    value: String(e.id_especie ?? e.id ?? ''),
+    label: e.nombre ?? e.descripcion ?? '',
+  }));
+
+  const customStyles = {
+    control: (base, state) => ({
+      ...base,
+      backgroundColor: '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '0.5rem',
+      minHeight: '48px',
+      boxShadow: isFocusing
+        ? '0 0 0 1px #000'
+        : state.isFocused
+        ? '0 0 0 4px #d1fae5'
+        : 'none',
+      transition: 'all 50ms ease',
+      '&:hover': {
+        borderColor: '#96f1b7',
+      },
+      '&:focus-within': {
+        borderColor: '#22c55e',
+      },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 0 0 2px',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+      fontSize: '14px',
+      fontFamily: 'inherit',
+      color: '#111827',
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#111827',
+      margin: 0,
+      top: 'initial',
+      transform: 'none',
+    }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#6b7280',
+      margin: 0,
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      height: '48px',
+    }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused }) => ({
+      ...base,
+      fontSize: '14px',
+      padding: '10px 16px',
+      backgroundColor: isFocused ? '#d1fae5' : '#fff',
+      color: isFocused ? '#065f46' : '#111827',
+    }),
+  };
+
+  return (
+    <div>
+      <h3 className="text-lg font-semibold mb-3">Crear Afección</h3>
+
+      <label className="mb-2 font-semibold text-gray-700 text-sm block">
+        Especie
+      </label>
+      <Select
+        name="id_especie"
+        options={especieOptions}
+        value={especieOptions.find((o) => o.value === String(values.id_especie)) || null}
+        onChange={(sel) => setValues((p) => ({ ...p, id_especie: sel?.value ?? '' }))}
+        placeholder="Seleccione especie"
+        styles={customStyles}
+        noOptionsMessage={() => 'Sin opciones'}
+        components={{ IndicatorSeparator: () => null }}
+        onFocus={() => {
+          setIsFocusing(true);
+          setTimeout(() => setIsFocusing(false), 50);
+        }}
+        className="mb-3"
+      />
+
+      <label className="mb-2 font-semibold text-gray-700 text-sm block">
+        Descripción de la afección
+      </label>
+      <input
+        name="descripcion"
+        value={values.descripcion}
+        onChange={handleChange}
+        className={INPUT_BASE_CLASS + ' mb-3'}
+        placeholder="Ej. Hidatidosis"
+      />
+
+      {error && <div className="text-red-600 mb-2 text-sm">{error}</div>}
+
+      <div className="flex justify-end gap-2 mt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 border rounded"
+          disabled={loading}
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleCreate}
+          className="px-4 py-2 bg-green-600 text-white rounded"
+          disabled={loading}
+        >
+          {loading ? 'Guardando...' : 'Crear y seleccionar'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -338,6 +596,11 @@ export default function DecomisoPage() {
   const [tiposParte, setTiposParte] = useState([]);
   const [partes, setPartes] = useState([]);
   const [afecciones, setAfecciones] = useState([]);
+  const [especies, setEspecies] = useState([]);
+  const [modalForAfeccion, setModalForAfeccion] = useState(null);
+  const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
+  const currentDetailIndexRef = useRef(null);
 
   const [detalles, setDetalles] = useState([
     {
@@ -404,6 +667,16 @@ export default function DecomisoPage() {
         setTiposParte(Array.isArray(base?.tiposParte) ? base.tiposParte : []);
         setPartes(Array.isArray(base?.partes) ? base.partes : []);
         setAfecciones(Array.isArray(base?.afecciones) ? base.afecciones : []);
+
+        // Cargar especies
+        try {
+          const resEspecies = await api.get('/especies');
+          const especiesList = Array.isArray(resEspecies.data) ? resEspecies.data : [];
+          setEspecies(especiesList);
+        } catch (err) {
+          console.warn('[DecomisoPage] Error cargando especies:', err.message);
+          setEspecies([]);
+        }
       } catch (e) {
         console.error('[DecomisoPage] Error cargando datos:', e?.response?.data || e.message);
         setErrors(['Error cargando datos iniciales. Reintentá más tarde.']);
@@ -413,6 +686,68 @@ export default function DecomisoPage() {
     };
     fetchDatos();
   }, [id_faena]);
+
+  const showToast = (type, text, ms = 3500) => {
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+      toastTimer.current = null;
+    }
+    setToast({ type, text });
+    toastTimer.current = setTimeout(() => {
+      setToast(null);
+      toastTimer.current = null;
+    }, ms);
+  };
+
+  const handleCreatedAfeccion = async (obj) => {
+    try {
+      const created = obj || {};
+      const id = created.id_afeccion ?? created.id ?? null;
+      const descripcion = created.descripcion ?? created.nombre ?? `Afección ${Date.now()}`;
+      const id_especie = created.id_especie ?? null;
+
+      // Buscar el nombre de la especie
+      const especieObj = especies.find(
+        (e) => String(e.id_especie) === String(id_especie)
+      );
+      const especie = especieObj?.descripcion || especieObj?.nombre || '';
+
+      const finalId = id ? String(id) : `local-afec-${Date.now()}`;
+      const newAfeccion = {
+        id_afeccion: id ?? finalId,
+        descripcion,
+        id_especie,
+        especie, // Agregar el nombre de la especie
+      };
+
+      setAfecciones((prev) => {
+        const exists = prev.find(
+          (a) =>
+            String(a.id_afeccion) === String(newAfeccion.id_afeccion) ||
+            (newAfeccion.descripcion &&
+              String(a.descripcion ?? a.nombre).trim().toLowerCase() ===
+                String(newAfeccion.descripcion).trim().toLowerCase())
+        );
+        if (exists) return prev;
+        return [...prev, newAfeccion];
+      });
+
+      // Seleccionar automáticamente en el detalle actual
+      const currentIdx = currentDetailIndexRef.current;
+      if (currentIdx !== null && currentIdx !== undefined) {
+        actualizarDetalle(currentIdx, 'id_afeccion', String(finalId));
+      }
+
+      showToast('success', 'Afección guardada y seleccionada.');
+      setModalForAfeccion(null);
+      currentDetailIndexRef.current = null;
+    } catch (err) {
+      console.error('handleCreatedAfeccion error', err);
+      showToast('error', 'Creada, pero hubo un problema actualizando listas.');
+      setModalForAfeccion(null);
+      currentDetailIndexRef.current = null;
+    }
+  };
 
   const onlyDigits = (raw) =>
     raw == null ? '' : String(raw).replace(/\D/g, '');
@@ -499,10 +834,15 @@ export default function DecomisoPage() {
   );
   const afeccOptions = useMemo(
     () =>
-      afecciones.map((a) => ({
-        value: a.id_afeccion,
-        label: a.descripcion || a.nombre || '—',
-      })),
+      afecciones.map((a) => {
+        const nombre = a.descripcion || a.nombre || '—';
+        const especie = a.especie || a.nombre_especie || a.species_name || '';
+        const label = especie ? `${nombre} - ${especie}` : nombre;
+        return {
+          value: a.id_afeccion,
+          label,
+        };
+      }),
     [afecciones]
   );
   const destinoOptions = useMemo(
@@ -792,7 +1132,17 @@ export default function DecomisoPage() {
                 key={idx}
                 className="relative bg-white p-4 rounded-2xl shadow-lg border border-slate-200 ring-1 ring-slate-100 transition hover:shadow-xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
               >
-                <div className="absolute top-3 right-3">
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      currentDetailIndexRef.current = idx;
+                      setModalForAfeccion('afeccion');
+                    }}
+                    className="text-green-700 bg-green-100 border border-green-200 px-3 py-1 rounded-md text-xs font-medium hover:bg-green-200"
+                  >
+                    Agregar +
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -834,15 +1184,17 @@ export default function DecomisoPage() {
                   disabled={!detalle.id_tipo_parte_deco}
                 />
 
-                <SelectField
-                  label="Afección"
-                  value={afeccionOption}
-                  onChange={(s) =>
-                    actualizarDetalle(idx, 'id_afeccion', s?.value ?? '')
-                  }
-                  options={afeccOptions}
-                  placeholder="Seleccione afección"
-                />
+                <div className="flex flex-col">
+                  <SelectField
+                    label="Afección"
+                    value={afeccionOption}
+                    onChange={(s) =>
+                      actualizarDetalle(idx, 'id_afeccion', s?.value ?? '')
+                    }
+                    options={afeccOptions}
+                    placeholder="Seleccione afección"
+                  />
+                </div>
 
                 <InputField
                   label="Cantidad"
@@ -929,6 +1281,18 @@ export default function DecomisoPage() {
           onConfirm={confirmAndSave}
           serverErrors={reviewServerErrors}
         />
+
+        {modalForAfeccion && (
+          <Modal onClose={() => setModalForAfeccion(null)}>
+            <InlineCreateModalAfeccion
+              especies={especies}
+              afecciones={afecciones}
+              onCancel={() => setModalForAfeccion(null)}
+              onCreated={handleCreatedAfeccion}
+              onNotify={showToast}
+            />
+          </Modal>
+        )}
       </div>
     </div>
   );

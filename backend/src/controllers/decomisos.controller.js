@@ -42,9 +42,10 @@ const obtenerDatosBaseDecomiso = async (req, res) => {
         ORDER BY nombre_parte;
       `),
       pool.query(`
-        SELECT id_afeccion, descripcion
-        FROM afeccion
-        ORDER BY descripcion;
+        SELECT a.id_afeccion, a.descripcion, e.descripcion AS especie
+        FROM afeccion a
+        JOIN especie e ON a.id_especie = e.id_especie
+        ORDER BY a.descripcion;
       `),
     ]);
 

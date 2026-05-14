@@ -187,6 +187,7 @@ export default function DepartamentoAdmin() {
   const [mensajeFeedback, setMensajeFeedback] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [deviceType, setDeviceType] = useState('desktop');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // edición (modal)
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -277,24 +278,42 @@ export default function DepartamentoAdmin() {
     );
   };
 
-  /* ---------- Paginación local ---------- */
-  const paginatedRegistros = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return Array.isArray(registros)
-      ? registros.slice(start, start + itemsPerPage)
-      : [];
-  }, [registros, currentPage, itemsPerPage]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil((registros?.length || 0) / itemsPerPage)
-  );
-
   // normalizador (trim, lower)
   const norm = (s) =>
     String(s || '')
       .trim()
       .toLowerCase();
+
+  /* ---------- Filtro local por provincia/departamento ---------- */
+  const filteredRegistros = useMemo(() => {
+    const query = norm(searchTerm);
+    if (!query) return Array.isArray(registros) ? registros : [];
+
+    return (Array.isArray(registros) ? registros : []).filter((r) => {
+      const provincia = norm(r.provincia ?? r.provincia_nombre ?? '');
+      const departamento = norm(
+        r.departamento ?? r.nombre_departamento ?? r.nombre ?? ''
+      );
+      return provincia.includes(query) || departamento.includes(query);
+    });
+  }, [registros, searchTerm]);
+
+  /* ---------- Paginación local ---------- */
+  const paginatedRegistros = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return Array.isArray(filteredRegistros)
+      ? filteredRegistros.slice(start, start + itemsPerPage)
+      : [];
+  }, [filteredRegistros, currentPage, itemsPerPage]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil((filteredRegistros?.length || 0) / itemsPerPage)
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   /* ---------- Agregar departamento ---------- */
   const agregarDepartamento = async () => {
@@ -652,12 +671,35 @@ export default function DepartamentoAdmin() {
 
         </div>
 
+        {/* Filtro único */}
+        <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-4 sm:p-6">
+          <div className="flex flex-col gap-2">
+            <label className="font-semibold text-gray-700 text-sm">
+              Buscar por provincia o departamento
+            </label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Escribí una provincia o departamento..."
+              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+            />
+            {searchTerm.trim() && (
+              <p className="text-xs text-gray-500">
+                Resultados encontrados: {filteredRegistros.length}
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Listado */}
         {deviceType === 'mobile' ? (
           <div className="space-y-4">
             {paginatedRegistros.length === 0 ? (
               <p className="text-center text-gray-500 py-6">
-                Sin datos disponibles
+                {searchTerm.trim()
+                  ? 'No se encontraron coincidencias'
+                  : 'Sin datos disponibles'}
               </p>
             ) : (
               paginatedRegistros.map((r) => (
@@ -713,7 +755,9 @@ export default function DepartamentoAdmin() {
                 {paginatedRegistros.length === 0 ? (
                   <tr>
                     <td colSpan="3" className="text-center text-gray-500 py-6">
-                      Sin datos disponibles
+                      {searchTerm.trim()
+                        ? 'No se encontraron coincidencias'
+                        : 'Sin datos disponibles'}
                     </td>
                   </tr>
                 ) : (

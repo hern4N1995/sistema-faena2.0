@@ -119,6 +119,8 @@ const listarDecomisos = async (req, res) => {
         td.cantidad AS cantidad_tropa,
         fd.cantidad_faena,
         dd.id_decomiso_detalle,
+        dd.id_parte_decomisada,
+        dd.id_afeccion,
         dd.cantidad,
         dd.peso_kg,
         dd.animales_afectados,
@@ -298,11 +300,150 @@ const registrarDecomiso = async (req, res) => {
   }
 };
 
+const actualizarDecomiso = async (req, res) => {
+  const { id } = req.params;
+  const detalles = req.body;
+
+  if (!Array.isArray(detalles) || detalles.length === 0) {
+    return res.status(400).json({ error: 'Payload inválido o vacío' });
+  }
+
+  const firstDetalle = detalles[0];
+  const fechaDecomiso = firstDetalle?.fecha_decomiso;
+  if (!fechaDecomiso) {
+    return res.status(400).json({ error: 'Falta fecha_decomiso' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const decomisoResult = await client.query(
+      `SELECT 
+        d.fecha_decomiso,
+        fd.cantidad_faena
+       FROM decomiso d
+       JOIN faena_detalle fd ON d.id_faena_detalle = fd.id_faena_detalle
+       WHERE d.id_decomiso = $1`,
+      [id],
+    );
+    if (decomisoResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Decomiso no encontrado' });
+    }
+
+    const fechaOriginal = decomisoResult.rows[0].fecha_decomiso;
+    const cantidadFaena = decomisoResult.rows[0].cantidad_faena || 0;
+    
+    const fechaOriginalDate = new Date(fechaOriginal);
+    const now = new Date();
+    const diffDays = (now - fechaOriginalDate) / (1000 * 60 * 60 * 24);
+    if (diffDays > 7) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        error: 'El período de edición de 7 días ha expirado para este decomiso',
+      });
+    }
+
+    // Validar que la cantidad total decomisada no supere la cantidad faenada
+    const totalDecomiso = detalles.reduce((sum, d) => {
+      const cantidad = d.cantidad !== undefined && d.cantidad !== null && String(d.cantidad).trim() !== ''
+        ? Number(String(d.cantidad).replace(',', '.'))
+        : 0;
+      return sum + (Number.isFinite(cantidad) ? cantidad : 0);
+    }, 0);
+
+    if (totalDecomiso > cantidadFaena) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: `La cantidad total de decomiso (${totalDecomiso}) no puede superar la cantidad faenada (${cantidadFaena}).`,
+      });
+    }
+
+    await client.query(
+      'UPDATE decomiso SET fecha_decomiso = $1 WHERE id_decomiso = $2',
+      [fechaDecomiso, id],
+    );
+
+    await client.query('DELETE FROM decomiso_detalle WHERE id_decomiso = $1', [id]);
+
+    for (const d of detalles) {
+      const parsedPeso =
+        d.peso_kg !== undefined && d.peso_kg !== null && String(d.peso_kg).trim() !== ''
+          ? Number(String(d.peso_kg).replace(',', '.'))
+          : NaN;
+      const peso = Number.isFinite(parsedPeso) ? parsedPeso : 0;
+
+      const parsedCantidad =
+        d.cantidad !== undefined && d.cantidad !== null && String(d.cantidad).trim() !== ''
+          ? Number(String(d.cantidad).replace(',', '.'))
+          : NaN;
+      const cantidad = Number.isFinite(parsedCantidad) ? parsedCantidad : 0;
+
+      const parsedAnimales =
+        d.animales_afectados !== undefined &&
+        d.animales_afectados !== null &&
+        String(d.animales_afectados).trim() !== ''
+          ? Number(String(d.animales_afectados).replace(',', '.'))
+          : NaN;
+      const animales_afectados = Number.isFinite(parsedAnimales)
+        ? parsedAnimales
+        : 0;
+
+      const existe = await client.query(
+        `SELECT 1 FROM parte_deco_afeccion
+         WHERE id_parte_decomisada = $1 AND id_afeccion = $2`,
+        [d.id_parte_decomisada, d.id_afeccion],
+      );
+      if (existe.rowCount === 0) {
+        await client.query(
+          `INSERT INTO parte_deco_afeccion (id_parte_decomisada, id_afeccion)
+           VALUES ($1, $2)`,
+          [d.id_parte_decomisada, d.id_afeccion],
+        );
+      }
+
+      await client.query(
+        `INSERT INTO decomiso_detalle (
+          id_decomiso,
+          id_parte_decomisada,
+          id_afeccion,
+          cantidad,
+          animales_afectados,
+          peso_kg,
+          destino_decomiso,
+          observaciones
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          id,
+          d.id_parte_decomisada,
+          d.id_afeccion,
+          cantidad,
+          animales_afectados,
+          peso,
+          d.destino_decomiso || null,
+          d.observaciones || null,
+        ],
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: 'Decomiso actualizado correctamente' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error al actualizar decomiso:', error.message);
+    res.status(500).json({ error: 'Error al actualizar decomiso' });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   obtenerCombinaciones,
   obtenerDatosBaseDecomiso,
   obtenerInfoFaenaPorDecomiso,
   registrarDecomiso,
+  actualizarDecomiso,
   obtenerResumenDecomiso,
   listarDecomisos,
 };

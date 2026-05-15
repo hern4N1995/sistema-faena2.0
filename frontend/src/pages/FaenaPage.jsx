@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Select from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -15,6 +16,96 @@ const useMediaQuery = (query) => {
   return matches;
 };
 
+function SelectField({
+  label,
+  value,
+  options = [],
+  onChange,
+  placeholder = '',
+  className = '',
+}) {
+  const [isFocusing, setIsFocusing] = useState(false);
+
+  const customStyles = {
+    control: (base, state) => ({
+      ...base,
+      height: '48px',
+      minHeight: '48px',
+      paddingLeft: '12px',
+      paddingRight: '12px',
+      backgroundColor: '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '0.5rem',
+      boxShadow: isFocusing
+        ? '0 0 0 1px #000'
+        : state.isFocused
+        ? '0 0 0 4px #d1fae5'
+        : 'none',
+      transition: 'all 50ms ease',
+      '&:hover': { borderColor: '#96f1b7' },
+      '&:focus-within': { borderColor: '#22c55e' },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 6px',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+      fontSize: '14px',
+      fontFamily: 'inherit',
+      color: '#111827',
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#111827',
+      margin: 0,
+    }),
+    placeholder: (base) => ({ ...base, fontSize: '14px', color: '#6b7280' }),
+    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused }) => ({
+      ...base,
+      fontSize: '14px',
+      padding: '10px 16px',
+      backgroundColor: isFocused ? '#d1fae5' : '#fff',
+      color: isFocused ? '#065f46' : '#111827',
+    }),
+  };
+
+  return (
+    <div className={`flex flex-col ${className}`} style={{ minWidth: 0 }}>
+      {label && (
+        <label className="mb-2 font-semibold text-gray-700 text-sm">
+          {label}
+        </label>
+      )}
+      <Select
+        value={value}
+        onChange={(sel) => onChange(sel)}
+        options={options}
+        placeholder={placeholder}
+        styles={customStyles}
+        noOptionsMessage={() => 'Sin opciones'}
+        components={{ IndicatorSeparator: () => null }}
+        onFocus={() => {
+          setIsFocusing(true);
+          setTimeout(() => setIsFocusing(false), 50);
+        }}
+      />
+    </div>
+  );
+}
+
 const FaenaPage = () => {
   const [tropas, setTropas] = useState([]);
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
@@ -28,7 +119,14 @@ const FaenaPage = () => {
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
-  const rowsPerPage = 20;
+  const rowsPerPageOptions = [4, 7, 10, 20];
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setRowsPerPage(window.matchMedia('(max-width: 767px)').matches ? 4 : 20);
+    }
+  }, []);
 
   // Normaliza datos básicos de la tropa (lo mínimo)
   const normalizeBasic = (r) => {
@@ -296,7 +394,7 @@ const FaenaPage = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filtroBusqueda]);
+  }, [filtroBusqueda, rowsPerPage]);
 
   const TropaCard = ({ t }) => (
     <div
@@ -374,6 +472,20 @@ const FaenaPage = () => {
               onChange={(e) => setFiltroBusqueda(e.target.value)}
               placeholder="Ej: 852, Carlos Rodríguez, Barranqueras, Bovinos"
               className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 text-sm bg-white transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <SelectField
+              label="Filas"
+              value={{ value: rowsPerPage, label: String(rowsPerPage) }}
+              options={rowsPerPageOptions.map((value) => ({
+                value,
+                label: String(value),
+              }))}
+              onChange={(sel) => setRowsPerPage(Number(sel?.value ?? rowsPerPage))}
+              className={isMobile ? '' : 'w-28'}
+              placeholder="Filas"
             />
           </div>
 

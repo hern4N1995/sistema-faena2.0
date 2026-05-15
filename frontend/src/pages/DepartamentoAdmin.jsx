@@ -278,11 +278,35 @@ export default function DepartamentoAdmin() {
     );
   };
 
-  // normalizador (trim, lower)
+  // normalizador (trim, lower, remove accents)
   const norm = (s) =>
     String(s || '')
       .trim()
-      .toLowerCase();
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+  const startsWithWord = (text, query) => {
+    if (!text || !query) return false;
+    const words = text.split(/\s+/);
+    const queryWords = query.split(/\s+/);
+
+    for (let i = 0; i < words.length; i += 1) {
+      if (!words[i].startsWith(queryWords[0])) continue;
+      let matched = true;
+
+      for (let j = 1; j < queryWords.length; j += 1) {
+        if (!words[i + j] || !words[i + j].startsWith(queryWords[j])) {
+          matched = false;
+          break;
+        }
+      }
+
+      if (matched) return true;
+    }
+
+    return false;
+  };
 
   /* ---------- Filtro local por provincia/departamento ---------- */
   const filteredRegistros = useMemo(() => {
@@ -294,7 +318,10 @@ export default function DepartamentoAdmin() {
       const departamento = norm(
         r.departamento ?? r.nombre_departamento ?? r.nombre ?? ''
       );
-      return provincia.includes(query) || departamento.includes(query);
+      return (
+        startsWithWord(provincia, query) ||
+        startsWithWord(departamento, query)
+      );
     });
   }, [registros, searchTerm]);
 

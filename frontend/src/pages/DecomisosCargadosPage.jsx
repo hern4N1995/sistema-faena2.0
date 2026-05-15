@@ -21,6 +21,12 @@ const DecomisosCargadosPage = () => {
   const [rol, setRol] = useState(null);
   const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
   const [expandedDecomiso, setExpandedDecomiso] = useState(null);
+  const [filterDesde, setFilterDesde] = useState('');
+  const [filterHasta, setFilterHasta] = useState('');
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingDecomiso, setEditingDecomiso] = useState(null);
+  const [editErrors, setEditErrors] = useState([]);
+  const [editSaving, setEditSaving] = useState(false);
 
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -91,6 +97,8 @@ const DecomisosCargadosPage = () => {
           if (row.id_decomiso_detalle) {
             decomiso.detalles.push({
               id_decomiso_detalle: row.id_decomiso_detalle,
+              id_parte_decomisada: row.id_parte_decomisada,
+              id_afeccion: row.id_afeccion,
               cantidad: row.cantidad,
               peso_kg: row.peso_kg,
               animales_afectados: row.animales_afectados,
@@ -106,6 +114,15 @@ const DecomisosCargadosPage = () => {
 
         // Convertir map a array
         const agrupados = Array.from(detallesMap.values());
+
+        agrupados.sort((a, b) => {
+          const fa = parseDateString(a.fecha_decomiso);
+          const fb = parseDateString(b.fecha_decomiso);
+          if (!fa && !fb) return 0;
+          if (!fa) return 1;
+          if (!fb) return -1;
+          return fb - fa;
+        });
 
         // Filtrar por planta del usuario (si no es admin)
         if (rol !== 1 && plantaDelUsuario) {
@@ -164,29 +181,216 @@ const DecomisosCargadosPage = () => {
     }
   };
 
+  const parseDateString = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const isEditableDecomiso = (fecha) => {
+    const date = parseDateString(fecha || '');
+    if (!date) return false;
+    const diffDays = (new Date() - date) / (1000 * 60 * 60 * 24);
+    return diffDays <= 7;
+  };
+
+  const handleOpenEdit = (d) => {
+    const fechaValue = d.fecha_decomiso || d.fecha;
+    if (!isEditableDecomiso(fechaValue)) return;
+    const fechaInput = (() => {
+      const parsed = parseDateString(fechaValue);
+      return parsed ? parsed.toISOString().split('T')[0] : '';
+    })();
+
+    setEditingDecomiso({
+      ...d,
+      fecha_decomiso: fechaInput,
+      detalles: (d.detalles || []).map((det) => ({
+        ...det,
+        cantidad: det.cantidad != null ? String(det.cantidad) : '',
+        animales_afectados:
+          det.animales_afectados != null ? String(det.animales_afectados) : '',
+        peso_kg: det.peso_kg != null ? String(det.peso_kg) : '',
+        destino_decomiso: det.destino_decomiso || '',
+        observaciones: det.observaciones || '',
+      })),
+    });
+    setEditErrors([]);
+    setEditModalOpen(true);
+  };
+
+  const updateEditingDetalle = (index, field, value) => {
+    setEditingDecomiso((prev) => {
+      if (!prev) return prev;
+      const detalles = [...(prev.detalles || [])];
+      detalles[index] = { ...detalles[index], [field]: value };
+      return { ...prev, detalles };
+    });
+  };
+
+  const closeEditModal = () => {
+    setEditModalOpen(false);
+    setEditingDecomiso(null);
+    setEditErrors([]);
+    setEditSaving(false);
+  };
+
   const handleVerResumen = (id) => {
     console.log('[DecomisosCargadosPage] Navigating to resumen con id:', id);
     navigate(`/decomisos/detalle/${id}`);
   };
 
+  const visibleDecomisos = React.useMemo(() => {
+    const desdeDate = parseDateString(filterDesde);
+    const hastaDate = parseDateString(filterHasta);
+    const maxHasta = hastaDate
+      ? new Date(hastaDate.getFullYear(), hastaDate.getMonth(), hastaDate.getDate(), 23, 59, 59, 999)
+      : null;
+
+    return decomisos.filter((d) => {
+      if (!desdeDate && !maxHasta) return true;
+      const fecha = parseDateString(d.fecha_decomiso || '');
+      if (!fecha) return false;
+      if (desdeDate && fecha < desdeDate) return false;
+      if (maxHasta && fecha > maxHasta) return false;
+      return true;
+    });
+  }, [decomisos, filterDesde, filterHasta]);
+
+  const destinoOptions = [
+    { value: 'incineracion', label: 'Incineración' },
+    { value: 'rendering', label: 'Rendering' },
+    { value: 'entierro', label: 'Entierro' },
+    { value: 'desnaturalizacion', label: 'Desnaturalización' },
+    { value: 'otro', label: 'Otro' },
+  ];
+
+  const formatDetalleDestino = (destino) =>
+    destino ? destino.replace('_', ' ') : '—';
+
+  const handleSaveEdit = async () => {
+    if (!editingDecomiso) return;
+    const errors = [];
+
+    if (!editingDecomiso.fecha_decomiso) {
+      errors.push('La fecha del decomiso es obligatoria.');
+    }
+
+    const totalCantidadDecomiso = (editingDecomiso.detalles || []).reduce((sum, det) => {
+      const cantidad = det.cantidad != null ? Number(String(det.cantidad).trim()) : 0;
+      return sum + cantidad;
+    }, 0);
+
+    if (totalCantidadDecomiso > editingDecomiso.cantidad_faena) {
+      errors.push(
+        `La cantidad total de decomiso (${totalCantidadDecomiso}) no puede superar la cantidad faenada (${editingDecomiso.cantidad_faena}).`
+      );
+    }
+
+    const detallesPayload = (editingDecomiso.detalles || []).map((det, idx) => {
+      const row = idx + 1;
+      const cantidad = det.cantidad != null ? String(det.cantidad).trim() : '';
+      const destino = String(det.destino_decomiso || '').trim();
+      const pesoStr = det.peso_kg != null ? String(det.peso_kg).trim() : '';
+      const animales = det.animales_afectados != null ? String(det.animales_afectados).trim() : '';
+
+      if (!cantidad || Number(cantidad) <= 0) {
+        errors.push(`Detalle ${row}: Cantidad debe ser mayor que 0.`);
+      }
+      if (!destino) {
+        errors.push(`Detalle ${row}: Debés seleccionar un destino.`);
+      }
+      if (pesoStr !== '' && Number.isNaN(Number(pesoStr.replace(',', '.')))) {
+        errors.push(`Detalle ${row}: Peso inválido.`);
+      }
+
+      return {
+        id_parte_decomisada: det.id_parte_decomisada,
+        id_afeccion: det.id_afeccion,
+        cantidad: Number(cantidad),
+        animales_afectados: animales ? Number(animales) : 0,
+        peso_kg: pesoStr ? Number(pesoStr.replace(',', '.')) : 0,
+        destino_decomiso: destino,
+        observaciones: det.observaciones || null,
+        fecha_decomiso: editingDecomiso.fecha_decomiso,
+      };
+    });
+
+    if (errors.length > 0) {
+      setEditErrors(errors);
+      return;
+    }
+
+    setEditSaving(true);
+    try {
+      const res = await api.put(
+        `/decomisos/${editingDecomiso.id_decomiso}`,
+        detallesPayload,
+      );
+      console.log('[DecomisosCargadosPage] Decomiso editado:', res.data);
+      setDecomisos((prev) => {
+        const updated = prev.map((d) =>
+          d.id_decomiso === editingDecomiso.id_decomiso
+            ? {
+                ...d,
+                fecha_decomiso: editingDecomiso.fecha_decomiso,
+                detalles: editingDecomiso.detalles.map((det) => ({
+                  ...det,
+                  cantidad: Number(det.cantidad),
+                  animales_afectados: det.animales_afectados
+                    ? Number(det.animales_afectados)
+                    : 0,
+                  peso_kg: det.peso_kg ? Number(det.peso_kg.replace(',', '.')) : 0,
+                })),
+                cantidad_decomisada: editingDecomiso.detalles.reduce(
+                  (sum, det) => sum + (Number(det.cantidad) || 0),
+                  0,
+                ),
+              }
+            : d,
+        );
+        return [...updated].sort((a, b) => {
+          const fa = parseDateString(a.fecha_decomiso);
+          const fb = parseDateString(b.fecha_decomiso);
+          if (!fa && !fb) return 0;
+          if (!fa) return 1;
+          if (!fb) return -1;
+          return fb - fa;
+        });
+      });
+      closeEditModal();
+    } catch (err) {
+      console.error('[DecomisosCargadosPage] Error editando decomiso:', err);
+      const msg = err?.response?.data?.error || 'No se pudo guardar el decomiso.';
+      setEditErrors([msg]);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   /* ---------------------------------------------------------- */
   /*  Paginación                                                */
   /* ---------------------------------------------------------- */
-  const totalPages = Math.ceil(decomisos.length / rowsPerPage);
-  const paginatedDecomisos = decomisos.slice(
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filterDesde, filterHasta]);
+
+  const totalPages = Math.ceil(visibleDecomisos.length / rowsPerPage);
+  const paginatedDecomisos = visibleDecomisos.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
 
   const renderPaginacion = () => {
     if (totalPages <= 1) return null;
-    <div className="text-center text-xs text-slate-500 mb-2">
-      Mostrando {paginatedDecomisos.length} de {decomisos.length} decomisos
-    </div>;
     return (
-      <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
-        <button
-          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+      <>
+        <div className="text-center text-xs text-slate-500 mb-2">
+          Mostrando {paginatedDecomisos.length} de {visibleDecomisos.length} decomisos
+        </div>
+        <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
           className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
             currentPage === 1
@@ -241,7 +445,8 @@ const DecomisosCargadosPage = () => {
         >
           Siguiente →
         </button>
-      </div>
+        </div>
+      </>
     );
   };
 
@@ -298,7 +503,15 @@ const DecomisosCargadosPage = () => {
         </div>
       )}
 
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex flex-wrap justify-start gap-2">
+        {isEditableDecomiso(d.fecha_decomiso || d.fecha) && (
+          <button
+            onClick={() => handleOpenEdit(d)}
+            className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition shadow text-sm"
+          >
+            Editar
+          </button>
+        )}
         <button
           onClick={() => handleVerResumen(d.id_decomiso)}
           className="px-4 py-2 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-800 transition shadow text-sm"
@@ -332,6 +545,199 @@ const DecomisosCargadosPage = () => {
           📦 Decomisos Cargados
         </h1>
       </header>
+
+      <section className="mb-6 max-w-5xl mx-auto rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto] items-end">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Filtro por fecha</h2>
+            <p className="text-sm text-slate-500">
+              Usa las fechas "Desde" y "Hasta" para acotar los decomisos mostrados.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col text-sm text-slate-600">
+              <span className="mb-1 font-semibold">Desde</span>
+              <input
+                type="date"
+                value={filterDesde}
+                onChange={(e) => setFilterDesde(e.target.value)}
+                className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+              />
+            </label>
+            <label className="flex flex-col text-sm text-slate-600">
+              <span className="mb-1 font-semibold">Hasta</span>
+              <input
+                type="date"
+                value={filterHasta}
+                onChange={(e) => setFilterHasta(e.target.value)}
+                className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+              />
+            </label>
+          </div>
+        </div>
+      </section>
+
+      {editModalOpen && editingDecomiso && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-5xl overflow-y-auto max-h-[90vh] rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
+            <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Editar Decomiso</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Editá los datos del decomiso dentro de los 7 días de registro.
+                </p>
+              </div>
+              <button
+                onClick={closeEditModal}
+                className="rounded-full bg-slate-100 text-slate-700 px-3 py-2 hover:bg-slate-200"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              {editErrors.length > 0 && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <p className="font-semibold mb-2">Corrige los siguientes errores:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    {editErrors.map((err, idx) => (
+                      <li key={idx}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Tropa</p>
+                  <p className="text-sm text-slate-800 font-semibold">{editingDecomiso.n_tropa}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Planta</p>
+                  <p className="text-sm text-slate-800">{plantaLabel(editingDecomiso)}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase mb-2 block">Fecha Decomiso</label>
+                  <input
+                    type="date"
+                    value={editingDecomiso.fecha_decomiso || ''}
+                    onChange={(e) =>
+                      setEditingDecomiso((prev) => ({
+                        ...prev,
+                        fecha_decomiso: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <p className="font-semibold text-slate-900 mb-3">Detalles del decomiso</p>
+                <div className="space-y-4">
+                  {editingDecomiso.detalles.map((det, detIdx) => (
+                    <div key={detIdx} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-3">
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase mb-1">Parte</p>
+                          <p className="text-sm font-semibold text-slate-800">{det.nombre_parte || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase mb-1">Tipo</p>
+                          <p className="text-sm text-slate-800">{det.nombre_tipo_parte || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase mb-1">Afección</p>
+                          <p className="text-sm text-slate-800">{det.afeccion || '—'}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 xl:grid-cols-5 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500">Cantidad</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={det.cantidad ?? ''}
+                            onChange={(e) => updateEditingDetalle(detIdx, 'cantidad', e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500">Peso (kg)</label>
+                          <input
+                            type="text"
+                            value={det.peso_kg ?? ''}
+                            onChange={(e) => updateEditingDetalle(detIdx, 'peso_kg', e.target.value)}
+                            placeholder="0,0"
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500">Animales afectados</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={det.animales_afectados ?? ''}
+                            onChange={(e) => updateEditingDetalle(detIdx, 'animales_afectados', e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500">Destino</label>
+                          <select
+                            value={det.destino_decomiso || ''}
+                            onChange={(e) => updateEditingDetalle(detIdx, 'destino_decomiso', e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                          >
+                            <option value="">Seleccionar</option>
+                            {destinoOptions.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500">Observaciones</label>
+                          <input
+                            type="text"
+                            value={det.observaciones || ''}
+                            onChange={(e) => updateEditingDetalle(detIdx, 'observaciones', e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end sm:items-center">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={editSaving}
+                  className={`rounded-full px-5 py-3 text-sm font-semibold text-white transition ${
+                    editSaving
+                      ? 'bg-slate-400 cursor-not-allowed'
+                      : 'bg-green-700 hover:bg-green-800'
+                  }`}
+                >
+                  {editSaving ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center items-center h-32">
@@ -396,7 +802,18 @@ const DecomisosCargadosPage = () => {
                             <td className="px-3 py-3 font-semibold">
                               {d.cantidad_decomisada}
                             </td>
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-3 space-x-2">
+                              {isEditableDecomiso(d.fecha_decomiso || d.fecha) && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEdit(d);
+                                  }}
+                                  className="px-3 py-1 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-xs font-semibold shadow"
+                                >
+                                  Editar
+                                </button>
+                              )}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();

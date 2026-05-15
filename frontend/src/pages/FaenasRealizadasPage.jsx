@@ -127,9 +127,15 @@ export default function FaenasRealizadasPage() {
     { value: 'asc', label: 'Más antiguas primero' },
   ];
 
-  const initialRows = isMobile ? 4 : isTablet ? 4 : 4;
-  const [rowsPerPage, setRowsPerPage] = useState(initialRows);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
   const [sortOrder, setSortOrder] = useState(sortOptions[0]); // objeto {value,label}
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const mobile = window.matchMedia('(max-width: 767px)').matches;
+      setRowsPerPage(mobile ? 4 : 20);
+    }
+  }, []);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalFaenados, setTotalFaenados] = useState(0);
 

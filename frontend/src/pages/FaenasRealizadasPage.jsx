@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
 
@@ -107,14 +106,17 @@ const useMediaQuery = (query) => {
   return matches;
 };
 
-export default function FaenasRealizadasPage() {
-  const navigate = useNavigate();
+const EDICION_FAENA_VENTANA_HORAS = 48;
+const EDICION_FAENA_VENTANA_MS = EDICION_FAENA_VENTANA_HORAS * 60 * 60 * 1000;
 
+export default function FaenasRealizadasPage() {
   const [faenas, setFaenas] = useState([]);
   const [filtro, setFiltro] = useState({ desde: '', hasta: '', n_tropa: '' });
   const [loading, setLoading] = useState(true);
   const [rol, setRol] = useState(null);
   const [plantaDelUsuario, setPlantaDelUsuario] = useState(null);
+  const [modalDetalle, setModalDetalle] = useState(null); // { loading, data, error }
+  const [modalModificar, setModalModificar] = useState(null); // { loading, saving, data, error }
 
   const isMobile = useMediaQuery('(max-width: 767px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
@@ -258,12 +260,164 @@ export default function FaenasRealizadasPage() {
     }
   };
 
+  const parseFaenaDate = (f) => {
+    if (!f) return null;
+    try {
+      if (typeof f === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f)) {
+        const [year, month, day] = f.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      }
+      const d = new Date(f);
+      return Number.isNaN(d.getTime()) ? null : d;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const isEditableWithin48h = (fechaFaena) => {
+    const fecha = parseFaenaDate(fechaFaena);
+    if (!fecha) return false;
+    return Date.now() <= fecha.getTime() + EDICION_FAENA_VENTANA_MS;
+  };
+
   const handleDecomisar = (event, id_faena) => {
     event.preventDefault();
     event.stopPropagation();
 
     const targetPath = `/decomisos/nuevo/${id_faena}`;
     window.open(targetPath, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleVerDetalle = async (id_faena) => {
+    setModalDetalle({ loading: true, data: null, error: null });
+    try {
+      const res = await api.get(`/faena/${id_faena}/detalle`);
+      setModalDetalle({ loading: false, data: res.data, error: null });
+    } catch (err) {
+      setModalDetalle({ loading: false, data: null, error: 'No se pudo cargar el detalle de la faena.' });
+    }
+  };
+
+  const handleAbrirModificar = async (id_faena) => {
+    const faenaSeleccionada = faenas.find(
+      (f) => String(f.id_faena) === String(id_faena),
+    );
+    if (
+      faenaSeleccionada &&
+      !isEditableWithin48h(faenaSeleccionada.fecha_faena)
+    ) {
+      setModalModificar({
+        loading: false,
+        saving: false,
+        data: null,
+        error:
+          'No se puede modificar esta faena porque superó la ventana de 48 horas.',
+      });
+      return;
+    }
+
+    setModalModificar({ loading: true, saving: false, data: null, error: null });
+    try {
+      const res = await api.get(`/faena/${id_faena}/detalle`);
+      // Clonar categorías para edición local y conservar valor original
+      const categorias = (res.data.categorias || []).map((c) => ({
+        ...c,
+        cantidad_original: Number(c.cantidad_faena || 0),
+      }));
+      setModalModificar({
+        loading: false,
+        saving: false,
+        data: { ...res.data, categorias },
+        error: null,
+      });
+    } catch (err) {
+      setModalModificar({ loading: false, saving: false, data: null, error: 'No se pudo cargar los datos para modificar.' });
+    }
+  };
+
+  const handleGuardarModificacion = async () => {
+    if (!modalModificar?.data) return;
+
+    if (!isEditableWithin48h(modalModificar.data.fecha_faena)) {
+      setModalModificar((prev) => ({
+        ...prev,
+        saving: false,
+        error:
+          'La ventana de edición de 48 horas ya expiró para esta faena.',
+      }));
+      return;
+    }
+
+    setModalModificar((prev) => ({ ...prev, saving: true, error: null }));
+
+    const categoriaExcedida = (modalModificar.data.categorias || []).find((c) =>
+      Number(c.cantidad_faena || 0) > Number(c.max_permitido ?? Infinity),
+    );
+    if (categoriaExcedida) {
+      setModalModificar((prev) => ({
+        ...prev,
+        saving: false,
+        error: `La categoría ${categoriaExcedida.categoria} supera el máximo permitido (${categoriaExcedida.max_permitido}).`,
+      }));
+      return;
+    }
+
+    const totalModificado = (modalModificar.data.categorias || []).reduce(
+      (acc, c) => acc + Number(c.cantidad_faena || 0),
+      0,
+    );
+    try {
+      await api.put(`/faena/${modalModificar.data.id_faena}`, {
+        fecha_faena: modalModificar.data.fecha_faena,
+        categorias: (modalModificar.data.categorias || []).map((c) => ({
+          id_tropa_detalle: c.id_tropa_detalle,
+          cantidad_faena: Number(c.cantidad_faena || 0),
+        })),
+      });
+
+      setFaenas((prev) => {
+        const actualizadas = prev.map((f) => {
+          if (String(f.id_faena) !== String(modalModificar.data.id_faena)) {
+            return f;
+          }
+          return {
+            ...f,
+            fecha_faena: modalModificar.data.fecha_faena,
+            total_faenado: totalModificado,
+          };
+        });
+
+        const nuevoTotalFaenados = actualizadas.reduce((acc, item) => {
+          const v = Number(item.total_faenado ?? 0);
+          return acc + (Number.isFinite(v) ? v : 0);
+        }, 0);
+        setTotalFaenados(nuevoTotalFaenados);
+
+        return actualizadas;
+      });
+
+      setModalModificar(null);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.error || 'No se pudo guardar los cambios en la base de datos.';
+      setModalModificar((prev) => ({ ...prev, saving: false, error: msg }));
+    }
+  };
+
+  const obtenerCambiosCategorias = (categorias = []) => {
+    return categorias
+      .map((c) => {
+        const original = Number(c.cantidad_original || 0);
+        const nuevo = Number(c.cantidad_faena || 0);
+        return {
+          categoria: c.categoria,
+          original,
+          nuevo,
+          diferencia: nuevo - original,
+          cambio: nuevo !== original,
+        };
+      })
+      .filter((c) => c.cambio);
   };
 
   const sortedFaenas = useMemo(() => {
@@ -513,12 +667,36 @@ export default function FaenasRealizadasPage() {
                       <td className="px-2 py-2 text-[12px]">{f.especie}</td>
                       <td className="px-2 py-2 text-[12px] font-bold">{f.total_faenado}</td>
                       <td className="px-2 py-2">
-                        <button
-                          onClick={(e) => handleDecomisar(e, f.id_faena)}
-                          className="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition whitespace-nowrap"
-                        >
-                          Decomisar
-                        </button>
+                        <div className="flex gap-1 justify-center">
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleVerDetalle(f.id_faena); }}
+                            className="text-xs px-2 py-1 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 font-semibold transition whitespace-nowrap"
+                          >
+                            Ver
+                          </button>
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAbrirModificar(f.id_faena); }}
+                            disabled={!isEditableWithin48h(f.fecha_faena)}
+                            title={
+                              isEditableWithin48h(f.fecha_faena)
+                                ? 'Modificar (habilitado dentro de las primeras 48 horas)'
+                                : 'Edición no permitida: pasaron más de 48 horas desde la faena'
+                            }
+                            className={`text-xs px-2 py-1 rounded-lg font-semibold transition whitespace-nowrap ${
+                              isEditableWithin48h(f.fecha_faena)
+                                ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                                : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                            }`}
+                          >
+                            Modificar
+                          </button>
+                          <button
+                            onClick={(e) => handleDecomisar(e, f.id_faena)}
+                            className="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition whitespace-nowrap"
+                          >
+                            Decomisar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -575,7 +753,29 @@ export default function FaenasRealizadasPage() {
                     {f.total_faenado ?? '—'}
                   </div>
                 </div>
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    onClick={() => handleVerDetalle(f.id_faena)}
+                    className="text-sm px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 font-semibold transition"
+                  >
+                    Ver
+                  </button>
+                  <button
+                    onClick={() => handleAbrirModificar(f.id_faena)}
+                    disabled={!isEditableWithin48h(f.fecha_faena)}
+                    title={
+                      isEditableWithin48h(f.fecha_faena)
+                        ? 'Modificar (habilitado dentro de las primeras 48 horas)'
+                        : 'Edición no permitida: pasaron más de 48 horas desde la faena'
+                    }
+                    className={`text-sm px-3 py-1.5 rounded-lg font-semibold transition ${
+                      isEditableWithin48h(f.fecha_faena)
+                        ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                        : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Modificar
+                  </button>
                   <button
                     onClick={(e) => handleDecomisar(e, f.id_faena)}
                     className="text-sm px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition"
@@ -616,6 +816,309 @@ export default function FaenasRealizadasPage() {
           >
             Siguiente →
           </button>
+        </div>
+      )}
+
+      {/* Modal detalle de faena */}
+      {modalDetalle && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setModalDetalle(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {modalDetalle.loading ? (
+              <div className="flex justify-center items-center h-32">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-700" />
+              </div>
+            ) : modalDetalle.error ? (
+              <div className="text-center text-red-600">
+                <p className="font-semibold">{modalDetalle.error}</p>
+                <button
+                  onClick={() => setModalDetalle(null)}
+                  className="mt-4 px-4 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 font-semibold"
+                >
+                  Cerrar
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-start mb-4">
+                  <h2 className="text-lg font-bold text-slate-800">
+                    Detalle de Faena
+                  </h2>
+                  <button
+                    onClick={() => setModalDetalle(null)}
+                    className="text-slate-400 hover:text-slate-700 text-2xl leading-none font-bold"
+                    aria-label="Cerrar"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Cabecera */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-5">
+                  <div>
+                    <span className="font-semibold text-slate-600">Fecha:</span>{' '}
+                    <span className="text-slate-800">{formatDate(modalDetalle.data.fecha_faena)}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-600">N° Tropa:</span>{' '}
+                    <span className="text-green-800 font-bold">{modalDetalle.data.n_tropa}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-600">DTE/DTU:</span>{' '}
+                    <span className="text-slate-800">{modalDetalle.data.dte_dtu || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-600">Guía Policial:</span>{' '}
+                    <span className="text-slate-800">{modalDetalle.data.guia_policial || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-600">Planta:</span>{' '}
+                    <span className="text-slate-800">{modalDetalle.data.nombre_planta || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-600">Especie:</span>{' '}
+                    <span className="text-slate-800">{modalDetalle.data.especie || '—'}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-semibold text-slate-600">Productor:</span>{' '}
+                    <span className="text-slate-800">{modalDetalle.data.productor || '—'}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-semibold text-slate-600">Titular:</span>{' '}
+                    <span className="text-slate-800">{modalDetalle.data.titular_faena || '—'}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-semibold text-slate-600">Departamento:</span>{' '}
+                    <span className="text-slate-800">{modalDetalle.data.departamento || '—'}</span>
+                  </div>
+                </div>
+
+                {/* Categorías */}
+                <h3 className="text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                  Categorías faenadas
+                </h3>
+                <div className="overflow-hidden rounded-xl border border-slate-200">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-green-700 text-white">
+                      <tr>
+                        <th className="px-4 py-2 font-semibold">Categoría</th>
+                        <th className="px-4 py-2 font-semibold text-right">Cantidad</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(modalDetalle.data.categorias || []).map((cat, i) => (
+                        <tr
+                          key={i}
+                          className="border-t border-slate-100 even:bg-slate-50"
+                        >
+                          <td className="px-4 py-2 text-slate-700">{cat.categoria}</td>
+                          <td className="px-4 py-2 text-right font-semibold text-slate-800">
+                            {cat.cantidad_faena}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-green-50 border-t-2 border-green-200">
+                        <td className="px-4 py-2 font-bold text-green-800">Total</td>
+                        <td className="px-4 py-2 text-right font-bold text-green-800">
+                          {modalDetalle.data.total_faenado}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                <div className="mt-5 flex justify-end">
+                  <button
+                    onClick={() => setModalDetalle(null)}
+                    className="px-5 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 font-semibold transition"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal modificar faena */}
+      {modalModificar && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => !modalModificar.saving && setModalModificar(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {modalModificar.loading ? (
+              <div className="flex justify-center items-center h-32">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-600" />
+              </div>
+            ) : modalModificar.error && !modalModificar.data ? (
+              <div className="text-center text-red-600">
+                <p className="font-semibold">{modalModificar.error}</p>
+                <button
+                  onClick={() => setModalModificar(null)}
+                  className="mt-4 px-4 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 font-semibold"
+                >
+                  Cerrar
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-start mb-4">
+                  <h2 className="text-lg font-bold text-slate-800">
+                    Modificar Faena
+                  </h2>
+                  <button
+                    onClick={() => !modalModificar.saving && setModalModificar(null)}
+                    className="text-slate-400 hover:text-slate-700 text-2xl leading-none font-bold"
+                    aria-label="Cerrar"
+                    disabled={modalModificar.saving}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Info cabecera */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-4 bg-slate-50 rounded-xl p-3">
+                  <div>
+                    <span className="font-semibold text-slate-600">N° Tropa:</span>{' '}
+                    <span className="font-bold text-green-800">{modalModificar.data.n_tropa}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-600">Especie:</span>{' '}
+                    <span className="text-slate-800">{modalModificar.data.especie || '—'}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-semibold text-slate-600">Fecha:</span>{' '}
+                    <span className="text-slate-800">{formatDate(modalModificar.data.fecha_faena)}</span>
+                  </div>
+                </div>
+
+                {/* Edición de categorías */}
+                <h3 className="text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                  Cantidades faenadas
+                </h3>
+                <div className="space-y-2 mb-4">
+                  {(modalModificar.data.categorias || []).map((cat, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3 bg-slate-50 rounded-lg px-3 py-2">
+                      <div className="flex-1">
+                        <span className="text-sm text-slate-700">{cat.categoria}</span>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Max permitido: {cat.max_permitido ?? '—'}
+                        </p>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        max={cat.max_permitido ?? undefined}
+                        value={cat.cantidad_faena}
+                        onChange={(e) => {
+                          const raw = Number(e.target.value);
+                          const max = Number(cat.max_permitido ?? Infinity);
+                          const normalizado = Number.isFinite(raw) ? raw : 0;
+                          const val = Math.min(max, Math.max(0, normalizado));
+                          setModalModificar((prev) => {
+                            const categorias = prev.data.categorias.map((c, idx) =>
+                              idx === i ? { ...c, cantidad_faena: val } : c
+                            );
+                            return { ...prev, data: { ...prev.data, categorias } };
+                          });
+                        }}
+                        className="w-24 border-2 border-gray-200 rounded-lg px-3 py-1.5 text-sm text-right font-semibold focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100 focus:outline-none"
+                        disabled={modalModificar.saving}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Total calculado */}
+                <div className="flex justify-between items-center bg-green-50 rounded-lg px-4 py-2 mb-4">
+                  <span className="font-bold text-green-800 text-sm">Total faenado</span>
+                  <span className="font-bold text-green-800 text-sm">
+                    {(modalModificar.data.categorias || []).reduce(
+                      (acc, c) => acc + Number(c.cantidad_faena || 0), 0
+                    )}
+                  </span>
+                </div>
+
+                {/* Resumen de cambios para control */}
+                {(() => {
+                  const cambios = obtenerCambiosCategorias(modalModificar.data.categorias || []);
+                  const variacionTotal = cambios.reduce((acc, c) => acc + c.diferencia, 0);
+                  return (
+                    <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <h4 className="text-sm font-bold text-slate-700 mb-2">
+                        Resumen de cambios
+                      </h4>
+                      {cambios.length === 0 ? (
+                        <p className="text-sm text-slate-500">
+                          No hay cambios pendientes.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="space-y-1">
+                            {cambios.map((cambio, idx) => (
+                              <div
+                                key={`${cambio.categoria}-${idx}`}
+                                className="flex items-center justify-between text-sm"
+                              >
+                                <span className="text-slate-700">{cambio.categoria}</span>
+                                <span className="font-semibold text-slate-800">
+                                  {cambio.original} {'->'} {cambio.nuevo} ({cambio.diferencia >= 0 ? '+' : ''}{cambio.diferencia})
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between text-sm">
+                            <span className="font-semibold text-slate-700">Variación total</span>
+                            <span className="font-bold text-slate-800">
+                              {variacionTotal >= 0 ? '+' : ''}{variacionTotal}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {modalModificar.error && (
+                  <p className="text-sm text-red-600 mb-3 font-semibold">{modalModificar.error}</p>
+                )}
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setModalModificar(null)}
+                    disabled={modalModificar.saving}
+                    className="px-5 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 font-semibold transition disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleGuardarModificacion}
+                    disabled={modalModificar.saving}
+                    className="px-5 py-2 rounded-lg bg-yellow-500 text-white hover:bg-yellow-600 font-semibold transition disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {modalModificar.saving ? (
+                      <>
+                        <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Guardando...
+                      </>
+                    ) : 'Guardar cambios'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

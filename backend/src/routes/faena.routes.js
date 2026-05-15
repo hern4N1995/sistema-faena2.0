@@ -10,6 +10,8 @@ const {
   obtenerFaenasRealizadas,
   obtenerDatosParaDecomiso,
   obtenerDetallesFaenaConCategoria,
+  obtenerDetalleFaenaPorId,
+  modificarFaena,
 } = require('../controllers/faena.controller');
 
 const { verificarToken } = require('../middleware/auth');
@@ -26,6 +28,8 @@ const { registrarFaena } = require('../controllers/registrarFaena.controller');
 
 /* Rutas específicas (deben ir antes de la ruta genérica '/') */
 router.get('/:id_faena/decomiso-datos', obtenerDatosParaDecomiso);
+router.get('/:id_faena/detalle', verificarToken, permitirRoles(1, 2, 3), obtenerDetalleFaenaPorId);
+router.put('/:id_faena', verificarToken, permitirRoles(1, 2, 3), modificarFaena);
 
 router.get(
   '/faenas-realizadas',

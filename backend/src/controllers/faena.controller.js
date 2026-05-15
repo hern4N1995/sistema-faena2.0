@@ -1,5 +1,8 @@
 const pool = require('../db');
 
+const EDICION_FAENA_VENTANA_HORAS = 48;
+const EDICION_FAENA_VENTANA_MS = EDICION_FAENA_VENTANA_HORAS * 60 * 60 * 1000;
+
 // Obtener tropas con remanente para faenar
 const obtenerFaenas = async (req, res) => {
   try {
@@ -492,6 +495,214 @@ const obtenerDatosParaDecomiso = async (req, res) => {
 };
 
 // Obtener detalles de faena con categorías para informe
+const modificarFaena = async (req, res) => {
+  const { id_faena } = req.params;
+  if (!id_faena || isNaN(parseInt(id_faena))) {
+    return res.status(400).json({ error: 'ID de faena inválido' });
+  }
+
+  const { fecha_faena, categorias } = req.body;
+
+  if (!Array.isArray(categorias) || categorias.length === 0) {
+    return res.status(400).json({ error: 'Debe enviar al menos una categoría' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const faenaResult = await client.query(
+      'SELECT fecha_faena FROM faena WHERE id_faena = $1 FOR UPDATE',
+      [parseInt(id_faena)],
+    );
+
+    if (faenaResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Faena no encontrada' });
+    }
+
+    const fechaFaena = new Date(faenaResult.rows[0].fecha_faena);
+    if (Number.isNaN(fechaFaena.getTime())) {
+      await client.query('ROLLBACK');
+      return res
+        .status(400)
+        .json({ error: 'Fecha de faena inválida para edición' });
+    }
+
+    const limiteEdicion = fechaFaena.getTime() + EDICION_FAENA_VENTANA_MS;
+    if (Date.now() > limiteEdicion) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        error:
+          'La faena solo puede modificarse dentro de las 48 horas desde su fecha y hora',
+      });
+    }
+
+    const detalleActual = await client.query(
+      `SELECT
+        fd.id_tropa_detalle,
+        COALESCE(fd.cantidad_faena, 0)::int AS cantidad_actual,
+        COALESCE(td.cantidad, 0)::int AS cantidad_inicial,
+        COALESCE(sumfd.total_faenado, 0)::int AS total_faenado_detalle
+      FROM faena_detalle fd
+      JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
+      LEFT JOIN (
+        SELECT id_tropa_detalle, SUM(cantidad_faena)::int AS total_faenado
+        FROM faena_detalle
+        GROUP BY id_tropa_detalle
+      ) sumfd ON sumfd.id_tropa_detalle = fd.id_tropa_detalle
+      WHERE fd.id_faena = $1`,
+      [parseInt(id_faena)],
+    );
+
+    const detalleMap = new Map(
+      detalleActual.rows.map((r) => [String(r.id_tropa_detalle), r]),
+    );
+
+    for (const cat of categorias) {
+      if (!cat.id_tropa_detalle || cat.cantidad_faena === undefined) continue;
+      const detalle = detalleMap.get(String(cat.id_tropa_detalle));
+      if (!detalle) {
+        return res.status(400).json({
+          error: `La categoría con id_tropa_detalle ${cat.id_tropa_detalle} no pertenece a esta faena`,
+        });
+      }
+
+      const nuevaCantidad = Number(cat.cantidad_faena);
+      if (!Number.isFinite(nuevaCantidad) || nuevaCantidad < 0) {
+        return res.status(400).json({
+          error: `Cantidad inválida para ${cat.id_tropa_detalle}`,
+        });
+      }
+
+      const remanenteSinEstaFaena = Math.max(
+        0,
+        Number(detalle.cantidad_inicial) -
+          (Number(detalle.total_faenado_detalle) - Number(detalle.cantidad_actual)),
+      );
+      const maxPermitido = remanenteSinEstaFaena;
+
+      if (nuevaCantidad > maxPermitido) {
+        return res.status(400).json({
+          error: `La cantidad para ${cat.id_tropa_detalle} supera el remanente permitido (${maxPermitido})`,
+        });
+      }
+    }
+
+    // Actualizar fecha si se envió
+    if (fecha_faena) {
+      await client.query(
+        'UPDATE faena SET fecha_faena = $1 WHERE id_faena = $2',
+        [fecha_faena, parseInt(id_faena)],
+      );
+    }
+
+    // Actualizar cantidades por id_tropa_detalle
+    for (const cat of categorias) {
+      if (!cat.id_tropa_detalle || cat.cantidad_faena === undefined) continue;
+      await client.query(
+        `UPDATE faena_detalle
+         SET cantidad_faena = $1
+         WHERE id_faena = $2 AND id_tropa_detalle = $3`,
+        [Number(cat.cantidad_faena), parseInt(id_faena), cat.id_tropa_detalle],
+      );
+    }
+
+    await client.query('COMMIT');
+    res.status(200).json({ message: 'Faena actualizada correctamente' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al modificar faena:', error.message);
+    res.status(500).json({ error: 'Error al modificar la faena' });
+  } finally {
+    client.release();
+  }
+};
+
+const obtenerDetalleFaenaPorId = async (req, res) => {
+  const { id_faena } = req.params;
+  if (!id_faena || isNaN(parseInt(id_faena))) {
+    return res.status(400).json({ error: 'ID de faena inválido' });
+  }
+  try {
+    const result = await pool.query(
+      `SELECT
+        f.id_faena,
+        f.fecha_faena,
+        t.n_tropa,
+        t.dte_dtu,
+        t.guia_policial,
+        p.nombre AS nombre_planta,
+        prod.nombre AS productor,
+        depto.nombre_departamento AS departamento,
+        tf.nombre AS titular_faena,
+        esp.descripcion AS especie,
+        td.id_tropa_detalle,
+        COALESCE(td.cantidad, 0)::int AS cantidad_inicial,
+        COALESCE(sumfd.total_faenado, 0)::int AS total_faenado_detalle,
+        ce.descripcion AS categoria,
+        fd.cantidad_faena
+      FROM faena f
+      JOIN faena_detalle fd ON f.id_faena = fd.id_faena
+      JOIN tropa t ON f.id_tropa = t.id_tropa
+      JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
+      LEFT JOIN (
+        SELECT id_tropa_detalle, SUM(cantidad_faena)::int AS total_faenado
+        FROM faena_detalle
+        GROUP BY id_tropa_detalle
+      ) sumfd ON sumfd.id_tropa_detalle = td.id_tropa_detalle
+      JOIN especie esp ON td.id_especie = esp.id_especie
+      JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
+      JOIN productor prod ON t.id_productor = prod.id_productor
+      JOIN departamento depto ON t.id_departamento = depto.id_departamento
+      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      LEFT JOIN planta p ON t.id_planta = p.id_planta
+      WHERE f.id_faena = $1
+      ORDER BY ce.descripcion ASC`,
+      [parseInt(id_faena)],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Faena no encontrada' });
+    }
+
+    const rows = result.rows;
+    const cabecera = {
+      id_faena: rows[0].id_faena,
+      fecha_faena: rows[0].fecha_faena,
+      n_tropa: rows[0].n_tropa,
+      dte_dtu: rows[0].dte_dtu,
+      guia_policial: rows[0].guia_policial,
+      nombre_planta: rows[0].nombre_planta,
+      productor: rows[0].productor,
+      departamento: rows[0].departamento,
+      titular_faena: rows[0].titular_faena,
+      especie: rows[0].especie,
+    };
+
+    const categorias = rows.map((r) => ({
+      max_permitido: Math.max(
+        0,
+        Number(r.cantidad_inicial || 0) -
+          (Number(r.total_faenado_detalle || 0) - Number(r.cantidad_faena || 0)),
+      ),
+      id_tropa_detalle: r.id_tropa_detalle,
+      categoria: r.categoria,
+      cantidad_faena: r.cantidad_faena,
+    }));
+
+    const total_faenado = categorias.reduce(
+      (acc, c) => acc + Number(c.cantidad_faena || 0),
+      0,
+    );
+
+    res.status(200).json({ ...cabecera, categorias, total_faenado });
+  } catch (error) {
+    console.error('Error al obtener detalle de faena:', error.message);
+    res.status(500).json({ error: 'Error al obtener detalle de faena' });
+  }
+};
+
 const obtenerDetallesFaenaConCategoria = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -529,4 +740,6 @@ module.exports = {
   obtenerDatosParaDecomiso,
   obtenerFaenasSinDecomiso,
   obtenerDetallesFaenaConCategoria,
+  obtenerDetalleFaenaPorId,
+  modificarFaena,
 };

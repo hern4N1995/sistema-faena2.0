@@ -277,10 +277,17 @@ app.use((req, res, next) => {
         'Access-Control-Allow-Methods',
         'GET,POST,PUT,PATCH,DELETE,OPTIONS',
       );
-      res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Authorization, X-Requested-With, X-CSRF-Token',
-      );
+      const requestedHeaders = req.headers['access-control-request-headers'];
+      const allowedHeaders = [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'X-CSRF-Token',
+        requestedHeaders,
+      ]
+        .filter(Boolean)
+        .join(', ');
+      res.setHeader('Access-Control-Allow-Headers', allowedHeaders);
       if (req.method === 'OPTIONS') return res.sendStatus(204);
       return next();
     } else {

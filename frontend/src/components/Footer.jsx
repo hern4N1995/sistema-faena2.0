@@ -29,16 +29,40 @@ export default function Footer() {
               Todos los derechos reservados
             </p>
             <p className="mb-1">
-              Desarrollado por el Área de Sistemas:{' '}
               <span className="font-semibold text-white">
-                Hernán Alegre & Iván Nuñez
+                Área de Sistemas
               </span>
             </p>
+            <p className="mb-1">
+              Desarrollo técnico:{' '}
+              <a 
+                href="https://www.linkedin.com/in/hernanalegre/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="font-semibold text-white hover:text-blue-400 transition"
+              >
+                Hernán Alegre
+              </a>
+              {' & '}
+              <a 
+                href="https://www.linkedin.com/in/c-ivan-nunez/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="font-semibold text-white hover:text-blue-400 transition"
+              >
+                Iván Nuñez
+              </a>
+            </p>
             <p>
-              Jefa de Área:{' '}
-              <span className="font-semibold text-white">
+              Dirección del proyecto:{' '}
+              <a 
+                href="https://www.linkedin.com/in/ester-kroslak/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="font-semibold text-white hover:text-blue-400 transition"
+              >
                 Lic. Ester Kroslak
-              </span>
+              </a>
             </p>
           </div>
 

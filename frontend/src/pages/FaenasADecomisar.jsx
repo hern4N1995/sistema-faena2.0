@@ -1,6 +1,98 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import Select from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+
+/* SelectField compatible con react-select */
+function SelectField({
+  label,
+  value,
+  options = [],
+  onChange,
+  placeholder = '',
+  className = '',
+}) {
+  const [isFocusing, setIsFocusing] = useState(false);
+
+  const customStyles = {
+    control: (base, state) => ({
+      ...base,
+      height: '48px',
+      minHeight: '48px',
+      paddingLeft: '8px',
+      paddingRight: '8px',
+      backgroundColor: '#f9fafb',
+      border: '2px solid #e5e7eb',
+      borderRadius: '0.5rem',
+      boxShadow: isFocusing
+        ? '0 0 0 1px #000'
+        : state.isFocused
+        ? '0 0 0 4px #d1fae5'
+        : 'none',
+      transition: 'all 50ms ease',
+      '&:hover': { borderColor: '#96f1b7' },
+      '&:focus-within': { borderColor: '#22c55e' },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0 3px',
+      height: '48px',
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+      fontSize: '14px',
+      fontFamily: 'inherit',
+      color: '#111827',
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: '14px',
+      color: '#111827',
+      margin: 0,
+    }),
+    placeholder: (base) => ({ ...base, fontSize: '14px', color: '#6b7280' }),
+    indicatorsContainer: (base) => ({ ...base, height: '48px' }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+    }),
+    option: (base, { isFocused }) => ({
+      ...base,
+      fontSize: '14px',
+      padding: '10px 16px',
+      backgroundColor: isFocused ? '#d1fae5' : '#fff',
+      color: isFocused ? '#065f46' : '#111827',
+    }),
+  };
+
+  return (
+    <div className={`flex flex-col ${className}`} style={{ minWidth: 0 }}>
+      {label && (
+        <label className="mb-2 font-semibold text-gray-700 text-sm">
+          {label}
+        </label>
+      )}
+      <Select
+        value={value}
+        onChange={(sel) => onChange(sel)}
+        options={options}
+        placeholder={placeholder}
+        styles={customStyles}
+        noOptionsMessage={() => 'Sin opciones'}
+        components={{ IndicatorSeparator: () => null }}
+        onFocus={() => {
+          setIsFocusing(true);
+          setTimeout(() => setIsFocusing(false), 50);
+        }}
+      />
+    </div>
+  );
+}
 
 const useMediaQuery = (query) => {
   const [matches, setMatches] = useState(
@@ -400,7 +492,7 @@ export default function FaenasADecomisar() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 sm:px-6 lg:px-6 box-border pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8 sm:px-6 lg:px-6 box-border pb-24">
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 text-center drop-shadow mb-6">
           🩺 Decomisos
@@ -420,7 +512,7 @@ export default function FaenasADecomisar() {
                   type="date"
                   value={filterDateStart}
                   onChange={(e) => setFilterDateStart(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                  className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
                 />
               </div>
               <div>
@@ -432,7 +524,7 @@ export default function FaenasADecomisar() {
                   type="date"
                   value={filterDateEnd}
                   onChange={(e) => setFilterDateEnd(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                  className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
                 />
               </div>
               <div>
@@ -444,7 +536,7 @@ export default function FaenasADecomisar() {
                   type="time"
                   value={filterTimeStart}
                   onChange={(e) => setFilterTimeStart(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                  className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
                 />
               </div>
               <div>
@@ -456,7 +548,7 @@ export default function FaenasADecomisar() {
                   type="time"
                   value={filterTimeEnd}
                   onChange={(e) => setFilterTimeEnd(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                  className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
                 />
               </div>
             </div>
@@ -645,23 +737,24 @@ export default function FaenasADecomisar() {
               </div>
 
               {/* Selector de Filas */}
-              <div className="flex items-center gap-2">
-                <label htmlFor="rowsPerPageSelect" className="text-sm font-semibold text-slate-700">
-                  Filas:
-                </label>
-                <select
-                  id="rowsPerPageSelect"
-                  value={rowsPerPage}
-                  onChange={(e) => setRowsPerPage(Number(e.target.value))}
-                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 bg-white"
-                >
-                  <option value={3}>3</option>
-                  <option value={6}>6</option>
-                  <option value={10}>10</option>
-                  <option value={15}>15</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
+              <div style={{ minWidth: 0 }} className="col-span-0.75 max-w-[90px]">
+                <SelectField
+                  label="Filas"
+                  value={
+                    [3, 6, 10, 15, 20, 50].includes(rowsPerPage)
+                      ? { value: rowsPerPage, label: String(rowsPerPage) }
+                      : null
+                  }
+                  options={[3, 6, 10, 15, 20, 50].map((v) => ({
+                    value: v,
+                    label: String(v),
+                  }))}
+                  onChange={(sel) =>
+                    setRowsPerPage(Number(sel?.value ?? rowsPerPage))
+                  }
+                  className="w-full"
+                  placeholder="Filas"
+                />
               </div>
             </div>
 

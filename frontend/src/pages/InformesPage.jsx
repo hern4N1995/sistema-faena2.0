@@ -463,7 +463,7 @@ export default function InformesPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 p-4 sm:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8 sm:px-6 sm:py-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow mb-8">

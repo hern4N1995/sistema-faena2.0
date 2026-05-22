@@ -18,8 +18,8 @@ function SelectField({
       ...base,
       height: '48px',
       minHeight: '48px',
-      paddingLeft: '12px',
-      paddingRight: '12px',
+      paddingLeft: '8px',
+      paddingRight: '8px',
       backgroundColor: '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
@@ -34,7 +34,7 @@ function SelectField({
     }),
     valueContainer: (base) => ({
       ...base,
-      padding: '0 6px',
+      padding: '0 3px',
       height: '48px',
       display: 'flex',
       alignItems: 'center',
@@ -512,18 +512,18 @@ export default function FaenasRealizadasPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 sm:px-6 lg:px-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8 sm:px-6 lg:px-6">
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-extrabold text-center text-slate-800 drop-shadow mb-6">
           Faenas Realizadas
         </h1>
 
         <div className="flex justify-center mb-4">
-          <div className="w-full max-w-3xl">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="w-full max-w-7xl">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 items-end">
               <div className="flex flex-col">
-                <label className="text-xs font-medium text-slate-600 mb-1">
-                  Fecha desde
+                <label className="text-sm font-semibold text-slate-700 mb-1">
+                  Desde
                 </label>
                 <input
                   type="date"
@@ -531,14 +531,14 @@ export default function FaenasRealizadasPage() {
                   onChange={(e) =>
                     setFiltro((s) => ({ ...s, desde: e.target.value }))
                   }
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 appearance-none"
+                  className="w-full border-2 border-gray-200 rounded-lg px-2 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 appearance-none"
                   style={{ minWidth: 0 }}
                 />
               </div>
 
               <div className="flex flex-col">
-                <label className="text-xs font-medium text-slate-600 mb-1">
-                  Fecha hasta
+                <label className="text-sm font-semibold text-slate-700 mb-1">
+                  Hasta
                 </label>
                 <input
                   type="date"
@@ -546,41 +546,39 @@ export default function FaenasRealizadasPage() {
                   onChange={(e) =>
                     setFiltro((s) => ({ ...s, hasta: e.target.value }))
                   }
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 appearance-none"
+                  className="w-full border-2 border-gray-200 rounded-lg px-2 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 appearance-none"
                   style={{ minWidth: 0 }}
                 />
               </div>
 
-              <div className="flex flex-col">
-                <label className="text-xs font-medium text-slate-600 mb-1">
-                  Buscar N° Tropa
+              <div className="flex flex-col max-w-[110px]">
+                <label className="text-sm font-semibold text-slate-700 mb-1">
+                  Nº Tropa
                 </label>
                 <input
                   type="text"
-                  placeholder="N° Tropa"
+                  placeholder="Tropa"
                   value={filtro.n_tropa}
                   onChange={(e) =>
                     setFiltro((s) => ({ ...s, n_tropa: e.target.value }))
                   }
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                  className="w-full border-2 border-gray-200 rounded-lg px-2 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
                   style={{ minWidth: 0 }}
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-3 gap-4 mt-3 items-end">
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0 }} className="col-span-1">
                 <SelectField
                   label="Orden"
                   value={sortOrder}
                   options={sortOptions}
                   onChange={(sel) => setSortOrder(sel)}
-                  className={isMobile ? '' : 'w-86'}
-                  placeholder="Seleccionar orden"
+                  className={isMobile ? '' : 'w-full'}
+                  placeholder="Orden"
                 />
               </div>
 
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0 }} className="col-span-1">
                 <SelectField
                   label="Filas"
                   value={
@@ -595,25 +593,19 @@ export default function FaenasRealizadasPage() {
                   onChange={(sel) =>
                     setRowsPerPage(Number(sel?.value ?? rowsPerPage))
                   }
-                  className={isMobile ? '' : 'w-24'}
+                  className={isMobile ? '' : 'w-full'}
                   placeholder="Filas"
                 />
               </div>
 
-              <div className="flex flex-col items-start md:items-end">
-                <div
-                  className="text-sm text-slate-700"
-                  style={{ fontSize: isMobile ? 12 : 14 }}
-                >
+              <div className="flex flex-col items-start md:items-end text-xs">
+                <div className="text-slate-700">
                   <span className="font-medium">{faenas.length}</span>
-                  <span className="ml-1 text-slate-500">registro(s)</span>
+                  <span className="ml-1 text-slate-500">reg.</span>
                 </div>
-
-                <div className="mt-2 md:mt-1 text-sm text-slate-700">
-                  <span className="font-medium">Total faenados:</span>{' '}
-                  <span className="font-bold text-green-700">
-                    {totalFaenados}
-                  </span>
+                <div className="mt-1 text-slate-700">
+                  <span className="font-medium">Total:</span>
+                  <span className="font-bold text-green-700 ml-1">{totalFaenados}</span>
                 </div>
               </div>
             </div>
@@ -631,25 +623,25 @@ export default function FaenasRealizadasPage() {
         </div>
       ) : (
         <>
-          <div className="hidden md:block flex justify-center">
+          <div className="hidden md:block w-full">
             <div
-              className="overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200"
+              className="overflow-x-auto rounded-xl shadow-xl ring-1 ring-slate-200 mx-auto max-w-7xl"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               <table className="w-full text-xs text-center text-slate-700">
                 <thead className="bg-green-700 text-white uppercase tracking-wider text-[11px]">
                   <tr>
-                    <th className="px-2 py-2">Fecha</th>
-                    <th className="px-2 py-2">DTE/DTU</th>
-                    <th className="px-2 py-2">Planta</th>
-                    <th className="px-2 py-2">Guía</th>
-                    <th className="px-2 py-2">Nº Tropa</th>
-                    <th className="px-2 py-2">Productor</th>
-                    <th className="px-2 py-2">Depto.</th>
-                    <th className="px-2 py-2">Titular</th>
-                    <th className="px-2 py-2">Especie</th>
-                    <th className="px-2 py-2">Faenado</th>
-                    <th className="px-2 py-2">Acciones</th>
+                    <th className="px-1.5 py-2">Fecha</th>
+                    <th className="px-1.5 py-2">DTE/DTU</th>
+                    <th className="px-1.5 py-2">Planta</th>
+                    <th className="px-1.5 py-2">Guía</th>
+                    <th className="px-1.5 py-2">Nº Tropa</th>
+                    <th className="px-1.5 py-2">Productor</th>
+                    <th className="px-1.5 py-2">Depto.</th>
+                    <th className="px-1.5 py-2">Titular</th>
+                    <th className="px-1.5 py-2">Especie</th>
+                    <th className="px-0 py-2 text-center">Faenado</th>
+                    <th className="px-0.5 py-2">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -658,22 +650,22 @@ export default function FaenasRealizadasPage() {
                       key={f.id_faena}
                       className="border-b last:border-b-0 transition-colors bg-white hover:bg-green-50"
                     >
-                      <td className="px-2 py-2 text-[12px]">
+                      <td className="px-1.5 py-2 text-[12px]">
                         {formatDate(f.fecha_faena)}
                       </td>
-                      <td className="px-2 py-2 text-[12px]">{f.dte_dtu || '—'}</td>
-                      <td className="px-2 py-2 text-[12px]">{plantaLabel(f)}</td>
-                      <td className="px-2 py-2 text-[12px] truncate">{f.guia_policial || '—'}</td>
-                      <td className="px-2 py-2 text-[12px] font-semibold text-green-800">
+                      <td className="px-1.5 py-2 text-[12px]">{f.dte_dtu || '—'}</td>
+                      <td className="px-1.5 py-2 text-[12px]">{plantaLabel(f)}</td>
+                      <td className="px-1.5 py-2 text-[12px] truncate">{f.guia_policial || '—'}</td>
+                      <td className="px-1.5 py-2 text-[12px] font-semibold text-green-800">
                         {f.n_tropa}
                       </td>
-                      <td className="px-2 py-2 text-[12px] max-w-[80px] truncate">{f.productor}</td>
-                      <td className="px-2 py-2 text-[12px] max-w-[60px] truncate">{f.departamento}</td>
-                      <td className="px-2 py-2 text-[12px] max-w-[80px] truncate">{f.titular_faena}</td>
-                      <td className="px-2 py-2 text-[12px]">{f.especie}</td>
-                      <td className="px-2 py-2 text-[12px] font-bold">{f.total_faenado}</td>
-                      <td className="px-2 py-2">
-                        <div className="flex gap-1 justify-center">
+                      <td className="px-1.5 py-2 text-[12px] max-w-[80px] truncate">{f.productor}</td>
+                      <td className="px-1.5 py-2 text-[12px] max-w-[60px] truncate">{f.departamento}</td>
+                      <td className="px-1.5 py-2 text-[12px] max-w-[80px] truncate">{f.titular_faena}</td>
+                      <td className="px-1.5 py-2 text-[12px]">{f.especie}</td>
+                      <td className="px-0 py-2 text-[12px] font-bold text-center whitespace-nowrap">{f.total_faenado}</td>
+                      <td className="px-0 py-2">
+                        <div className="flex gap-0.5 justify-center">
                           <button
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleVerDetalle(f.id_faena); }}
                             className="text-xs px-2 py-1 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 font-semibold transition whitespace-nowrap"

@@ -402,7 +402,7 @@ export default function TitularAdmin() {
   const paginaAnterior = () => irPagina(paginaActual - 1);
   const paginaSiguiente = () => irPagina(paginaActual + 1);
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8 space-y-10">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow">
           🧾 Administración de Titulares de Faena

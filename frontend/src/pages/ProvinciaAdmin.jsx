@@ -293,7 +293,7 @@ export default function ProvinciaAdmin() {
   const paginaSiguiente = () => irPagina(paginaActual + 1);
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
-      <div className="max-w-6xl mx-auto space-y-10">
+      <div className="max-w-6xl mx-auto space-y-8">
         {/* Título fuera del contenedor */}
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 text-center drop-shadow">
           🗺️ Administración de Provincias

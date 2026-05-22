@@ -23,8 +23,8 @@ function SelectField({
       ...base,
       height: '48px',
       minHeight: '48px',
-      paddingLeft: '16px',
-      paddingRight: '16px',
+      paddingLeft: '8px',
+      paddingRight: '8px',
       backgroundColor: '#f9fafb',
       border: '2px solid #e5e7eb',
       borderRadius: '0.5rem',
@@ -43,7 +43,7 @@ function SelectField({
     }),
     valueContainer: (base) => ({
       ...base,
-      padding: '0 0 0 2px',
+      padding: '0 3px',
       height: '48px',
       display: 'flex',
       alignItems: 'center',
@@ -1020,7 +1020,7 @@ export default function DecomisoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 sm:py-8 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:py-8 py-6">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 text-center mb-8">
           🧾 Registrar Decomisos

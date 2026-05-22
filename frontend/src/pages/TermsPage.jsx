@@ -10,7 +10,7 @@ export default function TermsPage() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 sm:px-6 lg:px-8 py-12">
       <div className="max-w-5xl mx-auto">
         {/* Encabezado */}
         <div className="mb-8 text-center">

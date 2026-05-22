@@ -21,11 +21,9 @@ export default function Tropa() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 sm:py-8 px-3 sm:px-4 lg:px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-10">
-            🐄 Registro de Tropas
-          </h1>
-        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center drop-shadow mb-8">
+          🐄 Registro de Tropas
+        </h1>
 
         {/* <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8 mb-8 sm:mb-10 border border-gray-100 hover:shadow-2xl transition-shadow duration-300"> */}
         <TropaForm onCreated={handleCreated} />

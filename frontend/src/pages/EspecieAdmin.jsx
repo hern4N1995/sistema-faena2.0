@@ -354,7 +354,7 @@ export default function EspecieAdmin() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center text-gray-500">
           <p className="text-lg">Cargando...</p>
         </div>
@@ -376,12 +376,12 @@ export default function EspecieAdmin() {
         }}
         onCancel={() => setModal({ ...modal, isOpen: false })}
       />
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-gray-100">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow mb-6">
+            🦁 {editandoId ? 'Editar Especie' : 'Agregar Especie'}
+          </h1>
           <div className="w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 space-y-6">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 drop-shadow pt-2 mb-4">
-              🦁 {editandoId ? 'Editar Especie' : 'Agregar Especie'}
-            </h1>
 
             {/* Formulario */}
             <form

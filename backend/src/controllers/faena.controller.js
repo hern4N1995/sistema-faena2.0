@@ -106,8 +106,8 @@ const obtenerFaenasRealizadas = async (req, res) => {
     filtros.push(`f.fecha_faena::date <= $${valores.length}`);
   }
   if (n_tropa.trim()) {
-    valores.push(`%${n_tropa}%`);
-    filtros.push(`t.n_tropa::text ILIKE $${valores.length}`);
+    valores.push(`^${n_tropa}`);
+    filtros.push(`t.n_tropa::text ~ $${valores.length}`);
   }
 
   if (id_especie.trim()) {

@@ -137,14 +137,30 @@ export default function DetalleTropa() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [usuario, setUsuario] = useState(null);
   const [tropaInfo, setTropaInfo] = useState({
-    numero_tropa: '',
-    fecha: '',
-    dte: '',
+    n_tropa: '',
+    dte_dtu: '',
+    fecha_ingreso: '',
+    guia_policial: '',
     titular: '',
     productor: '',
     planta: '',
+    departamento: '',
+    id_titular_faena: null,
+    id_productor: null,
+    id_departamento: null,
+    id_planta: null,
   });
+
+  // Estados para edición de la tropa
+  const [editingTropa, setEditingTropa] = useState(false);
+  const [tropaEdicion, setTropaEdicion] = useState({});
+  const [departamentos, setDepartamentos] = useState([]);
+  const [productores, setProductores] = useState([]);
+  const [titulares, setTitulares] = useState([]);
+  const [plantas, setPlantas] = useState([]);
+  const [savingTropa, setSavingTropa] = useState(false);
 
   const [detalle, setDetalle] = useState({ especie: '', categorias: [] });
   const [especies, setEspecies] = useState([]);
@@ -162,6 +178,54 @@ export default function DetalleTropa() {
     selectedCategory: null,
     selectKey: undefined,
   });
+
+  // Sincronizar tropaEdicion con tropaInfo cuando se carga la tropa
+  useEffect(() => {
+    if (tropaInfo.n_tropa) {
+      setTropaEdicion({
+        n_tropa: tropaInfo.n_tropa || '',
+        dte_dtu: tropaInfo.dte_dtu || '',
+        guia_policial: tropaInfo.guia_policial || '',
+        fecha_ingreso: tropaInfo.fecha_ingreso || '',
+        id_departamento: tropaInfo.id_departamento || null,
+        id_planta: tropaInfo.id_planta || null,
+        id_productor: tropaInfo.id_productor || null,
+        id_titular_faena: tropaInfo.id_titular_faena || null,
+      });
+    }
+  }, [
+    tropaInfo.n_tropa,
+    tropaInfo.dte_dtu,
+    tropaInfo.guia_policial,
+    tropaInfo.fecha_ingreso,
+    tropaInfo.id_departamento,
+    tropaInfo.id_planta,
+    tropaInfo.id_productor,
+    tropaInfo.id_titular_faena,
+  ]);
+
+  // Asegurar que tropaEdicion se actualiza después de que se cargan las opciones
+  useEffect(() => {
+    if (
+      (plantas.length > 0 ||
+        departamentos.length > 0 ||
+        productores.length > 0 ||
+        titulares.length > 0) &&
+      tropaInfo.n_tropa &&
+      (!tropaEdicion.n_tropa || tropaEdicion.n_tropa === '')
+    ) {
+      setTropaEdicion({
+        n_tropa: tropaInfo.n_tropa || '',
+        dte_dtu: tropaInfo.dte_dtu || '',
+        guia_policial: tropaInfo.guia_policial || '',
+        fecha_ingreso: tropaInfo.fecha_ingreso || '',
+        id_departamento: tropaInfo.id_departamento || null,
+        id_planta: tropaInfo.id_planta || null,
+        id_productor: tropaInfo.id_productor || null,
+        id_titular_faena: tropaInfo.id_titular_faena || null,
+      });
+    }
+  }, [plantas.length, departamentos.length, productores.length, titulares.length]);
 
   // When editing.id_especie changes, reload category options for the edit form
   useEffect(() => {
@@ -225,6 +289,20 @@ export default function DetalleTropa() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
+  // Convertir fecha ISO a formato YYYY-MM-DD para input type="date"
+  const formatDateForInput = (isoDate) => {
+    if (!isoDate) return '';
+    try {
+      const date = new Date(isoDate);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return '';
+    }
+  };
+
   const showToast = (type, text, ms = 3000) => {
     setToast({ type, text });
     setTimeout(() => setToast(null), ms);
@@ -251,36 +329,59 @@ export default function DetalleTropa() {
       // Extraer datos con múltiples fallbacks
       const n_tropa = data.n_tropa ?? data.numero_tropa ?? data.numero ?? '';
       const dte_dtu = data.dte_dtu ?? data.dte ?? data.dtu ?? '';
-      const fecha = data.fecha_ingreso ?? data.fecha ?? '';
+      const fecha_ingreso = data.fecha_ingreso ?? data.fecha ?? '';
+      const guia_policial = data.guia_policial ?? '';
       const titular = data.titular ?? data.titular_nombre ?? '';
       const planta =
         data.planta ?? data.planta_nombre ?? data.nombre_planta ?? '';
       const productor =
         data.productor ?? data.productor_nombre ?? data.nombre_productor ?? '';
+      const departamento =
+        data.departamento ?? data.nombre_departamento ?? data.depto ?? '';
 
-      setTropaInfo({
-        numero_tropa: n_tropa || '',
-        dte: dte_dtu || '',
-        fecha: fecha || '',
+      const tropaData = {
+        n_tropa: n_tropa || '',
+        dte_dtu: dte_dtu || '',
+        fecha_ingreso: fecha_ingreso || '',
+        guia_policial: guia_policial || '',
         titular: titular || '',
         planta: planta || '',
         productor: productor || '',
-      });
+        departamento: departamento || '',
+        id_titular_faena: data.id_titular_faena || null,
+        id_productor: data.id_productor || null,
+        id_departamento: data.id_departamento || null,
+        id_planta: data.id_planta || null,
+      };
 
-      console.log('[DetalleTropa] Tropa info seteada:', {
-        numero_tropa: n_tropa || '',
-        dte: dte_dtu || '',
-        fecha: fecha || '',
-        titular: titular || '',
-        planta: planta || '',
-        productor: productor || '',
-      });
+      setTropaInfo(tropaData);
+      setTropaEdicion(tropaData);
+
+      console.log('[DetalleTropa] Tropa info seteada:', tropaData);
     } catch (err) {
       console.error('[DetalleTropa] Error al obtener tropa:', err);
       console.error('[DetalleTropa] URL intentada: /tropas/' + id);
       console.error('[DetalleTropa] Response status:', err.response?.status);
       console.error('[DetalleTropa] Response data:', err.response?.data);
       setError('No se pudo obtener la tropa');
+    }
+  };
+
+  const fetchDatos = async () => {
+    try {
+      const [deptRes, prodRes, titRes, plantaRes] = await Promise.all([
+        api.get('/tropas/departamentos', { headers: getTokenHeaders() }),
+        api.get('/tropas/productores', { headers: getTokenHeaders() }),
+        api.get('/tropas/titulares', { headers: getTokenHeaders() }),
+        api.get('/tropas/plantas', { headers: getTokenHeaders() }),
+      ]);
+
+      setDepartamentos(Array.isArray(deptRes.data) ? deptRes.data : []);
+      setProductores(Array.isArray(prodRes.data) ? prodRes.data : []);
+      setTitulares(Array.isArray(titRes.data) ? titRes.data : []);
+      setPlantas(Array.isArray(plantaRes.data) ? plantaRes.data : []);
+    } catch (err) {
+      console.error('[DetalleTropa] Error al obtener datos auxiliares:', err);
     }
   };
 
@@ -409,10 +510,23 @@ export default function DetalleTropa() {
       console.log('[DetalleTropa] Montando componente con ID:', id);
       setLoading(true);
       setError('');
+      
+      // Cargar usuario desde localStorage
+      try {
+        const usuarioStr = localStorage.getItem('usuario');
+        if (usuarioStr) {
+          const usr = JSON.parse(usuarioStr);
+          if (mounted) setUsuario(usr);
+        }
+      } catch (e) {
+        console.warn('[DetalleTropa] Error al parsear usuario:', e);
+      }
+      
       await Promise.all([
         fetchTropa(),
         fetchDetalleAgrupado(),
         fetchEspecies(),
+        fetchDatos(),
       ]);
       if (mounted) {
         console.log('[DetalleTropa] Carga completada');
@@ -1561,62 +1675,356 @@ export default function DetalleTropa() {
     );
   }
 
+  const saveTropaChanges = async () => {
+    try {
+      setSavingTropa(true);
+      const payload = {
+        n_tropa: tropaEdicion.n_tropa,
+        dte_dtu: tropaEdicion.dte_dtu,
+        guia_policial: tropaEdicion.guia_policial,
+        fecha_ingreso: tropaEdicion.fecha_ingreso,
+        id_titular_faena: tropaEdicion.id_titular_faena,
+        id_productor: tropaEdicion.id_productor,
+        id_departamento: tropaEdicion.id_departamento,
+        id_planta: tropaEdicion.id_planta,
+      };
+
+      await api.put(`/tropas/${id}`, payload, {
+        headers: getTokenHeaders(),
+      });
+
+      showToast('success', 'Tropa actualizada correctamente');
+      setEditingTropa(false);
+      await fetchTropa();
+    } catch (err) {
+      const errorMsg =
+        err?.response?.data?.error || 'Error al actualizar la tropa';
+      showToast('error', errorMsg);
+    } finally {
+      setSavingTropa(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto space-y-10">
-        <h1 className="text-3xl font-bold text-gray-800 text-center">
-          Detalle de Tropa
-        </h1>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <label className="block text-sm font-semibold text-gray-600 mb-1">
-              Planta
-            </label>
-            <input
-              type="text"
-              value={
-                typeof tropaInfo.planta === 'object'
-                  ? tropaInfo.planta?.nombre || ''
-                  : tropaInfo.planta || ''
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-bold text-gray-800">Detalle de Tropa</h1>
+          <button
+            onClick={() => {
+              if (editingTropa) {
+                // Cancelar edición
+                setEditingTropa(false);
+              } else {
+                // Entrar en modo edición (tropaEdicion ya está sincronizado con tropaInfo)
+                setEditingTropa(true);
               }
-              disabled
-              className={INPUT_BASE_CLASS}
-            />
-          </div>
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <label className="block text-sm font-semibold text-gray-600 mb-1">
-              Productor
-            </label>
-            <input
-              type="text"
-              value={tropaInfo.productor || ''}
-              disabled
-              className={INPUT_BASE_CLASS}
-            />
-          </div>
+            }}
+            className={`px-4 py-2 rounded-lg font-medium transition ${
+              editingTropa
+                ? 'bg-gray-500 hover:bg-gray-600 text-white'
+                : 'bg-blue-500 hover:bg-blue-600 text-white'
+            }`}
+          >
+            {editingTropa ? '✕ Cancelar' : '✏️ Editar'}
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: 'Nº Tropa', value: tropaInfo.numero_tropa },
-            { label: 'Fecha Ingreso', value: tropaInfo.fecha ? new Date(tropaInfo.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '' },
-            { label: 'DTE/DTU', value: tropaInfo.dte },
-            { label: 'Titular', value: tropaInfo.titular },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-white rounded-xl shadow-md p-4">
-              <label className="block text-sm font-semibold text-gray-600 mb-1">
-                {label}
-              </label>
-              <input
-                type="text"
-                value={value || ''}
-                disabled
-                className={INPUT_BASE_CLASS}
+        {editingTropa ? (
+          // FORMULARIO DE EDICIÓN
+          <div className="bg-white rounded-xl shadow-md p-6 space-y-4">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Editar Datos de Tropa</h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col">
+                <label className="block text-sm font-semibold text-gray-600 mb-2">Nº Tropa</label>
+                <input
+                  type="text"
+                  value={tropaEdicion.n_tropa || ''}
+                  onChange={(e) =>
+                    setTropaEdicion((prev) => ({ ...prev, n_tropa: e.target.value }))
+                  }
+                  className={INPUT_BASE_CLASS}
+                  placeholder="Ej. 1001"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="block text-sm font-semibold text-gray-600 mb-2">DTE/DTU</label>
+                <input
+                  type="text"
+                  value={tropaEdicion.dte_dtu || ''}
+                  onChange={(e) =>
+                    setTropaEdicion((prev) => ({ ...prev, dte_dtu: e.target.value }))
+                  }
+                  className={INPUT_BASE_CLASS}
+                  placeholder="Ej. 123456"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="block text-sm font-semibold text-gray-600 mb-2">
+                  Guía Policial
+                </label>
+                <input
+                  type="text"
+                  value={tropaEdicion.guia_policial || ''}
+                  onChange={(e) =>
+                    setTropaEdicion((prev) => ({
+                      ...prev,
+                      guia_policial: e.target.value,
+                    }))
+                  }
+                  className={INPUT_BASE_CLASS}
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="block text-sm font-semibold text-gray-600 mb-2">
+                  Fecha Ingreso
+                </label>
+                <input
+                  type="date"
+                  value={formatDateForInput(tropaEdicion.fecha_ingreso) || ''}
+                  onChange={(e) =>
+                    setTropaEdicion((prev) => ({
+                      ...prev,
+                      fecha_ingreso: e.target.value,
+                    }))
+                  }
+                  className={INPUT_BASE_CLASS}
+                />
+              </div>
+
+              <SelectField
+                label="Departamento"
+                value={
+                  tropaEdicion.id_departamento &&
+                  departamentos.find(
+                    (d) => String(d.id) === String(tropaEdicion.id_departamento)
+                  )
+                    ? {
+                        value: tropaEdicion.id_departamento,
+                        label:
+                          departamentos.find(
+                            (d) =>
+                              String(d.id) === String(tropaEdicion.id_departamento)
+                          )?.nombre || '',
+                      }
+                    : null
+                }
+                onChange={(opt) =>
+                  setTropaEdicion((prev) => ({
+                    ...prev,
+                    id_departamento: opt?.value || null,
+                  }))
+                }
+                options={departamentos.map((d) => ({
+                  value: d.id,
+                  label: d.nombre,
+                }))}
+                placeholder="— Seleccionar departamento —"
+              />
+
+              <SelectField
+                label="Planta"
+                value={
+                  tropaEdicion.id_planta &&
+                  plantas.find(
+                    (p) => String(p.id) === String(tropaEdicion.id_planta)
+                  )
+                    ? {
+                        value: tropaEdicion.id_planta,
+                        label:
+                          plantas.find(
+                            (p) =>
+                              String(p.id) === String(tropaEdicion.id_planta)
+                          )?.nombre || '',
+                      }
+                    : null
+                }
+                onChange={(opt) => {
+                  // Solo permitir cambio si es admin (rol 1)
+                  if (usuario && usuario.rol === 1) {
+                    setTropaEdicion((prev) => ({
+                      ...prev,
+                      id_planta: opt?.value || null,
+                    }));
+                  }
+                }}
+                options={plantas.map((p) => ({
+                  value: p.id,
+                  label: p.nombre,
+                }))}
+                placeholder="— Seleccionar planta —"
+                isDisabled={!usuario || (usuario.rol !== 1 && usuario.rol !== '1')}
+              />
+
+              <SelectField
+                label="Productor"
+                value={
+                  tropaEdicion.id_productor &&
+                  productores.find(
+                    (p) => String(p.id) === String(tropaEdicion.id_productor)
+                  )
+                    ? {
+                        value: tropaEdicion.id_productor,
+                        label:
+                          productores.find(
+                            (p) =>
+                              String(p.id) === String(tropaEdicion.id_productor)
+                          )?.nombre || '',
+                      }
+                    : null
+                }
+                onChange={(opt) =>
+                  setTropaEdicion((prev) => ({
+                    ...prev,
+                    id_productor: opt?.value || null,
+                  }))
+                }
+                options={productores.map((p) => ({
+                  value: p.id,
+                  label: p.nombre,
+                }))}
+                placeholder="— Seleccionar productor —"
+              />
+
+              <SelectField
+                label="Titular de Faena"
+                value={
+                  tropaEdicion.id_titular_faena &&
+                  titulares.find(
+                    (t) => String(t.id) === String(tropaEdicion.id_titular_faena)
+                  )
+                    ? {
+                        value: tropaEdicion.id_titular_faena,
+                        label:
+                          titulares.find(
+                            (t) =>
+                              String(t.id) === String(tropaEdicion.id_titular_faena)
+                          )?.nombre || '',
+                      }
+                    : null
+                }
+                onChange={(opt) =>
+                  setTropaEdicion((prev) => ({
+                    ...prev,
+                    id_titular_faena: opt?.value || null,
+                  }))
+                }
+                options={titulares.map((t) => ({
+                  value: t.id,
+                  label: t.nombre,
+                }))}
+                placeholder="— Seleccionar titular —"
               />
             </div>
-          ))}
-        </div>
+
+            <div className="flex gap-3 mt-6 justify-end">
+              <button
+                onClick={() => {
+                  setTropaEdicion(tropaInfo);
+                  setEditingTropa(false);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveTropaChanges}
+                disabled={savingTropa}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                {savingTropa ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          // VISTA DE LECTURA
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl shadow-md p-4">
+                <label className="block text-sm font-semibold text-gray-600 mb-1">
+                  Planta
+                </label>
+                <input
+                  type="text"
+                  value={
+                    typeof tropaInfo.planta === 'object'
+                      ? tropaInfo.planta?.nombre || ''
+                      : tropaInfo.planta || ''
+                  }
+                  disabled
+                  className={INPUT_BASE_CLASS}
+                />
+              </div>
+              <div className="bg-white rounded-xl shadow-md p-4">
+                <label className="block text-sm font-semibold text-gray-600 mb-1">
+                  Productor
+                </label>
+                <input
+                  type="text"
+                  value={tropaInfo.productor || ''}
+                  disabled
+                  className={INPUT_BASE_CLASS}
+                />
+              </div>
+              <div className="bg-white rounded-xl shadow-md p-4">
+                <label className="block text-sm font-semibold text-gray-600 mb-1">
+                  Departamento
+                </label>
+                <input
+                  type="text"
+                  value={tropaInfo.departamento || ''}
+                  disabled
+                  className={INPUT_BASE_CLASS}
+                />
+              </div>
+              <div className="bg-white rounded-xl shadow-md p-4">
+                <label className="block text-sm font-semibold text-gray-600 mb-1">
+                  Guía Policial
+                </label>
+                <input
+                  type="text"
+                  value={tropaInfo.guia_policial || ''}
+                  disabled
+                  className={INPUT_BASE_CLASS}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: 'Nº Tropa', value: tropaInfo.n_tropa },
+                {
+                  label: 'Fecha Ingreso',
+                  value: tropaInfo.fecha_ingreso
+                    ? new Date(tropaInfo.fecha_ingreso).toLocaleDateString('es-AR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })
+                    : '',
+                },
+                { label: 'DTE/DTU', value: tropaInfo.dte_dtu },
+                { label: 'Titular', value: tropaInfo.titular },
+              ].map(({ label, value }) => (
+                <div key={label} className="bg-white rounded-xl shadow-md p-4">
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">
+                    {label}
+                  </label>
+                  <input
+                    type="text"
+                    value={value || ''}
+                    disabled
+                    className={INPUT_BASE_CLASS}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         <div
           id="animales-cargados"

@@ -522,6 +522,10 @@ function InlineCreateModal({
             className={INPUT_BASE_CLASS + ' mb-2'}
             placeholder="XX-XXXXXXXX-X"
           />
+          <p className="text-red-600 text-xs mb-2 leading-tight">
+            Si el número central tiene menos de 8 dígitos, complete con ceros a la izquierda.<br />
+            Ejemplo: 20-008405430-2
+          </p>
         </>
       )}
 
@@ -590,6 +594,10 @@ function InlineCreateModal({
             className={INPUT_BASE_CLASS + ' mb-2'}
             placeholder="XX-XXXXXXXX-X"
           />
+          <p className="text-red-600 text-xs mb-2 leading-tight">
+            Si el número central tiene menos de 8 dígitos, complete con ceros a la izquierda.<br />
+            Ejemplo: 20-008405430-2
+          </p>
         </>
       )}
 
@@ -1033,6 +1041,16 @@ export default function TropaForm({ onCreated }) {
       showToast('error', 'Error al guardar tropa.');
     } catch (err) {
       console.error('guardar tropa error', err);
+      
+      // Capturar error específico de DTE/DTU duplicado
+      if (err?.response?.status === 409 && err?.response?.data?.code === 'DUPLICATE_DTE_DTU') {
+        showToast(
+          'error',
+          err?.response?.data?.error || `El DTE/DTU ${form.dte_dtu} ya está registrado`
+        );
+        return;
+      }
+      
       showToast(
         'error',
         err?.response?.data?.error || 'Error al guardar tropa.'

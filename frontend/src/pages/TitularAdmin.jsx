@@ -488,6 +488,10 @@ export default function TitularAdmin() {
                 placeholder="Ej. 20-12345678-9"
                 className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
               />
+              <p className="text-red-600 text-xs mt-1 leading-tight">
+                Si el número central tiene menos de 8 dígitos, complete con ceros a la izquierda.<br />
+                Ejemplo: 20-008405430-2
+              </p>
             </div>
 
             <div className="flex items-end gap-2">
@@ -561,6 +565,10 @@ export default function TitularAdmin() {
                     pattern="\d{2}-\d{8}-\d{1}"
                     placeholder="Ej. 20-12345678-9"
                   />
+                  <p className="text-red-600 text-xs mt-1 leading-tight">
+                    Si el número central tiene menos de 8 dígitos, complete con ceros a la izquierda.<br />
+                    Ejemplo: 20-008405430-2
+                  </p>
                 </div>
               </div>
               <div className="mt-6 flex justify-end gap-2">

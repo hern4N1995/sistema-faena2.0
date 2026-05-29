@@ -29,5 +29,6 @@ router.get('/por-planta', verificarToken, tropaController.getByUsuarioPlanta);
 router.get('/', tropaController.getAll);
 router.post('/', tropaController.createTropa);
 router.get('/:tropaId', tropaController.getById);
+router.put('/:tropaId', tropaController.updateTropa);
 
 module.exports = router;

@@ -244,6 +244,26 @@ export default function TropasCargadas() {
     };
   }, [rol, plantaDelUsuario]);
 
+  const formatDateDisplay = (dateString) => {
+    if (!dateString) return '—';
+    try {
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    } catch (e) {
+      return '—';
+    }
+  };
+
+  const getDateOnly = (dateObj) => {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const applyFilters = () => {
     const term = String(query || '')
       .trim()
@@ -268,19 +288,17 @@ export default function TropasCargadas() {
     }
 
     if (startDate) {
-      const s = new Date(startDate);
       filtered = filtered.filter((t) => {
         if (!t.fecha_ingreso) return false;
-        const d = new Date(t.fecha_ingreso);
-        return d.setHours(0, 0, 0, 0) >= new Date(s).setHours(0, 0, 0, 0);
+        const tropaDate = getDateOnly(new Date(t.fecha_ingreso));
+        return tropaDate >= startDate;
       });
     }
     if (endDate) {
-      const e = new Date(endDate);
       filtered = filtered.filter((t) => {
         if (!t.fecha_ingreso) return false;
-        const d = new Date(t.fecha_ingreso);
-        return d.setHours(0, 0, 0, 0) <= new Date(e).setHours(0, 0, 0, 0);
+        const tropaDate = getDateOnly(new Date(t.fecha_ingreso));
+        return tropaDate <= endDate;
       });
     }
 
@@ -399,6 +417,8 @@ export default function TropasCargadas() {
               <div className="flex items-center gap-2">
                 <input
                   type="date"
+                  lang="es-ES"
+                  placeholder="dd/mm/yyyy"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className={INPUT_BASE_CLASS}
@@ -423,6 +443,8 @@ export default function TropasCargadas() {
               <div className="flex items-center gap-2">
                 <input
                   type="date"
+                  lang="es-ES"
+                  placeholder="dd/mm/yyyy"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className={INPUT_BASE_CLASS}

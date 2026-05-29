@@ -13,6 +13,9 @@ const InputField = ({
   type = 'text',
   className = '',
   placeholder = '',
+  inputMode = 'text',
+  maxLength = undefined,
+  pattern = undefined,
 }) => (
   <div className={`flex flex-col ${className}`}>
     <label className="mb-2 font-semibold text-gray-700 text-sm">{label}</label>
@@ -23,6 +26,9 @@ const InputField = ({
       onChange={onChange}
       required={required}
       placeholder={placeholder}
+      inputMode={inputMode}
+      maxLength={maxLength}
+      pattern={pattern}
       className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
     />
   </div>
@@ -67,12 +73,50 @@ export default function ProductorAdmin() {
     setNuevoProductor((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Normalizar CUIT: solo dígitos, máximo 11
+  const normalizarCuit = (value) => value.replace(/\D/g, '').slice(0, 11);
+
+  // Formatear CUIT para mostrar con guiones (XX-XXXXXXXX-X)
+  const formatearCuit = (value) => {
+    const digits = normalizarCuit(String(value || ''));
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 10) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`;
+  };
+
+  // Manejar cambio en CUIT (solo números, formatea automáticamente)
+  const handleCuitChange = (e) => {
+    const { value } = e.target;
+    const normalized = normalizarCuit(value);
+    const formatted = formatearCuit(normalized);
+    setNuevoProductor((prev) => ({ ...prev, cuit: formatted }));
+  };
+
+  // Manejar cambio en CUIT para edición
+  const handleCuitChangeEdit = (e) => {
+    const { value } = e.target;
+    const normalized = normalizarCuit(value);
+    const formatted = formatearCuit(normalized);
+    setEditingPayload((prev) => ({ ...prev, cuit: formatted }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje('');
     setError('');
+
+    // Validar que CUIT tenga exactamente 11 dígitos
+    const cuitDigitos = normalizarCuit(nuevoProductor.cuit);
+    if (cuitDigitos.length !== 11) {
+      setError('El CUIT debe tener exactamente 11 dígitos.');
+      return;
+    }
+
     try {
-      const res = await api.post('/productores', nuevoProductor, {
+      const res = await api.post('/productores', {
+        cuit: cuitDigitos, // Guardar solo números
+        nombre: nuevoProductor.nombre,
+      }, {
         timeout: 10000,
       });
       if (!(res && res.status >= 200 && res.status < 300))
@@ -92,8 +136,9 @@ export default function ProductorAdmin() {
   };
 
   const handleEditar = (p) => {
-    // Open modal with producer data
-    setEditingPayload({ id_productor: p.id_productor, cuit: p.cuit, nombre: p.nombre });
+    // Open modal with producer data - formatear CUIT para mostrar
+    const cuitFormateado = formatearCuit(p.cuit);
+    setEditingPayload({ id_productor: p.id_productor, cuit: cuitFormateado, nombre: p.nombre });
     setEditModalOpen(true);
   };
 
@@ -101,15 +146,23 @@ export default function ProductorAdmin() {
     if (!editingPayload?.id_productor) return;
     setMensaje('');
     setError('');
+
+    // Validar que CUIT tenga exactamente 11 dígitos
+    const cuitDigitos = normalizarCuit(editingPayload.cuit);
+    if (cuitDigitos.length !== 11) {
+      setError('El CUIT debe tener exactamente 11 dígitos.');
+      return;
+    }
+
     try {
       const res = await api.put(`/productores/${editingPayload.id_productor}`, {
-        cuit: editingPayload.cuit,
+        cuit: cuitDigitos, // Guardar solo números
         nombre: editingPayload.nombre,
       }, { timeout: 10000 });
       if (!(res && res.status >= 200 && res.status < 300)) throw new Error('Error al guardar productor');
       // Update list directly
       setProductores((prev) =>
-        prev.map((p) => (p.id_productor === editingPayload.id_productor ? { ...p, ...editingPayload } : p))
+        prev.map((p) => (p.id_productor === editingPayload.id_productor ? { ...p, cuit: cuitDigitos, nombre: editingPayload.nombre } : p))
       );
       setMensaje('✅ Productor modificado');
       setTimeout(() => setMensaje(''), 3000);
@@ -244,14 +297,23 @@ export default function ProductorAdmin() {
             onSubmit={handleSubmit}
             className="grid grid-cols-1 sm:grid-cols-3 gap-4"
           >
-            <InputField
-              label="CUIT"
-              name="cuit"
-              value={nuevoProductor.cuit}
-              onChange={handleChange}
-              required
-              placeholder="Ej. 20-12345678-9"
-            />
+            <div>
+              <InputField
+                label="CUIT"
+                name="cuit"
+                value={nuevoProductor.cuit}
+                onChange={handleCuitChange}
+                required
+                placeholder="Ej. 20-12345678-9"
+                inputMode="numeric"
+                maxLength={14}
+                pattern="\d{2}-\d{8}-\d{1}"
+              />
+              <p className="text-red-600 text-xs mt-1 leading-tight">
+                Si el número central tiene menos de 8 dígitos, complete con ceros a la izquierda.<br />
+                Ejemplo: 20-008405430-2
+              </p>
+            </div>
             <InputField
               label="Nombre"
               name="nombre"
@@ -290,14 +352,29 @@ export default function ProductorAdmin() {
             <div className="absolute inset-0 bg-black/40" onClick={() => setEditModalOpen(false)} />
             <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 z-10">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Editar Productor</h3>
+              {error && (
+                <div className="mb-4 flex items-center gap-2 text-red-700 text-sm">
+                  <span className="text-lg">❌</span>
+                  <span>{error}</span>
+                </div>
+              )}
               <div className="space-y-4">
-                <InputField
-                  label="CUIT"
-                  name="cuit"
-                  value={editingPayload.cuit}
-                  onChange={(e) => setEditingPayload((p) => ({ ...p, cuit: e.target.value }))}
-                  placeholder="Ej. 20-12345678-9"
-                />
+                <div>
+                  <InputField
+                    label="CUIT"
+                    name="cuit"
+                    value={editingPayload.cuit}
+                    onChange={handleCuitChangeEdit}
+                    placeholder="Ej. 20-12345678-9"
+                    inputMode="numeric"
+                    maxLength={14}
+                    pattern="\d{2}-\d{8}-\d{1}"
+                  />
+                  <p className="text-red-600 text-xs mt-1 leading-tight">
+                    Si el número central tiene menos de 8 dígitos, complete con ceros a la izquierda.<br />
+                    Ejemplo: 20-008405430-2
+                  </p>
+                </div>
                 <InputField
                   label="Nombre"
                   name="nombre"

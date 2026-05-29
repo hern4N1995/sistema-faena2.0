@@ -79,6 +79,20 @@ exports.createTropa = async (req, res) => {
   } = req.body;
 
   try {
+    // Validar que no exista una tropa con el mismo DTe/DTu
+    if (dte_dtu) {
+      const duplicateDte = await pool.query(
+        `SELECT id_tropa FROM tropa WHERE dte_dtu = $1 LIMIT 1`,
+        [dte_dtu],
+      );
+
+      if (duplicateDte.rows.length > 0) {
+        return res.status(400).json({
+          error: `Ya existe una tropa registrada con el DTE/DTU: ${dte_dtu}`,
+        });
+      }
+    }
+
     const result = await pool.query(
       `INSERT INTO tropa (
         dte_dtu, guia_policial, fecha_alta, fecha_ingreso,
@@ -106,6 +120,15 @@ exports.createTropa = async (req, res) => {
     });
   } catch (err) {
     console.error('Error al crear tropa:', err);
+    
+    // Capturar error de clave única duplicada (PostgreSQL error code 23505)
+    if (err.code === '23505' && err.constraint === 'unique_dte_dtu') {
+      return res.status(409).json({ 
+        error: `El DTE/DTU ${dte_dtu} ya está registrado en el sistema`,
+        code: 'DUPLICATE_DTE_DTU'
+      });
+    }
+    
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
@@ -127,15 +150,22 @@ exports.getById = async (req, res) => {
         t.id_tropa AS id,
         t.n_tropa,
         t.dte_dtu,
+        t.guia_policial,
         t.fecha_alta,
         t.fecha_ingreso,
+        t.id_departamento,
+        t.id_productor,
+        t.id_planta,
+        t.id_titular_faena,
         tf.nombre AS titular,
         p.nombre AS planta,
-        pr.nombre AS productor
+        pr.nombre AS productor,
+        d.nombre_departamento AS departamento
       FROM tropa t
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
       LEFT JOIN planta p ON t.id_planta = p.id_planta
       LEFT JOIN productor pr ON t.id_productor = pr.id_productor
+      LEFT JOIN departamento d ON t.id_departamento = d.id_departamento
       WHERE t.id_tropa = $1
     `,
       [parseInt(tropaId, 10)],
@@ -212,6 +242,7 @@ exports.getDetalleAgrupado = async (req, res) => {
         t.dte_dtu, 
         t.fecha_alta, 
         t.fecha_ingreso,
+        t.fecha_ingreso AS fecha,
         tf.nombre AS titular
       FROM tropa t
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
@@ -224,7 +255,7 @@ exports.getDetalleAgrupado = async (req, res) => {
       return res.status(404).json({ error: 'Tropa no encontrada' });
     }
 
-    const { n_tropa, dte_dtu, fecha_alta, fecha_ingreso, titular } = tropaRes.rows[0];
+    const { n_tropa, dte_dtu, fecha_alta, fecha_ingreso, fecha, titular } = tropaRes.rows[0];
 
     const detalleRes = await pool.query(
       `
@@ -260,6 +291,7 @@ exports.getDetalleAgrupado = async (req, res) => {
       dte_dtu,
       fecha_alta,
       fecha_ingreso,
+      fecha,
       titular,
       especie: categorias[0]?.especie || '',
       categorias,
@@ -444,6 +476,96 @@ exports.getProductores = async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error('Error al obtener productores:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+/* Actualizar una tropa existente */
+exports.updateTropa = async (req, res) => {
+  const { tropaId } = req.params;
+  const {
+    dte_dtu,
+    guia_policial,
+    fecha_alta,
+    fecha_ingreso,
+    id_titular_faena,
+    n_tropa,
+    id_departamento,
+    id_productor,
+    id_planta,
+  } = req.body;
+
+  try {
+    // Validar que el tropaId sea válido
+    const tropaIdNum = parseInt(tropaId, 10);
+    if (!Number.isInteger(tropaIdNum) || tropaIdNum <= 0) {
+      return res.status(400).json({ error: 'ID de tropa inválido' });
+    }
+
+    // Obtener la tropa actual para comparar el DTe/DTu
+    const currentTropa = await pool.query(
+      `SELECT dte_dtu FROM tropa WHERE id_tropa = $1`,
+      [tropaIdNum],
+    );
+
+    if (currentTropa.rows.length === 0) {
+      return res.status(404).json({ error: 'Tropa no encontrada' });
+    }
+
+    const currentDte = currentTropa.rows[0].dte_dtu;
+
+    // Si el DTe/DTu cambió, verificar que no haya otra tropa con el mismo DTe/DTu
+    if (dte_dtu && dte_dtu !== currentDte) {
+      const duplicateDte = await pool.query(
+        `SELECT id_tropa FROM tropa WHERE dte_dtu = $1 AND id_tropa != $2 LIMIT 1`,
+        [dte_dtu, tropaIdNum],
+      );
+
+      if (duplicateDte.rows.length > 0) {
+        return res.status(400).json({
+          error: `Ya existe una tropa registrada con el DTE/DTU: ${dte_dtu}`,
+        });
+      }
+    }
+
+    // Actualizar la tropa
+    const result = await pool.query(
+      `UPDATE tropa SET
+        dte_dtu = COALESCE($1, dte_dtu),
+        guia_policial = COALESCE($2, guia_policial),
+        fecha_alta = COALESCE($3, fecha_alta),
+        fecha_ingreso = COALESCE($4, fecha_ingreso),
+        id_titular_faena = COALESCE($5, id_titular_faena),
+        n_tropa = COALESCE($6, n_tropa),
+        id_departamento = COALESCE($7, id_departamento),
+        id_productor = COALESCE($8, id_productor),
+        id_planta = COALESCE($9, id_planta)
+       WHERE id_tropa = $10
+       RETURNING id_tropa AS id`,
+      [
+        dte_dtu || null,
+        guia_policial || null,
+        fecha_alta || null,
+        fecha_ingreso || null,
+        id_titular_faena || null,
+        n_tropa || null,
+        id_departamento || null,
+        id_productor || null,
+        id_planta || null,
+        tropaIdNum,
+      ],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No se pudo actualizar la tropa' });
+    }
+
+    res.json({
+      message: 'Tropa actualizada correctamente',
+      id: result.rows[0].id,
+    });
+  } catch (err) {
+    console.error('Error al actualizar tropa:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

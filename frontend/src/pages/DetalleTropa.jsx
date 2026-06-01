@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
 import AppNotification from '../components/AppNotification';
+import { formatDateFromDB } from '../utils/dateFormatter';
 
 const INPUT_BASE_CLASS =
   'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
@@ -1999,13 +2000,7 @@ export default function DetalleTropa() {
                 { label: 'Nº Tropa', value: tropaInfo.n_tropa },
                 {
                   label: 'Fecha Ingreso',
-                  value: tropaInfo.fecha_ingreso
-                    ? new Date(tropaInfo.fecha_ingreso).toLocaleDateString('es-AR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                      })
-                    : '',
+                  value: formatDateFromDB(tropaInfo.fecha_ingreso),
                 },
                 { label: 'DTE/DTU', value: tropaInfo.dte_dtu },
                 { label: 'Titular', value: tropaInfo.titular },

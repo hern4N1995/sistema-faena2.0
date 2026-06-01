@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
+import { formatDateFromDB } from '../utils/dateFormatter';
 
 export default function InformeTropa() {
   const params = useParams();
@@ -132,7 +133,7 @@ export default function InformeTropa() {
             { label: 'Nº Tropa', value: n_tropa },
             {
               label: 'Fecha',
-              value: fecha ? new Date(fecha).toLocaleDateString('es-AR') : '—',
+              value: formatDateFromDB(fecha),
             },
             { label: 'DTE/DTU', value: dte_dtu },
             { label: 'Titular', value: titular || '—' },

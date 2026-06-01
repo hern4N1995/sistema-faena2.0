@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api'; // tu instancia axios
 import AppNotification from './AppNotification';
+import { formatDateForAPI } from '../utils/dateFormatter';
 
 /* ---------- Visual constants ---------- */
 const INPUT_BASE_CLASS =
@@ -986,6 +987,14 @@ export default function TropaForm({ onCreated }) {
       const payload = { ...form };
       if (isPlantaLocked && usuario?.id_planta)
         payload.id_planta = String(usuario.id_planta);
+
+      // Formatear fechas correctamente para evitar problemas de zona horaria
+      if (payload.fecha_alta) {
+        payload.fecha_alta = formatDateForAPI(payload.fecha_alta);
+      }
+      if (payload.fecha_ingreso) {
+        payload.fecha_ingreso = formatDateForAPI(payload.fecha_ingreso);
+      }
 
       const res = await api.post('/tropas', payload);
 

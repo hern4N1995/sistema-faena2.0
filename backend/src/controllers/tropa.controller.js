@@ -20,11 +20,13 @@ exports.getAll = async (req, res) => {
         t.dte_dtu,
         tf.nombre AS titular,
         pr.nombre AS productor_nombre,
+        d.nombre_departamento AS departamento,
         p.id_planta,
         p.nombre AS planta_nombre
       FROM tropa t
       LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
       LEFT JOIN productor pr ON t.id_productor = pr.id_productor
+      LEFT JOIN departamento d ON t.id_departamento = d.id_departamento
       LEFT JOIN planta p ON t.id_planta = p.id_planta
       ORDER BY t.fecha_alta DESC
     `);

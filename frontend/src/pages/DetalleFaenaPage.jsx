@@ -11,6 +11,7 @@ const DetableFaenaPage = () => {
   const [resumen, setResumen] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Función para formatear fecha evitando desfase de zona horaria
   const formatDate = (f) => {
@@ -29,72 +30,120 @@ const DetableFaenaPage = () => {
   };
 
   useEffect(() => {
+    // Usar AbortController para cancelar peticiones si el componente se desmonta
+    const controller = new AbortController();
+    let isMounted = true;
+
     const fetchTropaYDetalle = async () => {
       if (!idTropa) {
-        console.error('[DetalleFaenaPage] idTropa no proporcionado');
-        setError('ID de tropa inválido');
-        setLoading(false);
+        console.error('[DetableFaenaPage] idTropa no proporcionado');
+        if (isMounted) {
+          setError('ID de tropa inválido');
+          setLoading(false);
+        }
         return;
       }
+
       try {
-        setLoading(true);
-        // Obtener datos generales de la tropa
-        const tropaRes = await api.get(`/tropas/${idTropa}`);
+        if (isMounted) setLoading(true);
+
+        // Obtener datos en paralelo (más rápido que secuencial)
+        const [tropaRes, detalleRes] = await Promise.all([
+          api.get(`/tropas/${idTropa}`, { signal: controller.signal }),
+          api.get(`/tropas/${idTropa}/detalle`, { signal: controller.signal }),
+        ]);
+
+        // Si el componente se desmontó mientras esperábamos, no actualizar estado
+        if (!isMounted) return;
+
         const tropa = tropaRes.data?.data || tropaRes.data || {};
-        console.log('[DetalleFaenaPage] Datos tropa:', tropa);
-        
-        // Obtener detalle/categorías
-        const detalleRes = await api.get(`/tropas/${idTropa}/detalle`);
+        console.log('[DetableFaenaPage] Datos tropa:', tropa);
+
         let detalleData = detalleRes.data;
-        console.log('[DetalleFaenaPage] Respuesta detalle raw:', detalleRes.data);
-        
+        console.log('[DetableFaenaPage] Respuesta detalle raw:', detalleRes.data);
+
         if (detalleData && typeof detalleData === 'object') {
           if (detalleData.data) detalleData = detalleData.data;
           if (!Array.isArray(detalleData)) {
             detalleData = detalleData.categorias || [];
           }
         }
-        
+
         // Normalizar categorías: agregar campos faltantes
-        const categoriasNormalizadas = Array.isArray(detalleData) 
-          ? detalleData.map(cat => ({
+        const categoriasNormalizadas = Array.isArray(detalleData)
+          ? detalleData.map((cat) => ({
               ...cat,
               id_tropa_detalle: cat.id_tropa_detalle || cat.id || null,
-              nombre: cat.nombre || cat.nombre_categoria || cat.nombre_cat || cat.categoria || 'Categoría sin nombre',
+              nombre:
+                cat.nombre ||
+                cat.nombre_categoria ||
+                cat.nombre_cat ||
+                cat.categoria ||
+                'Categoría sin nombre',
               cantidad: cat.cantidad || 0,
-              remanente: cat.remanente ?? cat.remanente_total ?? (cat.cantidad || 0),
+              remanente:
+                cat.remanente ?? cat.remanente_total ?? (cat.cantidad || 0),
               especie: cat.especie || cat.nombre_especie || '',
             }))
           : [];
-        
-        console.log('[DetalleFaenaPage] Categorías normalizadas:', categoriasNormalizadas);
-        
+
+        console.log('[DetableFaenaPage] Categorías normalizadas:', categoriasNormalizadas);
+
         // Normalizar especie
         let especie = tropa.especie || tropa.nombre_especie || '';
         if (!especie && categoriasNormalizadas.length > 0) {
           especie = categoriasNormalizadas[0].especie || '';
         }
-        
+
         // Construir objeto faena
-        setFaena({
-          id_tropa: idTropa,
-          n_tropa: tropa.n_tropa || tropa.nTropa || '',
-          dte_dtu: tropa.dte_dtu || tropa.dte || tropa.dtu || '',
-          fecha: tropa.fecha || tropa.fecha_ingreso || new Date().toISOString(),
-          especie: especie || 'Especie',
-          categorias: categoriasNormalizadas,
-        });
-        setError(null);
+        if (isMounted) {
+          setFaena({
+            id_tropa: idTropa,
+            n_tropa: tropa.n_tropa || tropa.nTropa || '',
+            dte_dtu: tropa.dte_dtu || tropa.dte || tropa.dtu || '',
+            fecha: tropa.fecha || tropa.fecha_ingreso || new Date().toISOString(),
+            especie: especie || 'Especie',
+            categorias: categoriasNormalizadas,
+          });
+          setError(null);
+          setLoading(false);
+        }
       } catch (err) {
-        console.error('[DetalleFaenaPage] Error al cargar datos:', err);
-        setError('Error al cargar datos de la tropa');
-        setFaena(null);
-      } finally {
-        setLoading(false);
+        // Ignorar errores de AbortError (usuario navegó o componente se desmontó)
+        if (err.name === 'AbortError') {
+          console.log('[DetableFaenaPage] Petición cancelada (componente desmontado)');
+          return;
+        }
+
+        console.error('[DetableFaenaPage] Error al cargar datos:', err);
+
+        if (isMounted) {
+          const errorMessage = err.response?.data?.error ||
+            err.message ||
+            'Error al cargar datos de la tropa. Intenta de nuevo.';
+          setError(errorMessage);
+          setFaena(null);
+          setLoading(false);
+        }
       }
     };
+
     fetchTropaYDetalle();
-  }, [idTropa]);
+
+    // Cleanup: cancelar peticiones si el componente se desmonta
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [idTropa, retryCount]);
+
+  // Función para reintentar cargar datos
+  const handleRetry = () => {
+    setError(null);
+    setFaena(null);
+    setLoading(true);
+    setRetryCount((prev) => prev + 1);
+  };
 
   const handleSubmit = async (datos) => {
     if (!faena?.id_tropa) {
@@ -173,13 +222,21 @@ const DetableFaenaPage = () => {
         ) : error ? (
           <div className="bg-red-50 border-l-4 border-red-400 text-red-800 p-4 rounded-md text-center">
             <p className="font-semibold mb-1">Error al cargar</p>
-            <p>{error}</p>
-            <button
-              onClick={() => navigate('/faena')}
-              className="mt-4 px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-800"
-            >
-              🔙 Volver a FaenaPage
-            </button>
+            <p className="mb-4 text-sm">{error}</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={handleRetry}
+                className="px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-800 transition-colors"
+              >
+                🔄 Reintentar
+              </button>
+              <button
+                onClick={() => navigate('/faena')}
+                className="px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition-colors"
+              >
+                🔙 Volver a Faena
+              </button>
+            </div>
           </div>
         ) : resumen ? (
           <ResumenFaena resumen={resumen} />

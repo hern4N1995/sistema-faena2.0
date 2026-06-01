@@ -156,166 +156,7 @@ const FaenaPage = () => {
   };
 
   // Pide lista de tropas filtrada por planta del usuario (ruta protegida)
-  const fetchTropasPorPlanta = async () => {
-    setLoading(true);
-    try {
-      // Si es admin, obtener todas las tropas; si no, filtradas por su planta
-      const endpoint = rol === 1 ? '/tropas' : '/tropas/por-planta';
-      console.log('[FaenaPage] Usando endpoint:', endpoint, 'Rol:', rol);
-      
-      const res = await api.get(endpoint); // usa instancia axios con credenciales
-      const data = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.data)
-        ? res.data.data
-        : [];
-      const basics = data.map(normalizeBasic);
-
-      // Para asegurar especie y total: pedir detalle por tropa (si endpoint disponible)
-      const detallePromises = basics.map((t) =>
-        api
-          .get(`/tropas/${t.id_tropa}/detalle`)
-          .then((r) => ({ status: 'fulfilled', id: t.id_tropa, data: r.data }))
-          .catch((err) => {
-            // Si falla (ej. 404), intentar con detalle-agrupado como fallback
-            console.warn(
-              `[FaenaPage] getDetalle failed for tropa ${t.id_tropa}, trying detalle-agrupado`
-            );
-            return api
-              .get(`/tropas/${t.id_tropa}/detalle-agrupado`)
-              .then((r) => ({
-                status: 'fulfilled',
-                id: t.id_tropa,
-                data: r.data,
-              }))
-              .catch((err2) => {
-                console.warn(
-                  `[FaenaPage] Both getDetalle and getDetalleAgrupado failed for tropa ${t.id_tropa}`,
-                  err2?.message
-                );
-                return { status: 'rejected', id: t.id_tropa, error: err2 };
-              });
-          })
-      );
-
-      const detalles = await Promise.allSettled(detallePromises);
-
-      // Map id -> detalleData (cuando disponible)
-      const detalleMap = new Map();
-      for (const p of detalles) {
-        if (
-          p.status === 'fulfilled' &&
-          p.value &&
-          p.value.status === 'fulfilled' &&
-          p.value.data
-        ) {
-          detalleMap.set(p.value.id, p.value.data);
-        } else if (
-          p.status === 'fulfilled' &&
-          p.value &&
-          p.value.status === 'rejected'
-        ) {
-          // la promesa interna falló; ignoramos
-        } else if (p.status === 'rejected') {
-          // Promise.allSettled wrapper rejected (no debería pasar), ignoramos
-        }
-      }
-
-      // Consolida datos: si detalle disponible, extrae especie y total (remanente o cantidad - faenados)
-      const consolidated = basics.map((t) => {
-        const det = detalleMap.get(t.id_tropa) ?? null;
-        if (!det) return t;
-
-        // det puede venir como objeto con categorias: [{ nombre_categoria, remanente, especie, ... }]
-        // o como array de filas; manejamos variantes.
-        let categorias = [];
-        if (Array.isArray(det.categorias)) categorias = det.categorias;
-        else if (Array.isArray(det)) categorias = det;
-        else if (Array.isArray(det.data)) categorias = det.data;
-
-        // Obtener especie: priorizar primera categoria.especie o categoria.especie
-        let especie = t.especie;
-        if (!especie && categorias.length > 0) {
-          const first = categorias.find(
-            (c) =>
-              c.especie ||
-              c.nombre_especie ||
-              c.nombre_categoria ||
-              c.especie_nombre
-          );
-          especie =
-            first?.especie ??
-            first?.nombre_especie ??
-            first?.especie_nombre ??
-            null;
-        }
-
-        // Calcular total_a_faenar:
-        // - si categorias tienen remanente, sumarlo.
-        // - si tienen cantidad y faenados/cantidad_faena, sumar (cantidad - faenados).
-        let total = t.total_a_faenar;
-        if ((total == null || total === 0) && categorias.length > 0) {
-          // buscar remanente directo
-          const sumRem = categorias.reduce((acc, c) => {
-            const rem =
-              c.remanente ?? c.remanente_total ?? c.remanente_categoria ?? null;
-            if (rem != null && !Number.isNaN(Number(rem)))
-              return acc + Number(rem);
-            // si no viene remanente, intentar cantidad - faenados
-            const cantidad = c.cantidad ?? c.cantidad_total ?? c.cant ?? null;
-            const faenados =
-              c.faenados ?? c.cantidad_faena ?? c.cantidad_faenada ?? 0;
-            if (cantidad != null && !Number.isNaN(Number(cantidad))) {
-              const remCalc = Number(cantidad) - Number(faenados || 0);
-              return acc + (Number.isFinite(remCalc) ? remCalc : 0);
-            }
-            return acc;
-          }, 0);
-          total = sumRem;
-        }
-
-        return {
-          ...t,
-          especie: especie ?? t.especie ?? null,
-          total_a_faenar: total != null ? Number(total) : t.total_a_faenar,
-        };
-      });
-
-      // Filtrar según criterio: si total_a_faenar existe, mostrar >0; si es null mostramos igualmente (como antes)
-      const disponibles = consolidated.filter(
-        (t) =>
-          t.id_tropa != null &&
-          (t.total_a_faenar == null ? true : t.total_a_faenar > 0)
-      );
-
-      // ordenar por fecha desc, y si la fecha es igual, por id_tropa descendente (última creada primero)
-      const ordenadas = disponibles.slice().sort((a, b) => {
-        const da = a.fecha ? new Date(a.fecha) : new Date(0);
-        const db = b.fecha ? new Date(b.fecha) : new Date(0);
-        const dateCompare = db - da;
-        if (dateCompare !== 0) return dateCompare;
-        return (b.id_tropa || 0) - (a.id_tropa || 0);
-      });
-
-      const totalGeneral = ordenadas.reduce(
-        (acc, t) =>
-          acc +
-          (Number.isFinite(Number(t.total_a_faenar))
-            ? Number(t.total_a_faenar)
-            : 0),
-        0
-      );
-
-      setTropas(ordenadas);
-      setTotalFaenar(totalGeneral);
-    } catch (err) {
-      console.error('Error al cargar tropas por planta:', err);
-      setTropas([]);
-      setTotalFaenar(0);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Esta lógica ahora está en el useEffect de abajo con proper cleanup
 
   useEffect(() => {
     // Obtener rol y planta del usuario desde localStorage
@@ -337,13 +178,183 @@ const FaenaPage = () => {
   }, []);
 
   useEffect(() => {
-    if (rol !== null) {
-      fetchTropasPorPlanta();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rol]);
+    if (rol === null) return;
 
-  const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
+    // Usar AbortController para cancelar peticiones si el componente se desmonta
+    const controller = new AbortController();
+    let isMounted = true;
+
+    const fetchTropasPorPlantaWithCleanup = async () => {
+      if (!isMounted) return;
+
+      setLoading(true);
+      try {
+        // Si es admin, obtener todas las tropas; si no, filtradas por su planta
+        const endpoint = rol === 1 ? '/tropas' : '/tropas/por-planta';
+        console.log('[FaenaPage] Usando endpoint:', endpoint, 'Rol:', rol);
+
+        const res = await api.get(endpoint, { signal: controller.signal });
+        
+        if (!isMounted) return;
+
+        const data = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.data)
+          ? res.data.data
+          : [];
+        const basics = data.map(normalizeBasic);
+
+        // Para asegurar especie y total: pedir detalle por tropa (si endpoint disponible)
+        // Usar batching para evitar rate limit: máximo 5 peticiones paralelas a la vez
+        const batchSize = 5;
+        const detalleMap = new Map();
+
+        for (let i = 0; i < basics.length; i += batchSize) {
+          if (!isMounted) return;
+
+          const batch = basics.slice(i, i + batchSize);
+          const batchPromises = batch.map((t) =>
+            api
+              .get(`/tropas/${t.id_tropa}/detalle`, { signal: controller.signal })
+              .then((r) => ({ status: 'fulfilled', id: t.id_tropa, data: r.data }))
+              .catch((err) => {
+                // Si falla, intentar con detalle-agrupado como fallback
+                console.warn(
+                  `[FaenaPage] getDetalle failed for tropa ${t.id_tropa}, trying detalle-agrupado`
+                );
+                return api
+                  .get(`/tropas/${t.id_tropa}/detalle-agrupado`, {
+                    signal: controller.signal,
+                  })
+                  .then((r) => ({
+                    status: 'fulfilled',
+                    id: t.id_tropa,
+                    data: r.data,
+                  }))
+                  .catch((err2) => {
+                    console.warn(
+                      `[FaenaPage] Both endpoints failed for tropa ${t.id_tropa}`
+                    );
+                    return { status: 'rejected', id: t.id_tropa, error: err2 };
+                  });
+              })
+          );
+
+          const detalles = await Promise.allSettled(batchPromises);
+
+          // Procesar resultados de este batch
+          for (const p of detalles) {
+            if (
+              p.status === 'fulfilled' &&
+              p.value &&
+              p.value.status === 'fulfilled' &&
+              p.value.data
+            ) {
+              detalleMap.set(p.value.id, p.value.data);
+            }
+          }
+
+          // Pequeño delay entre batches para no sobrecargar el servidor
+          if (i + batchSize < basics.length) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+        }
+
+        if (!isMounted) return;
+
+        // Consolida datos: si detalle disponible, extrae especie y total
+        const consolidated = basics.map((t) => {
+          const det = detalleMap.get(t.id_tropa) ?? null;
+          if (!det) return t;
+
+          let categorias = [];
+          if (Array.isArray(det.categorias)) categorias = det.categorias;
+          else if (Array.isArray(det)) categorias = det;
+          else if (Array.isArray(det.data)) categorias = det.data;
+
+          let especie = t.especie;
+          if (!especie && categorias.length > 0) {
+            const first = categorias.find(
+              (c) =>
+                c.especie ||
+                c.nombre_especie ||
+                c.nombre_categoria ||
+                c.especie_nombre
+            );
+            especie =
+              first?.especie ??
+              first?.nombre_especie ??
+              first?.especie_nombre ??
+              null;
+          }
+
+          // Calcular total: suma de remanentes (lo que falta faenar)
+          const total = categorias.reduce(
+            (sum, c) => sum + (Number(c.remanente ?? c.cantidad ?? 0) || 0),
+            0
+          );
+
+          return {
+            ...t,
+            especie: especie || 'Especie',
+            total_a_faenar: total != null ? Number(total) : t.total_a_faenar,
+          };
+        });
+
+        // Filtrar según criterio: si total_a_faenar existe, mostrar >0; si es null mostramos igualmente
+        const disponibles = consolidated.filter(
+          (t) =>
+            t.id_tropa != null &&
+            (t.total_a_faenar == null ? true : t.total_a_faenar > 0)
+        );
+
+        // Ordenar por fecha desc
+        const ordenadas = disponibles.slice().sort((a, b) => {
+          const da = a.fecha ? new Date(a.fecha) : new Date(0);
+          const db = b.fecha ? new Date(b.fecha) : new Date(0);
+          const dateCompare = db - da;
+          if (dateCompare !== 0) return dateCompare;
+          return (b.id_tropa || 0) - (a.id_tropa || 0);
+        });
+
+        const totalGeneral = ordenadas.reduce(
+          (acc, t) =>
+            acc +
+            (Number.isFinite(Number(t.total_a_faenar))
+              ? Number(t.total_a_faenar)
+              : 0),
+          0
+        );
+
+        if (isMounted) {
+          setTropas(ordenadas);
+          setTotalFaenar(totalGeneral);
+          setLoading(false);
+        }
+      } catch (err) {
+        // Ignorar AbortError
+        if (err.name === 'AbortError') {
+          console.log('[FaenaPage] Petición cancelada (componente desmontado)');
+          return;
+        }
+
+        console.error('Error al cargar tropas por planta:', err);
+        if (isMounted) {
+          setTropas([]);
+          setTotalFaenar(0);
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchTropasPorPlantaWithCleanup();
+
+    // Cleanup: cancelar peticiones si el componente se desmonta
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [rol]);
 
   const handleFaenar = (t) => {
     setRedirigiendoId(t.id_tropa);
@@ -351,10 +362,21 @@ const FaenaPage = () => {
       ? `/faena/${t.id_faena}`
       : `/faena/nueva/${t.id_tropa}`;
     navigate(destino);
-    setTimeout(() => {
-      fetchTropasPorPlanta();
-      setRedirigiendoId(null);
-    }, 1000);
+  };
+
+  const formatDate = (f) => {
+    if (!f) return '—';
+    try {
+      // Evitar problemas de zona horaria
+      if (typeof f === 'string' && /^\d{4}-\d{2}-\d{2}/.test(f)) {
+        const [year, month, day] = f.split('T')[0].split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        return date.toLocaleDateString('es-AR');
+      }
+      return new Date(f).toLocaleDateString('es-AR');
+    } catch (e) {
+      return '—';
+    }
   };
 
   const esTropaVencida = (t) => {

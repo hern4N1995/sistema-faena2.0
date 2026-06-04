@@ -1,5 +1,5 @@
 // DetalleTropa.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
@@ -19,6 +19,7 @@ function SelectField({
   isDisabled = false,
   isClearable = false,
   selectKey = undefined,
+  usePortal = true,
 }) {
   const [isFocusing, setIsFocusing] = useState(false);
 
@@ -83,7 +84,7 @@ function SelectField({
       ...base,
       borderRadius: '0.5rem',
       boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-      zIndex: 9999,
+      zIndex: 999999,
     }),
     option: (base, { isFocused }) => ({
       ...base,
@@ -120,10 +121,380 @@ function SelectField({
           setTimeout(() => setIsFocusing(false), 50);
         }}
         menuPortalTarget={
-          typeof document !== 'undefined' ? document.body : undefined
+          usePortal && typeof document !== 'undefined' ? document.body : undefined
         }
-        menuPosition="fixed"
+        menuPosition={usePortal ? 'fixed' : 'absolute'}
+        menuPlacement="auto"
       />
+    </div>
+  );
+}
+
+/* ---------- Helpers para inputs numéricos ---------- */
+function onlyDigitsPaste(e) {
+  const paste = (e.clipboardData || window.clipboardData).getData('text');
+  if (!/^\d+$/.test(paste)) {
+    e.preventDefault();
+    const digits = paste.replace(/\D+/g, '');
+    if (digits.length) {
+      const el = e.target;
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const value = el.value;
+      const next = value.slice(0, start) + digits + value.slice(end);
+      el.value = next;
+      const ev = new Event('input', { bubbles: true });
+      el.dispatchEvent(ev);
+    }
+  }
+}
+
+function onlyDigitsKeyDown(e) {
+  const allowedKeys = [
+    'Backspace',
+    'Delete',
+    'ArrowLeft',
+    'ArrowRight',
+    'Tab',
+    'Home',
+    'End',
+  ];
+  if (allowedKeys.includes(e.key)) return;
+  if (
+    (e.ctrlKey || e.metaKey) &&
+    ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())
+  )
+    return;
+  if (!/^\d$/.test(e.key)) e.preventDefault();
+}
+
+/* ---------- Modal Helper ---------- */
+function Modal({ children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+      <div className="absolute inset-0 bg-black opacity-30 pointer-events-auto" onClick={onClose} />
+      <div className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md z-[10000] pointer-events-auto overflow-visible">
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+        >
+          ✖
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- InlineCreateModal (local) ---------- */
+function InlineCreateModal({
+  type,
+  provincias = [],
+  onCancel,
+  onCreated,
+  onNotify,
+}) {
+  const [values, setValues] = useState(() => {
+    if (type === 'departamento')
+      return { nombre_departamento: '', id_provincia: '' };
+    if (type === 'productor') return { nombre: '', cuit: '' };
+    if (type === 'titular')
+      return {
+        nombre: '',
+        id_provincia: '',
+        localidad: '',
+        direccion: '',
+        cuit: '',
+      };
+    return {};
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, [type]);
+
+  const validate = () => {
+    if (type === 'departamento')
+      return values.nombre_departamento?.trim() && values.id_provincia;
+    if (type === 'productor')
+      return (
+        values.nombre?.trim() &&
+        values.cuit?.trim() &&
+        values.cuit.replace(/\D/g, '').length === 11
+      );
+    if (type === 'titular')
+      return (
+        values.nombre?.trim() && values.id_provincia && values.localidad?.trim()
+      );
+    return false;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setValues((p) => ({ ...p, [name]: value }));
+    setError(null);
+  };
+
+  const handleCuitChange = (e) => {
+    const { value } = e.target;
+    const cleaned = value.replace(/\D/g, '').slice(0, 11);
+    let formatted = cleaned;
+    if (cleaned.length > 2) {
+      formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+    }
+    if (cleaned.length > 10) {
+      formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2, 10)}-${cleaned.slice(10)}`;
+    }
+    setValues((p) => ({ ...p, cuit: formatted }));
+    setError(null);
+  };
+
+  const handleCreate = async () => {
+    if (!validate()) {
+      setError('Completá los campos obligatorios correctamente.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const getTokenHeaders = () => {
+        try {
+          const token = localStorage.getItem('authToken');
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        } catch (e) {
+          return {};
+        }
+      };
+
+      let endpoint, payload;
+      if (type === 'departamento') {
+        endpoint = '/departamentos';
+        payload = {
+          nombre_departamento: values.nombre_departamento,
+          id_provincia: Number(values.id_provincia),
+        };
+      } else if (type === 'productor') {
+        endpoint = '/productores';
+        payload = {
+          nombre: values.nombre,
+          cuit: values.cuit.replace(/\D/g, ''),
+        };
+      } else if (type === 'titular') {
+        endpoint = '/titulares';
+        payload = {
+          nombre: values.nombre,
+          id_provincia: Number(values.id_provincia),
+          localidad: values.localidad,
+          direccion: values.direccion || '',
+          cuit: values.cuit ? values.cuit.replace(/\D/g, '') : '',
+        };
+      }
+
+      const res = await api.post(endpoint, payload, {
+        headers: getTokenHeaders(),
+      });
+
+      if (mounted.current) {
+        const rawData = res.data || {};
+        onCreated(rawData);
+      }
+    } catch (err) {
+      if (mounted.current) {
+        const msg =
+          err?.response?.data?.error ||
+          err?.message ||
+          'Error al crear registro';
+        setError(msg);
+      }
+    } finally {
+      if (mounted.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const INPUT_BASE_CLASS =
+    'w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50';
+
+  const provOptions = provincias.map((p) => ({
+    value: String(p.id ?? p.id_provincia ?? ''),
+    label: p.descripcion ?? p.nombre ?? '',
+  }));
+
+  return (
+    <div>
+      <h3 className="text-lg font-semibold mb-3">
+        {type === 'departamento'
+          ? 'Crear Departamento'
+          : type === 'productor'
+          ? 'Crear Productor'
+          : 'Crear Titular Faena'}
+      </h3>
+
+      {type === 'departamento' && (
+        <>
+          <SelectField
+            label="Provincia"
+            value={
+              provOptions.find(
+                (o) => o.value === String(values.id_provincia)
+              ) || null
+            }
+            onChange={(sel) =>
+              setValues((p) => ({ ...p, id_provincia: sel ? sel.value : '' }))
+            }
+            options={provOptions}
+            placeholder="Seleccione provincia"
+            selectKey={`dept-prov-${provOptions.length}`}
+            usePortal={false}
+          />
+
+          <label className="block text-sm font-medium text-gray-700 mt-3 mb-2">
+            Nombre departamento
+          </label>
+          <input
+            name="nombre_departamento"
+            value={values.nombre_departamento}
+            onChange={handleChange}
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Ej. San Martín"
+          />
+        </>
+      )}
+
+      {type === 'productor' && (
+        <>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Nombre productor
+          </label>
+          <input
+            name="nombre"
+            value={values.nombre}
+            onChange={handleChange}
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Ej. Establecimiento Pérez"
+          />
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            CUIT
+          </label>
+          <input
+            name="cuit"
+            value={values.cuit}
+            onChange={handleCuitChange}
+            onKeyDown={onlyDigitsKeyDown}
+            onPaste={onlyDigitsPaste}
+            inputMode="numeric"
+            pattern="\d{11}"
+            maxLength={14}
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="XX-XXXXXXXX-X"
+          />
+          <p className="text-red-600 text-xs mb-2 leading-tight">
+            Si el número central tiene menos de 8 dígitos, complete con ceros a la izquierda.<br />
+            Ejemplo: 20-008405430-2
+          </p>
+        </>
+      )}
+
+      {type === 'titular' && (
+        <>
+          <SelectField
+            label="Provincia"
+            value={
+              provOptions.find(
+                (o) => o.value === String(values.id_provincia)
+              ) || null
+            }
+            onChange={(sel) =>
+              setValues((p) => ({ ...p, id_provincia: sel ? sel.value : '' }))
+            }
+            options={provOptions}
+            placeholder="Seleccione provincia"
+            selectKey={`tit-prov-${provOptions.length}`}
+            usePortal={false}
+          />
+
+          <label className="block text-sm font-medium text-gray-700 mt-3 mb-2">
+            Nombre titular
+          </label>
+          <input
+            name="nombre"
+            value={values.nombre}
+            onChange={handleChange}
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Ej. Juan López"
+          />
+
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Localidad
+          </label>
+          <input
+            name="localidad"
+            value={values.localidad}
+            onChange={handleChange}
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Ej. Mercedes"
+          />
+
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Dirección (opcional)
+          </label>
+          <input
+            name="direccion"
+            value={values.direccion}
+            onChange={handleChange}
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="Ej. Calle Principal 123"
+          />
+
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            CUIT (opcional)
+          </label>
+          <input
+            name="cuit"
+            value={values.cuit}
+            onChange={handleCuitChange}
+            onKeyDown={onlyDigitsKeyDown}
+            onPaste={onlyDigitsPaste}
+            inputMode="numeric"
+            pattern="\d{11}"
+            maxLength={14}
+            className={INPUT_BASE_CLASS + ' mb-2'}
+            placeholder="XX-XXXXXXXX-X"
+          />
+          <p className="text-red-600 text-xs mb-2 leading-tight">
+            Si el número central tiene menos de 8 dígitos, complete con ceros a la izquierda.<br />
+            Ejemplo: 20-008405430-2
+          </p>
+        </>
+      )}
+
+      {error && <div className="text-red-600 mb-2">{error}</div>}
+
+      <div className="flex justify-end gap-2 mt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 border rounded"
+          disabled={loading}
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleCreate}
+          className="px-4 py-2 bg-green-600 text-white rounded"
+          disabled={loading}
+        >
+          {loading ? 'Guardando...' : 'Crear y seleccionar'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -161,6 +532,7 @@ export default function DetalleTropa() {
   const [productores, setProductores] = useState([]);
   const [titulares, setTitulares] = useState([]);
   const [plantas, setPlantas] = useState([]);
+  const [provincias, setProvincias] = useState([]);
   const [savingTropa, setSavingTropa] = useState(false);
 
   const [detalle, setDetalle] = useState({ especie: '', categorias: [] });
@@ -170,6 +542,9 @@ export default function DetalleTropa() {
 
   const [editCategoryOptions, setEditCategoryOptions] = useState([]); // per-edit catalog
   const [toast, setToast] = useState(null);
+
+  const [modalFor, setModalFor] = useState(null);
+  const openerRef = useRef(null);
 
   const [editing, setEditing] = useState({
     id: null, // id_tropa_detalle as string
@@ -317,6 +692,112 @@ export default function DetalleTropa() {
     label: String(o.nombre ?? o.descripcion ?? o.label ?? o.descripcion ?? ''),
   });
 
+  const openModal = (type, opener) => {
+    openerRef.current = opener || null;
+    setModalFor(type);
+  };
+
+  const handleCreatedModal = (type) => async (obj) => {
+    try {
+      const created = obj || {};
+
+      if (type === 'departamento') {
+        const id = created.id_departamento ?? created.id ?? null;
+        const nombre =
+          created.nombre ??
+          created.nombre_departamento ??
+          `Departamento ${Date.now()}`;
+        const id_provincia = created.id_provincia ?? null;
+        const finalId = id ? String(id) : `local-dep-${Date.now()}`;
+        const newDep = {
+          id_departamento: id ?? finalId,
+          nombre_departamento: nombre,
+          provincia: created.provincia ?? created.descripcion ?? '',
+          id_provincia,
+        };
+        setDepartamentos((prev) => {
+          const exists = prev.find(
+            (p) =>
+              String(p.id_departamento) === String(newDep.id_departamento) ||
+              (newDep.nombre_departamento &&
+                String(p.nombre_departamento).trim().toLowerCase() ===
+                  String(newDep.nombre_departamento).trim().toLowerCase())
+          );
+          if (exists) return prev;
+          return [...prev, newDep];
+        });
+        setTropaEdicion((f) => ({
+          ...f,
+          id_departamento: String(newDep.id_departamento),
+        }));
+        showToast('success', 'Departamento guardado y seleccionado.');
+      }
+
+      if (type === 'productor') {
+        const id = created.id_productor ?? created.id ?? null;
+        const nombre =
+          created.nombre ??
+          created.razon_social ??
+          created.nombre_productor ??
+          `Productor ${Date.now()}`;
+        const cuit = created.cuit ?? null;
+        const finalId = id ? String(id) : `local-prod-${Date.now()}`;
+        const newProd = { id_productor: id ?? finalId, nombre, cuit };
+        setProductores((prev) => {
+          const exists = prev.find(
+            (p) =>
+              String(p.id_productor) === String(newProd.id_productor) ||
+              (newProd.cuit && String(p.cuit) === String(newProd.cuit))
+          );
+          if (exists) return prev;
+          return [...prev, newProd];
+        });
+        setTropaEdicion((f) => ({
+          ...f,
+          id_productor: String(newProd.id_productor),
+        }));
+        showToast('success', 'Productor guardado y seleccionado.');
+      }
+
+      if (type === 'titular') {
+        const id = created.id_titular_faena ?? created.id ?? null;
+        const nombre = created.nombre ?? `Titular ${Date.now()}`;
+        const localidad = created.localidad ?? '';
+        const finalId = id ? String(id) : `local-tit-${Date.now()}`;
+        const newTit = {
+          id_titular_faena: id ?? finalId,
+          nombre,
+          localidad,
+          provincia: created.provincia ?? '',
+        };
+        setTitulares((prev) => {
+          const exists = prev.find(
+            (t) =>
+              String(t.id_titular_faena) === String(newTit.id_titular_faena) ||
+              (newTit.nombre &&
+                String(t.nombre).trim().toLowerCase() ===
+                  String(newTit.nombre).trim().toLowerCase())
+          );
+          if (exists) return prev;
+          return [...prev, newTit];
+        });
+        setTropaEdicion((f) => ({
+          ...f,
+          id_titular_faena: String(newTit.id_titular_faena),
+        }));
+        showToast('success', 'Titular guardado y seleccionado.');
+      }
+
+      setModalFor(null);
+      if (openerRef.current && openerRef.current.focus)
+        openerRef.current.focus();
+    } catch (err) {
+      console.error('handleCreatedModal error', err);
+      showToast('error', 'Creado, pero hubo un problema actualizando listas.');
+      setModalFor(null);
+    }
+  };
+
   const fetchTropa = async () => {
     try {
       console.log('[DetalleTropa] Obteniendo tropa con ID:', id);
@@ -370,17 +851,19 @@ export default function DetalleTropa() {
 
   const fetchDatos = async () => {
     try {
-      const [deptRes, prodRes, titRes, plantaRes] = await Promise.all([
+      const [deptRes, prodRes, titRes, plantaRes, provRes] = await Promise.all([
         api.get('/tropas/departamentos', { headers: getTokenHeaders() }),
         api.get('/tropas/productores', { headers: getTokenHeaders() }),
         api.get('/tropas/titulares', { headers: getTokenHeaders() }),
         api.get('/tropas/plantas', { headers: getTokenHeaders() }),
+        api.get('/provincias', { headers: getTokenHeaders() }),
       ]);
 
       setDepartamentos(Array.isArray(deptRes.data) ? deptRes.data : []);
       setProductores(Array.isArray(prodRes.data) ? prodRes.data : []);
       setTitulares(Array.isArray(titRes.data) ? titRes.data : []);
       setPlantas(Array.isArray(plantaRes.data) ? plantaRes.data : []);
+      setProvincias(Array.isArray(provRes.data) ? provRes.data : []);
     } catch (err) {
       console.error('[DetalleTropa] Error al obtener datos auxiliares:', err);
     }
@@ -1797,35 +2280,49 @@ export default function DetalleTropa() {
                 />
               </div>
 
-              <SelectField
-                label="Departamento"
-                value={
-                  tropaEdicion.id_departamento &&
-                  departamentos.find(
-                    (d) => String(d.id) === String(tropaEdicion.id_departamento)
-                  )
-                    ? {
-                        value: tropaEdicion.id_departamento,
-                        label:
-                          departamentos.find(
-                            (d) =>
-                              String(d.id) === String(tropaEdicion.id_departamento)
-                          )?.nombre || '',
-                      }
-                    : null
-                }
-                onChange={(opt) =>
-                  setTropaEdicion((prev) => ({
-                    ...prev,
-                    id_departamento: opt?.value || null,
-                  }))
-                }
-                options={departamentos.map((d) => ({
-                  value: d.id,
-                  label: d.nombre,
-                }))}
-                placeholder="— Seleccionar departamento —"
-              />
+              <div className="flex flex-col">
+                <div className="flex justify-between items-center mb-0.5">
+                  <label className="font-semibold text-gray-700 text-sm">
+                    Departamento
+                  </label>
+                  <button
+                    type="button"
+                    onClick={(e) => openModal('departamento', e.currentTarget)}
+                    className="text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-md text-xs font-medium"
+                  >
+                    Agregar +
+                  </button>
+                </div>
+                <SelectField
+                  label=""
+                  value={
+                    tropaEdicion.id_departamento &&
+                    departamentos.find(
+                      (d) => String(d.id) === String(tropaEdicion.id_departamento)
+                    )
+                      ? {
+                          value: tropaEdicion.id_departamento,
+                          label:
+                            departamentos.find(
+                              (d) =>
+                                String(d.id) === String(tropaEdicion.id_departamento)
+                            )?.nombre || '',
+                        }
+                      : null
+                  }
+                  onChange={(opt) =>
+                    setTropaEdicion((prev) => ({
+                      ...prev,
+                      id_departamento: opt?.value || null,
+                    }))
+                  }
+                  options={departamentos.map((d) => ({
+                    value: d.id,
+                    label: d.nombre,
+                  }))}
+                  placeholder="— Seleccionar departamento —"
+                />
+              </div>
 
               <SelectField
                 label="Planta"
@@ -1861,65 +2358,93 @@ export default function DetalleTropa() {
                 isDisabled={!usuario || (usuario.rol !== 1 && usuario.rol !== '1')}
               />
 
-              <SelectField
-                label="Productor"
-                value={
-                  tropaEdicion.id_productor &&
-                  productores.find(
-                    (p) => String(p.id) === String(tropaEdicion.id_productor)
-                  )
-                    ? {
-                        value: tropaEdicion.id_productor,
-                        label:
-                          productores.find(
-                            (p) =>
-                              String(p.id) === String(tropaEdicion.id_productor)
-                          )?.nombre || '',
-                      }
-                    : null
-                }
-                onChange={(opt) =>
-                  setTropaEdicion((prev) => ({
-                    ...prev,
-                    id_productor: opt?.value || null,
-                  }))
-                }
-                options={productores.map((p) => ({
-                  value: p.id,
-                  label: p.nombre,
-                }))}
-                placeholder="— Seleccionar productor —"
-              />
+              <div className="flex flex-col">
+                <div className="flex justify-between items-center mb-0.5">
+                  <label className="font-semibold text-gray-700 text-sm">
+                    Productor
+                  </label>
+                  <button
+                    type="button"
+                    onClick={(e) => openModal('productor', e.currentTarget)}
+                    className="text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-md text-xs font-medium"
+                  >
+                    Agregar +
+                  </button>
+                </div>
+                <SelectField
+                  label=""
+                  value={
+                    tropaEdicion.id_productor &&
+                    productores.find(
+                      (p) => String(p.id) === String(tropaEdicion.id_productor)
+                    )
+                      ? {
+                          value: tropaEdicion.id_productor,
+                          label:
+                            productores.find(
+                              (p) =>
+                                String(p.id) === String(tropaEdicion.id_productor)
+                            )?.nombre || '',
+                        }
+                      : null
+                  }
+                  onChange={(opt) =>
+                    setTropaEdicion((prev) => ({
+                      ...prev,
+                      id_productor: opt?.value || null,
+                    }))
+                  }
+                  options={productores.map((p) => ({
+                    value: p.id,
+                    label: p.nombre,
+                  }))}
+                  placeholder="— Seleccionar productor —"
+                />
+              </div>
 
-              <SelectField
-                label="Titular de Faena"
-                value={
-                  tropaEdicion.id_titular_faena &&
-                  titulares.find(
-                    (t) => String(t.id) === String(tropaEdicion.id_titular_faena)
-                  )
-                    ? {
-                        value: tropaEdicion.id_titular_faena,
-                        label:
-                          titulares.find(
-                            (t) =>
-                              String(t.id) === String(tropaEdicion.id_titular_faena)
-                          )?.nombre || '',
-                      }
-                    : null
-                }
-                onChange={(opt) =>
-                  setTropaEdicion((prev) => ({
-                    ...prev,
-                    id_titular_faena: opt?.value || null,
-                  }))
-                }
-                options={titulares.map((t) => ({
-                  value: t.id,
-                  label: t.nombre,
-                }))}
-                placeholder="— Seleccionar titular —"
-              />
+              <div className="flex flex-col">
+                <div className="flex justify-between items-center mb-0.5">
+                  <label className="font-semibold text-gray-700 text-sm">
+                    Titular de Faena
+                  </label>
+                  <button
+                    type="button"
+                    onClick={(e) => openModal('titular', e.currentTarget)}
+                    className="text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-md text-xs font-medium"
+                  >
+                    Agregar +
+                  </button>
+                </div>
+                <SelectField
+                  label=""
+                  value={
+                    tropaEdicion.id_titular_faena &&
+                    titulares.find(
+                      (t) => String(t.id) === String(tropaEdicion.id_titular_faena)
+                    )
+                      ? {
+                          value: tropaEdicion.id_titular_faena,
+                          label:
+                            titulares.find(
+                              (t) =>
+                                String(t.id) === String(tropaEdicion.id_titular_faena)
+                            )?.nombre || '',
+                        }
+                      : null
+                  }
+                  onChange={(opt) =>
+                    setTropaEdicion((prev) => ({
+                      ...prev,
+                      id_titular_faena: opt?.value || null,
+                    }))
+                  }
+                  options={titulares.map((t) => ({
+                    value: t.id,
+                    label: t.nombre,
+                  }))}
+                  placeholder="— Seleccionar titular —"
+                />
+              </div>
             </div>
 
             <div className="flex gap-3 mt-6 justify-end">
@@ -2719,6 +3244,18 @@ export default function DetalleTropa() {
             </div>
           </div>
         </div>
+      )}
+
+      {modalFor && (
+        <Modal onClose={() => setModalFor(null)}>
+          <InlineCreateModal
+            type={modalFor}
+            provincias={provincias}
+            onCancel={() => setModalFor(null)}
+            onCreated={handleCreatedModal(modalFor)}
+            onNotify={showToast}
+          />
+        </Modal>
       )}
 
       <AppNotification

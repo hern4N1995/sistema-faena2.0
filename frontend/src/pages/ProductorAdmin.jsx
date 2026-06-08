@@ -42,6 +42,7 @@ export default function ProductorAdmin() {
   const [productores, setProductores] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
   const [filtro, setFiltro] = useState('');
+  const [ordenamiento, setOrdenamiento] = useState('recientes'); // recientes, antiguos, az, za
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -195,12 +196,32 @@ export default function ProductorAdmin() {
 
   const productoresFiltrados = useMemo(() => {
     const texto = filtro.toLowerCase();
-    return productores.filter(
+    let resultado = productores.filter(
       (p) =>
         p.cuit.toString().includes(texto) ||
         p.nombre.toLowerCase().includes(texto)
     );
-  }, [productores, filtro]);
+    
+    // Aplicar ordenamiento
+    switch (ordenamiento) {
+      case 'recientes':
+        resultado.sort((a, b) => (b.id_productor || 0) - (a.id_productor || 0));
+        break;
+      case 'antiguos':
+        resultado.sort((a, b) => (a.id_productor || 0) - (b.id_productor || 0));
+        break;
+      case 'az':
+        resultado.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        break;
+      case 'za':
+        resultado.sort((a, b) => b.nombre.localeCompare(a.nombre));
+        break;
+      default:
+        break;
+    }
+    
+    return resultado;
+  }, [productores, filtro, ordenamiento]);
 
   const totalPaginas = Math.ceil(productoresFiltrados.length / itemsPorPagina);
   const visibles = productoresFiltrados.slice(
@@ -396,13 +417,67 @@ export default function ProductorAdmin() {
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
             Productores Registrados
           </h2>
-          <input
-            type="text"
-            placeholder="Buscar por CUIT o nombre"
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-            className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
-          />
+          
+          {/* Controles de búsqueda y ordenamiento */}
+          <div className="mb-4 flex flex-col sm:flex-row gap-3 items-end">
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Buscar por CUIT o nombre"
+                value={filtro}
+                onChange={(e) => setFiltro(e.target.value)}
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 bg-gray-50"
+              />
+            </div>
+            
+            {/* Selector de ordenamiento con opciones visuales */}
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => { setOrdenamiento('recientes'); setPaginaActual(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'recientes'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Más recientes primero"
+              >
+                🔄 Recientes
+              </button>
+              <button
+                onClick={() => { setOrdenamiento('antiguos'); setPaginaActual(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'antiguos'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Más antiguos primero"
+              >
+                📅 Antiguos
+              </button>
+              <button
+                onClick={() => { setOrdenamiento('az'); setPaginaActual(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'az'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Alfabético A-Z"
+              >
+                🔤 A-Z
+              </button>
+              <button
+                onClick={() => { setOrdenamiento('za'); setPaginaActual(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'za'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Alfabético Z-A"
+              >
+                🔤 Z-A
+              </button>
+            </div>
+          </div>
 
           <div className="mt-4 rounded-xl ring-1 ring-gray-200">
             {visibles.length > 0 ? (

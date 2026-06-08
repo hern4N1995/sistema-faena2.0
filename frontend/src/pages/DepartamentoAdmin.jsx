@@ -188,6 +188,7 @@ export default function DepartamentoAdmin() {
   const [currentPage, setCurrentPage] = useState(1);
   const [deviceType, setDeviceType] = useState('desktop');
   const [searchTerm, setSearchTerm] = useState('');
+  const [ordenamiento, setOrdenamiento] = useState('recientes');
 
   // edición (modal)
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -311,19 +312,45 @@ export default function DepartamentoAdmin() {
   /* ---------- Filtro local por provincia/departamento ---------- */
   const filteredRegistros = useMemo(() => {
     const query = norm(searchTerm);
-    if (!query) return Array.isArray(registros) ? registros : [];
-
-    return (Array.isArray(registros) ? registros : []).filter((r) => {
-      const provincia = norm(r.provincia ?? r.provincia_nombre ?? '');
-      const departamento = norm(
-        r.departamento ?? r.nombre_departamento ?? r.nombre ?? ''
-      );
-      return (
-        startsWithWord(provincia, query) ||
-        startsWithWord(departamento, query)
-      );
-    });
-  }, [registros, searchTerm]);
+    let resultado = Array.isArray(registros) ? registros : [];
+    
+    if (query) {
+      resultado = resultado.filter((r) => {
+        const provincia = norm(r.provincia ?? r.provincia_nombre ?? '');
+        const departamento = norm(
+          r.departamento ?? r.nombre_departamento ?? r.nombre ?? ''
+        );
+        return (
+          startsWithWord(provincia, query) ||
+          startsWithWord(departamento, query)
+        );
+      });
+    }
+    
+    // Aplicar ordenamiento
+    switch (ordenamiento) {
+      case 'recientes':
+        resultado.sort((a, b) => (b.id_departamento || 0) - (a.id_departamento || 0));
+        break;
+      case 'antiguos':
+        resultado.sort((a, b) => (a.id_departamento || 0) - (b.id_departamento || 0));
+        break;
+      case 'az':
+        resultado.sort((a, b) => 
+          (a.departamento || a.nombre_departamento || '').localeCompare(b.departamento || b.nombre_departamento || '')
+        );
+        break;
+      case 'za':
+        resultado.sort((a, b) => 
+          (b.departamento || b.nombre_departamento || '').localeCompare(a.departamento || a.nombre_departamento || '')
+        );
+        break;
+      default:
+        break;
+    }
+    
+    return resultado;
+  }, [registros, searchTerm, ordenamiento]);
 
   /* ---------- Paginación local ---------- */
   const paginatedRegistros = useMemo(() => {
@@ -700,22 +727,72 @@ export default function DepartamentoAdmin() {
 
         {/* Filtro único */}
         <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-4 sm:p-6">
-          <div className="flex flex-col gap-2">
-            <label className="font-semibold text-gray-700 text-sm">
-              Buscar por provincia o departamento
-            </label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Escribí una provincia o departamento..."
-              className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
-            />
-            {searchTerm.trim() && (
-              <p className="text-xs text-gray-500">
-                Resultados encontrados: {filteredRegistros.length}
-              </p>
-            )}
+          <div className="flex flex-col sm:flex-row gap-3 items-end">
+            <div className="flex-1 min-w-0">
+              <label className="font-semibold text-gray-700 text-sm block mb-2">
+                Buscar por provincia o departamento
+              </label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Escribí una provincia o departamento..."
+                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+              />
+              {searchTerm.trim() && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Resultados encontrados: {filteredRegistros.length}
+                </p>
+              )}
+            </div>
+
+            {/* Selector de ordenamiento */}
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => { setOrdenamiento('recientes'); setCurrentPage(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'recientes'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Más recientes primero"
+              >
+                🔄 Recientes
+              </button>
+              <button
+                onClick={() => { setOrdenamiento('antiguos'); setCurrentPage(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'antiguos'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Más antiguos primero"
+              >
+                📅 Antiguos
+              </button>
+              <button
+                onClick={() => { setOrdenamiento('az'); setCurrentPage(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'az'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Alfabético A-Z"
+              >
+                🔤 A-Z
+              </button>
+              <button
+                onClick={() => { setOrdenamiento('za'); setCurrentPage(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'za'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Alfabético Z-A"
+              >
+                🔤 Z-A
+              </button>
+            </div>
           </div>
         </div>
 

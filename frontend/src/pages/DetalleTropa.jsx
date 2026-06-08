@@ -286,7 +286,7 @@ function InlineCreateModal({
           cuit: values.cuit.replace(/\D/g, ''),
         };
       } else if (type === 'titular') {
-        endpoint = '/titulares';
+        endpoint = '/titulares-faena';
         payload = {
           nombre: values.nombre,
           id_provincia: Number(values.id_provincia),
@@ -706,29 +706,31 @@ export default function DetalleTropa() {
         const nombre =
           created.nombre ??
           created.nombre_departamento ??
+          created.departamento ??
           `Departamento ${Date.now()}`;
         const id_provincia = created.id_provincia ?? null;
         const finalId = id ? String(id) : `local-dep-${Date.now()}`;
+        // Normalizar con 'id' y 'nombre' como propiedades comunes
         const newDep = {
-          id_departamento: id ?? finalId,
-          nombre_departamento: nombre,
+          id: id ?? finalId,
+          nombre,
           provincia: created.provincia ?? created.descripcion ?? '',
           id_provincia,
         };
         setDepartamentos((prev) => {
           const exists = prev.find(
             (p) =>
-              String(p.id_departamento) === String(newDep.id_departamento) ||
-              (newDep.nombre_departamento &&
-                String(p.nombre_departamento).trim().toLowerCase() ===
-                  String(newDep.nombre_departamento).trim().toLowerCase())
+              String(p.id) === String(newDep.id) ||
+              (newDep.nombre &&
+                String(p.nombre).trim().toLowerCase() ===
+                  String(newDep.nombre).trim().toLowerCase())
           );
           if (exists) return prev;
           return [...prev, newDep];
         });
         setTropaEdicion((f) => ({
           ...f,
-          id_departamento: String(newDep.id_departamento),
+          id_departamento: String(newDep.id),
         }));
         showToast('success', 'Departamento guardado y seleccionado.');
       }
@@ -742,11 +744,12 @@ export default function DetalleTropa() {
           `Productor ${Date.now()}`;
         const cuit = created.cuit ?? null;
         const finalId = id ? String(id) : `local-prod-${Date.now()}`;
-        const newProd = { id_productor: id ?? finalId, nombre, cuit };
+        // Normalizar con 'id' y 'nombre' como propiedades comunes
+        const newProd = { id: id ?? finalId, nombre, cuit };
         setProductores((prev) => {
           const exists = prev.find(
             (p) =>
-              String(p.id_productor) === String(newProd.id_productor) ||
+              String(p.id) === String(newProd.id) ||
               (newProd.cuit && String(p.cuit) === String(newProd.cuit))
           );
           if (exists) return prev;
@@ -754,7 +757,7 @@ export default function DetalleTropa() {
         });
         setTropaEdicion((f) => ({
           ...f,
-          id_productor: String(newProd.id_productor),
+          id_productor: String(newProd.id),
         }));
         showToast('success', 'Productor guardado y seleccionado.');
       }
@@ -764,8 +767,9 @@ export default function DetalleTropa() {
         const nombre = created.nombre ?? `Titular ${Date.now()}`;
         const localidad = created.localidad ?? '';
         const finalId = id ? String(id) : `local-tit-${Date.now()}`;
+        // Normalizar con 'id' como propiedad común para consistencia con la lista cargada
         const newTit = {
-          id_titular_faena: id ?? finalId,
+          id: id ?? finalId,
           nombre,
           localidad,
           provincia: created.provincia ?? '',
@@ -773,7 +777,7 @@ export default function DetalleTropa() {
         setTitulares((prev) => {
           const exists = prev.find(
             (t) =>
-              String(t.id_titular_faena) === String(newTit.id_titular_faena) ||
+              String(t.id) === String(newTit.id) ||
               (newTit.nombre &&
                 String(t.nombre).trim().toLowerCase() ===
                   String(newTit.nombre).trim().toLowerCase())
@@ -783,7 +787,7 @@ export default function DetalleTropa() {
         });
         setTropaEdicion((f) => ({
           ...f,
-          id_titular_faena: String(newTit.id_titular_faena),
+          id_titular_faena: String(newTit.id),
         }));
         showToast('success', 'Titular guardado y seleccionado.');
       }

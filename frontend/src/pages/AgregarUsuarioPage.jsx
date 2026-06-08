@@ -239,6 +239,7 @@ const AgregarUsuarioPage = () => {
   const [filtro, setFiltro] = useState('');
   const [loading, setLoading] = useState(true);
   const [mostrarEstadoFilter, setMostrarEstadoFilter] = useState('Todos');
+  const [ordenamiento, setOrdenamiento] = useState('recientes');
 
   // refs para scroll y foco
   const formRef = useRef(null);
@@ -604,7 +605,7 @@ const AgregarUsuarioPage = () => {
   const usuariosFiltrados = useMemo(() => {
     const texto = filtro.toLowerCase();
 
-    return usuarios
+    let resultado = usuarios
       .filter((u) => {
         if (mostrarEstadoFilter === 'Activos') return isActivo(u.estado);
         if (mostrarEstadoFilter === 'Inactivos') return !isActivo(u.estado);
@@ -618,7 +619,31 @@ const AgregarUsuarioPage = () => {
           (u.nombre || '').toLowerCase().includes(texto) ||
           (u.apellido || '').toLowerCase().includes(texto)
       );
-  }, [usuarios, filtro, mostrarEstadoFilter]);
+    
+    // Aplicar ordenamiento
+    switch (ordenamiento) {
+      case 'recientes':
+        resultado.sort((a, b) => (b.id_usuario || 0) - (a.id_usuario || 0));
+        break;
+      case 'antiguos':
+        resultado.sort((a, b) => (a.id_usuario || 0) - (b.id_usuario || 0));
+        break;
+      case 'az':
+        resultado.sort((a, b) => 
+          ((a.nombre || '') + ' ' + (a.apellido || '')).localeCompare((b.nombre || '') + ' ' + (b.apellido || ''))
+        );
+        break;
+      case 'za':
+        resultado.sort((a, b) => 
+          ((b.nombre || '') + ' ' + (b.apellido || '')).localeCompare((a.nombre || '') + ' ' + (a.apellido || ''))
+        );
+        break;
+      default:
+        break;
+    }
+    
+    return resultado;
+  }, [usuarios, filtro, mostrarEstadoFilter, ordenamiento]);
 
   const totalPaginas = Math.max(
     1,
@@ -848,8 +873,9 @@ const AgregarUsuarioPage = () => {
             Usuarios Registrados
           </h2>
 
-          <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-            <div>
+          <div className="mb-6 flex flex-col sm:flex-row gap-3 items-end">
+            {/* Búsqueda */}
+            <div className="w-72 min-w-0">
               <InputField
                 label="Buscar por DNI, nombre o apellido"
                 name="filtro"
@@ -859,49 +885,97 @@ const AgregarUsuarioPage = () => {
               />
             </div>
 
-            <div className="sm:col-span-2 flex items-center gap-2">
-              <label className="font-semibold text-sm text-gray-700 mr-2">
-                Mostrar:
-              </label>
-              <div className="flex gap-2">
+            {/* Filtros de estado y ordenamiento apilados en la derecha */}
+            <div className="flex flex-col gap-1 ml-auto">
+              {/* Filtros de estado */}
+              <div className="flex items-center gap-2">
+                <label className="font-semibold text-xs text-gray-700 whitespace-nowrap">
+                  Mostrar:
+                </label>
+                <div className="flex gap-1 flex-wrap">
+                  <button
+                    onClick={() => {
+                      setMostrarEstadoFilter('Todos');
+                      setPaginaActual(1);
+                    }}
+                    className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
+                      mostrarEstadoFilter === 'Todos'
+                        ? 'bg-green-700 text-white shadow'
+                        : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMostrarEstadoFilter('Activos');
+                      setPaginaActual(1);
+                    }}
+                    className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
+                      mostrarEstadoFilter === 'Activos'
+                        ? 'bg-green-700 text-white shadow'
+                        : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                    }`}
+                  >
+                    Activos
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMostrarEstadoFilter('Inactivos');
+                      setPaginaActual(1);
+                    }}
+                    className={`px-2 py-1 rounded-full text-xs font-semibold transition ${
+                      mostrarEstadoFilter === 'Inactivos'
+                        ? 'bg-green-700 text-white shadow'
+                        : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                    }`}
+                  >
+                    Inact.
+                  </button>
+                </div>
+              </div>
+
+              {/* Selector de ordenamiento */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
-                  onClick={() => {
-                    setMostrarEstadoFilter('Todos');
-                    setPaginaActual(1);
-                  }}
-                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                    mostrarEstadoFilter === 'Todos'
-                      ? 'bg-green-700 text-white shadow'
-                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  onClick={() => { setOrdenamiento('recientes'); setPaginaActual(1); }}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                    ordenamiento === 'recientes'
+                      ? 'bg-green-600 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
                   }`}
                 >
-                  Todos
+                  🔄 Recientes
                 </button>
                 <button
-                  onClick={() => {
-                    setMostrarEstadoFilter('Activos');
-                    setPaginaActual(1);
-                  }}
-                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                    mostrarEstadoFilter === 'Activos'
-                      ? 'bg-green-700 text-white shadow'
-                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  onClick={() => { setOrdenamiento('antiguos'); setPaginaActual(1); }}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                    ordenamiento === 'antiguos'
+                      ? 'bg-green-600 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
                   }`}
                 >
-                  Activos
+                  📅 Antiguos
                 </button>
                 <button
-                  onClick={() => {
-                    setMostrarEstadoFilter('Inactivos');
-                    setPaginaActual(1);
-                  }}
-                  className={`px-3 py-1 rounded-full text-sm font-semibold transition ${
-                    mostrarEstadoFilter === 'Inactivos'
-                      ? 'bg-green-700 text-white shadow'
-                      : 'bg-white text-green-700 border border-green-700 hover:bg-green-50'
+                  onClick={() => { setOrdenamiento('az'); setPaginaActual(1); }}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                    ordenamiento === 'az'
+                      ? 'bg-green-600 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
                   }`}
                 >
-                  Inactivos
+                  🔤 A-Z
+                </button>
+                <button
+                  onClick={() => { setOrdenamiento('za'); setPaginaActual(1); }}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                    ordenamiento === 'za'
+                      ? 'bg-green-600 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                  }`}
+                >
+                  🔤 Z-A
                 </button>
               </div>
             </div>

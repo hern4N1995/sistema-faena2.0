@@ -82,6 +82,7 @@ export default function ProvinciaAdmin() {
   const inputRef = useRef(null);
 
   const [paginaActual, setPaginaActual] = useState(1);
+  const [ordenamiento, setOrdenamiento] = useState('recientes');
   const itemsPorPagina =
     window.innerWidth < 768 ? 4 : window.innerWidth < 1024 ? 6 : 8;
 
@@ -276,10 +277,30 @@ export default function ProvinciaAdmin() {
 
   const provinciasFiltradas = useMemo(() => {
     const texto = filtro.toLowerCase();
-    return provincias.filter((p) =>
+    let resultado = provincias.filter((p) =>
       p.descripcion.toLowerCase().includes(texto)
     );
-  }, [provincias, filtro]);
+    
+    // Aplicar ordenamiento
+    switch (ordenamiento) {
+      case 'recientes':
+        resultado.sort((a, b) => (b.id || 0) - (a.id || 0));
+        break;
+      case 'antiguos':
+        resultado.sort((a, b) => (a.id || 0) - (b.id || 0));
+        break;
+      case 'az':
+        resultado.sort((a, b) => (a.descripcion || '').localeCompare(b.descripcion || ''));
+        break;
+      case 'za':
+        resultado.sort((a, b) => (b.descripcion || '').localeCompare(a.descripcion || ''));
+        break;
+      default:
+        break;
+    }
+    
+    return resultado;
+  }, [provincias, filtro, ordenamiento]);
 
   const totalPaginas = Math.ceil(provinciasFiltradas.length / itemsPorPagina);
   const visibles = provinciasFiltradas.slice(
@@ -348,14 +369,62 @@ export default function ProvinciaAdmin() {
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
             📋 Listado de Provincias
           </h2>
-          {/* Filtro de búsqueda */}
-          <div className="mb-4">
-            <InputField
-              label="Buscar provincia"
-              value={filtro}
-              onChange={(e) => setFiltro(e.target.value)}
-              placeholder="Escriba para filtrar..."
-            />
+          {/* Filtro de búsqueda y ordenamiento */}
+          <div className="mb-4 flex flex-col sm:flex-row gap-3 items-end">
+            <div className="flex-1 min-w-0">
+              <InputField
+                label="Buscar provincia"
+                value={filtro}
+                onChange={(e) => setFiltro(e.target.value)}
+                placeholder="Escriba para filtrar..."
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => { setOrdenamiento('recientes'); setPaginaActual(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'recientes'
+                    ? 'bg-green-700 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Más recientes primero"
+              >
+                🔄 Recientes
+              </button>
+              <button
+                onClick={() => { setOrdenamiento('antiguos'); setPaginaActual(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'antiguos'
+                    ? 'bg-green-700 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Más antiguos primero"
+              >
+                📅 Antiguos
+              </button>
+              <button
+                onClick={() => { setOrdenamiento('az'); setPaginaActual(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'az'
+                    ? 'bg-green-700 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Alfabético A-Z"
+              >
+                🔤 A-Z
+              </button>
+              <button
+                onClick={() => { setOrdenamiento('za'); setPaginaActual(1); }}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                  ordenamiento === 'za'
+                    ? 'bg-green-700 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Alfabético Z-A"
+              >
+                🔤 Z-A
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto rounded-xl ring-1 ring-gray-200">
             <table className="min-w-full text-sm text-gray-700">

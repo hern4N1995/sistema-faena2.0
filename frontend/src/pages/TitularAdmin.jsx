@@ -119,6 +119,7 @@ export default function TitularAdmin() {
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
   const [paginaActual, setPaginaActual] = useState(1);
   const [busqueda, setBusqueda] = useState('');
+  const [ordenamiento, setOrdenamiento] = useState('recientes');
   const itemsPorPagina = esMovil ? 4 : 6;
 
   useEffect(() => {
@@ -377,19 +378,42 @@ export default function TitularAdmin() {
 
   const titularesFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return titulares;
-    return titulares.filter((t) => {
-      const cuitRaw = String(t.cuit || t.documento || '').toLowerCase();
-      const cuitFmt = formatearCuit(t.cuit || t.documento || '').toLowerCase();
-      return (
-        (t.nombre || '').toLowerCase().includes(q) ||
-        (t.localidad || '').toLowerCase().includes(q) ||
-        (t.provincia || '').toLowerCase().includes(q) ||
-        cuitRaw.includes(q) ||
-        cuitFmt.includes(q)
-      );
-    });
-  }, [titulares, busqueda]);
+    let resultado = titulares;
+    
+    if (q) {
+      resultado = resultado.filter((t) => {
+        const cuitRaw = String(t.cuit || t.documento || '').toLowerCase();
+        const cuitFmt = formatearCuit(t.cuit || t.documento || '').toLowerCase();
+        return (
+          (t.nombre || '').toLowerCase().includes(q) ||
+          (t.localidad || '').toLowerCase().includes(q) ||
+          (t.provincia || '').toLowerCase().includes(q) ||
+          cuitRaw.includes(q) ||
+          cuitFmt.includes(q)
+        );
+      });
+    }
+    
+    // Aplicar ordenamiento
+    switch (ordenamiento) {
+      case 'recientes':
+        resultado.sort((a, b) => (b.id || 0) - (a.id || 0));
+        break;
+      case 'antiguos':
+        resultado.sort((a, b) => (a.id || 0) - (b.id || 0));
+        break;
+      case 'az':
+        resultado.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+        break;
+      case 'za':
+        resultado.sort((a, b) => (b.nombre || '').localeCompare(a.nombre || ''));
+        break;
+      default:
+        break;
+    }
+    
+    return resultado;
+  }, [titulares, busqueda, ordenamiento]);
 
   const totalPaginas = Math.ceil(titularesFiltrados.length / itemsPorPagina);
   const visibles = titularesFiltrados.slice(
@@ -595,30 +619,80 @@ export default function TitularAdmin() {
         )}
 
         {/* Buscador */}
-        <div className="relative">
-          <span className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-            </svg>
-          </span>
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => { setBusqueda(e.target.value); setPaginaActual(1); }}
-            placeholder="Buscar por nombre, CUIT, localidad o provincia…"
-            className="w-full pl-12 pr-10 py-3 rounded-xl border-2 border-gray-200 bg-white text-sm shadow-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 placeholder-gray-400"
-          />
-          {busqueda && (
-            <button
-              onClick={() => { setBusqueda(''); setPaginaActual(1); }}
-              className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 transition"
-              aria-label="Limpiar búsqueda"
-            >
+        <div className="flex flex-col sm:flex-row gap-3 items-end">
+          <div className="flex-1 min-w-0 relative">
+            <span className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400">
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
               </svg>
+            </span>
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => { setBusqueda(e.target.value); setPaginaActual(1); }}
+              placeholder="Buscar por nombre, CUIT, localidad o provincia…"
+              className="w-full pl-12 pr-10 py-3 rounded-xl border-2 border-gray-200 bg-white text-sm shadow-sm transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300 placeholder-gray-400"
+            />
+            {busqueda && (
+              <button
+                onClick={() => { setBusqueda(''); setPaginaActual(1); }}
+                className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 transition"
+                aria-label="Limpiar búsqueda"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Selector de ordenamiento */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => { setOrdenamiento('recientes'); setPaginaActual(1); }}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                ordenamiento === 'recientes'
+                  ? 'bg-green-600 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+              }`}
+              title="Más recientes primero"
+            >
+              🔄 Recientes
             </button>
-          )}
+            <button
+              onClick={() => { setOrdenamiento('antiguos'); setPaginaActual(1); }}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                ordenamiento === 'antiguos'
+                  ? 'bg-green-600 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+              }`}
+              title="Más antiguos primero"
+            >
+              📅 Antiguos
+            </button>
+            <button
+              onClick={() => { setOrdenamiento('az'); setPaginaActual(1); }}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                ordenamiento === 'az'
+                  ? 'bg-green-600 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+              }`}
+              title="Alfabético A-Z"
+            >
+              🔤 A-Z
+            </button>
+            <button
+              onClick={() => { setOrdenamiento('za'); setPaginaActual(1); }}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                ordenamiento === 'za'
+                  ? 'bg-green-600 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+              }`}
+              title="Alfabético Z-A"
+            >
+              🔤 Z-A
+            </button>
+          </div>
         </div>
 
         {busqueda && (

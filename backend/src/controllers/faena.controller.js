@@ -97,28 +97,38 @@ const obtenerFaenasRealizadas = async (req, res) => {
   const filtros = [];
   const valores = [];
 
-  if (desde.trim()) {
+  // Filtro de planta del usuario (solo si NO es admin)
+  const idPlantaUsuario = req.user?.id_planta;
+  const rolUsuario = req.user?.rol;
+  
+  // Solo usuarios no-admin (rol !== 1) ven filtrados por su planta
+  if (idPlantaUsuario && rolUsuario !== 1) {
+    valores.push(idPlantaUsuario);
+    filtros.push(`t.id_planta = $${valores.length}`);
+  }
+
+  if (String(desde).trim()) {
     valores.push(desde);
     filtros.push(`f.fecha_faena::date >= $${valores.length}`);
   }
-  if (hasta.trim()) {
+  if (String(hasta).trim()) {
     valores.push(hasta);
     filtros.push(`f.fecha_faena::date <= $${valores.length}`);
   }
-  if (n_tropa.trim()) {
+  if (String(n_tropa).trim()) {
     valores.push(`^${n_tropa}`);
     filtros.push(`t.n_tropa::text ~ $${valores.length}`);
   }
 
-  if (id_especie.trim()) {
+  if (String(id_especie).trim()) {
     valores.push(id_especie);
     filtros.push(`esp.id_especie = $${valores.length}`);
   }
-  if (id_provincia.trim()) {
+  if (String(id_provincia).trim()) {
     valores.push(id_provincia);
     filtros.push(`prov.id_provincia = $${valores.length}`);
   }
-  if (id_planta.trim()) {
+  if (String(id_planta).trim()) {
     valores.push(id_planta);
     filtros.push(`t.id_planta = $${valores.length}`);
   }
@@ -129,7 +139,7 @@ const obtenerFaenasRealizadas = async (req, res) => {
   const offsetNum = parseInt(offset, 10) || 0;
 
   try {
-    // Query principal: devuelve faenas agregadas por faena + total_faenado por faena
+    // Query principal: devuelve UNA SOLA FILA por faena con TODAS las especies agregadas
     const query = `
       SELECT
         f.id_faena,
@@ -142,11 +152,10 @@ const obtenerFaenasRealizadas = async (req, res) => {
         prod.nombre AS productor,
         depto.nombre_departamento AS departamento,
         tf.nombre AS titular_faena,
-        esp.descripcion AS especie,
-        esp.id_especie,
-        prov.id_provincia,
+        STRING_AGG(DISTINCT esp.descripcion, ', ') AS especie,
         SUM(fd.cantidad_faena)::int AS total_faenado,
-        t.id_tropa
+        t.id_tropa,
+        prov.id_provincia
       FROM faena f
       JOIN faena_detalle fd ON f.id_faena = fd.id_faena
       JOIN tropa t ON f.id_tropa = t.id_tropa
@@ -159,7 +168,7 @@ const obtenerFaenasRealizadas = async (req, res) => {
       LEFT JOIN planta p ON t.id_planta = p.id_planta
       ${where}
       GROUP BY f.id_faena, f.fecha_faena, t.dte_dtu, t.guia_policial, t.n_tropa, t.id_planta, p.nombre,
-               prod.nombre, depto.nombre_departamento, tf.nombre, esp.descripcion, esp.id_especie, t.id_tropa, prov.id_provincia
+               prod.nombre, depto.nombre_departamento, tf.nombre, t.id_tropa, prov.id_provincia
       ORDER BY f.fecha_faena DESC, f.id_faena DESC
       LIMIT $${valores.length + 1} OFFSET $${valores.length + 2};
     `;
@@ -187,45 +196,6 @@ const obtenerFaenasRealizadas = async (req, res) => {
     const totalFaenadosResult = await pool.query(totalFaenadosQuery, valores);
     const totalFaenados = parseInt(totalFaenadosResult.rows[0].total || 0);
 
-    // Obtener total de tropas filtrado
-    const filtrosTropa = [];
-    const valoresTropa = [];
-
-    if (desde.trim()) {
-      valoresTropa.push(desde);
-      filtrosTropa.push(`tropa.fecha::date >= $${valoresTropa.length}`);
-    }
-    if (hasta.trim()) {
-      valoresTropa.push(hasta);
-      filtrosTropa.push(`tropa.fecha::date <= $${valoresTropa.length}`);
-    }
-    if (n_tropa.trim()) {
-      valoresTropa.push(`%${n_tropa}%`);
-      filtrosTropa.push(`tropa.n_tropa::text ILIKE $${valoresTropa.length}`);
-    }
-    if (id_especie.trim()) {
-      valoresTropa.push(id_especie);
-      filtrosTropa.push(
-        `EXISTS (SELECT 1 FROM tropa_detalle td WHERE td.id_tropa = tropa.id_tropa AND td.id_especie = $${valoresTropa.length})`,
-      );
-    }
-    if (id_provincia.trim()) {
-      valoresTropa.push(id_provincia);
-      filtrosTropa.push(
-        `EXISTS (SELECT 1 FROM departamento d WHERE d.id_departamento = tropa.id_departamento AND d.id_provincia = $${valoresTropa.length})`,
-      );
-    }
-    if (id_planta.trim()) {
-      valoresTropa.push(id_planta);
-      filtrosTropa.push(`tropa.id_planta = $${valoresTropa.length}`);
-    }
-
-    const whereTropa =
-      filtrosTropa.length > 0 ? `WHERE ${filtrosTropa.join(' AND ')}` : '';
-    const totalTropasQuery = `SELECT COUNT(*) as total FROM tropa ${whereTropa}`;
-    const totalTropasResult = await pool.query(totalTropasQuery, valoresTropa);
-    const totalTropas = parseInt(totalTropasResult.rows[0].total);
-
     // Calcular sum_faenado por tropa de las faenas filtradas
     const sumFaenadoPerTropaQuery = `
       SELECT t.id_tropa, SUM(fd.cantidad_faena)::int as sum_faenado
@@ -244,38 +214,39 @@ const obtenerFaenasRealizadas = async (req, res) => {
       acc[row.id_tropa] = Number(row.sum_faenado);
       return acc;
     }, {});
-    const tropaIds = Object.keys(sumFaenadoByTropa);
+
+    // Obtener todas las tropas que coinciden con los filtros de tropas (incluyendo las que NO tienen faenas)
+    // Extraer IDs de tropas de las faenas ya retornadas (esto asegura que usamos las mismas tropas que la query de faenas)
+    const allTropasIds = [...new Set(faenas.map(f => f.id_tropa))];
 
     let fullyFaenadaCount = 0;
     let totalCantidadByTropa = {};
-    if (tropaIds.length > 0) {
-      const totalCantidadQuery = `SELECT id_tropa, SUM(cantidad) as total_cantidad FROM tropa_detalle WHERE id_tropa = ANY($1) GROUP BY id_tropa`;
-      const totalCantidadResult = await pool.query(totalCantidadQuery, [
-        tropaIds,
-      ]);
+    
+    if (allTropasIds.length > 0) {
+      // Usar los IDs específicamente con IN clause
+      const idsPlaceholders = allTropasIds.map((_, i) => `$${i + 1}`).join(',');
+      const totalCantidadQuery = `SELECT id_tropa, SUM(cantidad) as total_cantidad FROM tropa_detalle WHERE id_tropa IN (${idsPlaceholders}) GROUP BY id_tropa`;
+      const totalCantidadResult = await pool.query(totalCantidadQuery, allTropasIds);
       totalCantidadByTropa = totalCantidadResult.rows.reduce((acc, row) => {
         acc[row.id_tropa] = Number(row.total_cantidad);
         return acc;
       }, {});
-      for (const idTropa of tropaIds) {
-        const sumFaenado = sumFaenadoByTropa[idTropa];
-        const totalCantidad = totalCantidadByTropa[idTropa];
-        if (sumFaenado === totalCantidad) {
+      
+      // Contar tropas faenadas en su totalidad (que aparecen en sumFaenadoByTropa)
+      for (const idTropa of allTropasIds) {
+        const sumFaenado = sumFaenadoByTropa[idTropa] || 0;
+        const totalCantidad = totalCantidadByTropa[idTropa] || 0;
+        if (totalCantidad > 0 && sumFaenado === totalCantidad) {
           fullyFaenadaCount++;
         }
       }
     }
 
-    // Total unidades de todas las tropas filtradas
-    const whereTropaDetalle = whereTropa.replace(/tropa\./g, 't.');
-    const totalUnidadesQuery = `SELECT SUM(td.cantidad)::int as total_unidades FROM tropa_detalle td JOIN tropa t ON td.id_tropa = t.id_tropa ${whereTropaDetalle}`;
-    const totalUnidadesResult = await pool.query(
-      totalUnidadesQuery,
-      valoresTropa,
-    );
-    const totalUnidades = parseInt(
-      totalUnidadesResult.rows[0].total_unidades || 0,
-    );
+    // Total unidades: sumar todas las cantidades de totalCantidadByTropa
+    const totalUnidades = Object.values(totalCantidadByTropa).reduce((sum, qty) => sum + qty, 0);
+    
+    // Total de tropas que tuvieron faenas en el período
+    const totalTropas = allTropasIds.length;
 
     res.status(200).json({
       faenas,
@@ -386,6 +357,16 @@ const obtenerFaenasSinDecomiso = async (req, res) => {
   const filtros = [];
   const valores = [];
 
+  // Filtro de planta del usuario (solo si NO es admin)
+  const idPlantaUsuario = req.user?.id_planta;
+  const rolUsuario = req.user?.rol;
+  
+  // Solo usuarios no-admin (rol !== 1) ven filtrados por su planta
+  if (idPlantaUsuario && rolUsuario !== 1) {
+    filtros.push(`t.id_planta = $${valores.length + 1}`);
+    valores.push(idPlantaUsuario);
+  }
+
   if (fecha.trim()) {
     filtros.push(`f.fecha_faena::date = $${valores.length + 1}`);
     valores.push(fecha);
@@ -418,7 +399,7 @@ const obtenerFaenasSinDecomiso = async (req, res) => {
         prod.nombre AS productor,
         depto.nombre_departamento AS departamento,
         tf.nombre AS titular_faena,
-        esp.descripcion AS especie,
+        STRING_AGG(DISTINCT esp.descripcion, ', ') AS especie,
         SUM(fd.cantidad_faena) AS total_faenado,
         t.id_tropa
       FROM faena f
@@ -438,7 +419,7 @@ const obtenerFaenasSinDecomiso = async (req, res) => {
         WHERE fd2.id_faena = f.id_faena
         )
       GROUP BY f.id_faena, f.fecha_faena, t.dte_dtu, t.guia_policial, t.n_tropa, t.id_planta, p.nombre,
-               prod.nombre, depto.nombre_departamento, tf.nombre, esp.descripcion, t.id_tropa
+               prod.nombre, depto.nombre_departamento, tf.nombre, t.id_tropa
       ORDER BY f.fecha_faena DESC, f.id_faena DESC
       LIMIT $${valores.length + 1} OFFSET $${valores.length + 2};
     `;
@@ -458,6 +439,8 @@ const obtenerFaenasSinDecomiso = async (req, res) => {
 //ObtenerDatosParaDecomiso
 const obtenerDatosParaDecomiso = async (req, res) => {
   const { id_faena } = req.params;
+  const idPlantaUsuario = req.user?.id_planta;
+  const rolUsuario = req.user?.rol;
 
   try {
     const query = `
@@ -469,7 +452,8 @@ const obtenerDatosParaDecomiso = async (req, res) => {
         fd.cantidad_faena AS faenados,
         t.dte_dtu,
         t.n_tropa,
-        f.fecha_faena
+        f.fecha_faena,
+        t.id_planta
       FROM faena f
       JOIN faena_detalle fd ON f.id_faena = fd.id_faena
       JOIN tropa_detalle td ON fd.id_tropa_detalle = td.id_tropa_detalle
@@ -477,9 +461,15 @@ const obtenerDatosParaDecomiso = async (req, res) => {
       JOIN especie e ON td.id_especie = e.id_especie
       JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
       WHERE f.id_faena = $1
+      ${idPlantaUsuario && rolUsuario !== 1 ? `AND t.id_planta = $2` : ''}
     `;
 
-    const resultado = await pool.query(query, [id_faena]);
+    const valores = [id_faena];
+    if (idPlantaUsuario && rolUsuario !== 1) {
+      valores.push(idPlantaUsuario);
+    }
+
+    const resultado = await pool.query(query, valores);
 
     if (resultado.rows.length === 0) {
       return res
@@ -625,8 +615,9 @@ const obtenerDetalleFaenaPorId = async (req, res) => {
     return res.status(400).json({ error: 'ID de faena inválido' });
   }
   try {
-    const result = await pool.query(
-      `SELECT
+    // Query 1: Obtener cabecera con especies consolidadas
+    const cabeceraResult = await pool.query(
+      `SELECT DISTINCT
         f.id_faena,
         f.fecha_faena,
         t.n_tropa,
@@ -636,15 +627,39 @@ const obtenerDetalleFaenaPorId = async (req, res) => {
         prod.nombre AS productor,
         depto.nombre_departamento AS departamento,
         tf.nombre AS titular_faena,
-        esp.descripcion AS especie,
+        STRING_AGG(DISTINCT esp.descripcion, ', ' ORDER BY esp.descripcion) AS especie
+      FROM faena f
+      JOIN faena_detalle fd ON f.id_faena = fd.id_faena
+      JOIN tropa t ON f.id_tropa = t.id_tropa
+      JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
+      JOIN especie esp ON td.id_especie = esp.id_especie
+      JOIN productor prod ON t.id_productor = prod.id_productor
+      JOIN departamento depto ON t.id_departamento = depto.id_departamento
+      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
+      LEFT JOIN planta p ON t.id_planta = p.id_planta
+      WHERE f.id_faena = $1
+      GROUP BY f.id_faena, f.fecha_faena, t.n_tropa, t.dte_dtu, t.guia_policial,
+               p.nombre, prod.nombre, depto.nombre_departamento, tf.nombre`,
+      [parseInt(id_faena)],
+    );
+
+    if (cabeceraResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Faena no encontrada' });
+    }
+
+    const cabecera = cabeceraResult.rows[0];
+
+    // Query 2: Obtener categorías con validación de max_permitido
+    const categoriasResult = await pool.query(
+      `SELECT
         td.id_tropa_detalle,
         COALESCE(td.cantidad, 0)::int AS cantidad_inicial,
         COALESCE(sumfd.total_faenado, 0)::int AS total_faenado_detalle,
+        esp.descripcion AS especie,
         ce.descripcion AS categoria,
         fd.cantidad_faena
       FROM faena f
       JOIN faena_detalle fd ON f.id_faena = fd.id_faena
-      JOIN tropa t ON f.id_tropa = t.id_tropa
       JOIN tropa_detalle td ON td.id_tropa_detalle = fd.id_tropa_detalle
       LEFT JOIN (
         SELECT id_tropa_detalle, SUM(cantidad_faena)::int AS total_faenado
@@ -653,40 +668,19 @@ const obtenerDetalleFaenaPorId = async (req, res) => {
       ) sumfd ON sumfd.id_tropa_detalle = td.id_tropa_detalle
       JOIN especie esp ON td.id_especie = esp.id_especie
       JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
-      JOIN productor prod ON t.id_productor = prod.id_productor
-      JOIN departamento depto ON t.id_departamento = depto.id_departamento
-      LEFT JOIN titular_faena tf ON t.id_titular_faena = tf.id_titular_faena
-      LEFT JOIN planta p ON t.id_planta = p.id_planta
       WHERE f.id_faena = $1
-      ORDER BY ce.descripcion ASC`,
+      ORDER BY esp.descripcion ASC, ce.descripcion ASC`,
       [parseInt(id_faena)],
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Faena no encontrada' });
-    }
-
-    const rows = result.rows;
-    const cabecera = {
-      id_faena: rows[0].id_faena,
-      fecha_faena: rows[0].fecha_faena,
-      n_tropa: rows[0].n_tropa,
-      dte_dtu: rows[0].dte_dtu,
-      guia_policial: rows[0].guia_policial,
-      nombre_planta: rows[0].nombre_planta,
-      productor: rows[0].productor,
-      departamento: rows[0].departamento,
-      titular_faena: rows[0].titular_faena,
-      especie: rows[0].especie,
-    };
-
-    const categorias = rows.map((r) => ({
+    const categorias = categoriasResult.rows.map((r) => ({
       max_permitido: Math.max(
         0,
         Number(r.cantidad_inicial || 0) -
           (Number(r.total_faenado_detalle || 0) - Number(r.cantidad_faena || 0)),
       ),
       id_tropa_detalle: r.id_tropa_detalle,
+      especie: r.especie,
       categoria: r.categoria,
       cantidad_faena: r.cantidad_faena,
     }));
@@ -696,7 +690,20 @@ const obtenerDetalleFaenaPorId = async (req, res) => {
       0,
     );
 
-    res.status(200).json({ ...cabecera, categorias, total_faenado });
+    res.status(200).json({
+      id_faena: cabecera.id_faena,
+      fecha_faena: cabecera.fecha_faena,
+      n_tropa: cabecera.n_tropa,
+      dte_dtu: cabecera.dte_dtu,
+      guia_policial: cabecera.guia_policial,
+      nombre_planta: cabecera.nombre_planta,
+      productor: cabecera.productor,
+      departamento: cabecera.departamento,
+      titular_faena: cabecera.titular_faena,
+      especie: cabecera.especie,
+      categorias,
+      total_faenado,
+    });
   } catch (error) {
     console.error('Error al obtener detalle de faena:', error.message);
     res.status(500).json({ error: 'Error al obtener detalle de faena' });

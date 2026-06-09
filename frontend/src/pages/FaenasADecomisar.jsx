@@ -117,7 +117,7 @@ export default function FaenasADecomisar() {
   const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 767px)');
-  const [rowsPerPage, setRowsPerPage] = useState(isMobile ? 3 : 6);
+  const [rowsPerPage, setRowsPerPage] = useState(isMobile ? 5 : 20);
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFaena, setPreviewFaena] = useState(null);
@@ -156,7 +156,7 @@ export default function FaenasADecomisar() {
     setLoading(true);
     try {
       console.log('[FaenasADecomisar] Cargando faenas sin decomiso');
-      const res = await api.get('/faena/faenas-sin-decomiso');
+      const res = await api.get('/faena/faenas-sin-decomiso?limit=100');
       
       const data = res.data;
       let arr = Array.isArray(data) ? data : Array.isArray(data?.faenas) ? data.faenas : [];

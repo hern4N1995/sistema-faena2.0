@@ -115,6 +115,9 @@ export default function InformeTropa() {
   }, [tropaId]);
 
   const { especie, categorias, n_tropa, fecha, dte_dtu, titular } = detalle;
+  const totalOriginal = Array.isArray(categorias)
+    ? categorias.reduce((acc, i) => acc + (Number(i.cantidad_total) || 0), 0)
+    : 0;
   const totalEspecie = Array.isArray(categorias)
     ? categorias.reduce((acc, i) => acc + (Number(i.remanente) || 0), 0)
     : 0;
@@ -159,64 +162,120 @@ export default function InformeTropa() {
               No se han registrado animales en esta tropa.
             </p>
           </div>
-        ) : (
-          <section>
-            <h2 className="text-xl font-bold text-gray-800 mb-4">{especie}</h2>
+        ) : (() => {
+          // Agrupar categorías por especie
+          const especiesMap = {};
+          categorias.forEach((cat) => {
+            if (!especiesMap[cat.especie]) {
+              especiesMap[cat.especie] = [];
+            }
+            especiesMap[cat.especie].push(cat);
+          });
+          const especies = Object.entries(especiesMap);
 
-            {/* Móvil: cards */}
-            <div className="sm:hidden space-y-3">
-              {categorias.map((item) => (
-                <div
-                  key={item.nombre}
-                  className="bg-white rounded-lg shadow p-4 flex justify-between items-center border border-gray-100"
-                >
-                  <span className="text-sm font-medium text-gray-700">
-                    {item.nombre}
-                  </span>
-                  <span className="text-sm font-semibold text-gray-900">
-                    {item.remanente}
-                  </span>
-                </div>
-              ))}
-              <div className="bg-gray-100 rounded-lg p-4 flex justify-between items-center font-bold text-sm border border-gray-200">
-                <span>TOTAL {especie}</span>
-                <span>{totalEspecie}</span>
-              </div>
-            </div>
+          return (
+            <section className="space-y-8">
+              {especies.map(([nombreEspecie, catsPorEspecie]) => {
+                const totalEspecieActual = catsPorEspecie.reduce((acc, i) => acc + (Number(i.cantidad_total) || 0), 0);
+                const totalRemanenteEspecie = catsPorEspecie.reduce((acc, i) => acc + (Number(i.remanente) || 0), 0);
 
-            {/* Escritorio: tabla */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="min-w-full bg-white rounded-xl shadow-md border border-gray-200">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                      Categoría
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
-                      Cantidad
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categorias.map((item) => (
-                    <tr key={item.nombre} className="border-t border-gray-200">
-                      <td className="px-4 py-3 text-sm text-gray-800">
-                        {item.nombre}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
-                        {item.remanente}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="bg-gray-100 font-bold text-sm border-t border-gray-300">
-                    <td className="px-4 py-3">TOTAL {especie}</td>
-                    <td className="px-4 py-3 text-right">{totalEspecie}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
+                return (
+                  <div key={nombreEspecie}>
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">{nombreEspecie}</h2>
+
+                    {/* Móvil: cards */}
+                    <div className="sm:hidden space-y-3">
+                      {catsPorEspecie.map((item) => (
+                        <div
+                          key={`${item.especie}-${item.nombre}`}
+                          className="bg-white rounded-lg shadow p-4 border border-gray-100"
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-gray-700">
+                              {item.nombre}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span className="text-gray-500">Original:</span>
+                              <span className="ml-1 font-semibold text-gray-900">
+                                {item.cantidad_total || 0}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Remanente:</span>
+                              <span className="ml-1 font-semibold text-gray-900">
+                                {item.remanente || 0}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="bg-gray-100 rounded-lg p-4 border border-gray-200">
+                        <div className="flex justify-between items-center font-bold text-sm mb-2">
+                          <span>TOTAL {nombreEspecie} - Original</span>
+                          <span>{totalEspecieActual}</span>
+                        </div>
+                        <div className="flex justify-between items-center font-bold text-sm">
+                          <span>TOTAL {nombreEspecie} - Remanente</span>
+                          <span>{totalRemanenteEspecie}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Escritorio: tabla */}
+                    <div className="hidden sm:block overflow-x-auto">
+                      <table className="min-w-full bg-white rounded-xl shadow-md border border-gray-200">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                              Categoría
+                            </th>
+                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                              Cantidad Original
+                            </th>
+                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                              Faenados
+                            </th>
+                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                              Remanente
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {catsPorEspecie.map((item) => (
+                            <tr key={`${item.especie}-${item.nombre}`} className="border-t border-gray-200">
+                              <td className="px-4 py-3 text-sm text-gray-800">
+                                {item.nombre}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                                {item.cantidad_total || 0}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm font-medium text-orange-600">
+                                {item.cantidad_faenada || 0}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                                {item.remanente || 0}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="bg-gray-100 font-bold text-sm border-t border-gray-300">
+                            <td className="px-4 py-3">TOTAL {nombreEspecie}</td>
+                            <td className="px-4 py-3 text-right">{totalEspecieActual}</td>
+                            <td className="px-4 py-3 text-right text-orange-600">
+                              {catsPorEspecie.reduce((acc, i) => acc + (Number(i.cantidad_faenada) || 0), 0)}
+                            </td>
+                            <td className="px-4 py-3 text-right">{totalRemanenteEspecie}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          );
+        })()}
       </div>
     </div>
   );

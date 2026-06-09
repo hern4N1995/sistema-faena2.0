@@ -24,13 +24,14 @@ const { registrarFaena } = require('../controllers/registrarFaena.controller');
   - Las rutas definidas aquí deben ser relativas al punto de montaje.
   - Evitamos repetir el segmento 'faena' dentro de las rutas para no generar
     endpoints como '/api/faena/faena/...'.
+  - LAS RUTAS ESTÁTICAS DEBEN IR ANTES DE LAS DINÁMICAS (:id_faena)
 */
 
-/* Rutas específicas (deben ir antes de la ruta genérica '/') */
-router.get('/:id_faena/decomiso-datos', obtenerDatosParaDecomiso);
-router.get('/:id_faena/detalle', verificarToken, permitirRoles(1, 2, 3), obtenerDetalleFaenaPorId);
-router.put('/:id_faena', verificarToken, permitirRoles(1, 2, 3), modificarFaena);
+/* Operaciones CRUD / listados generales (rutas generales van primero) */
+router.get('/', verificarToken, permitirRoles(1, 2, 3), obtenerFaenas);
+router.post('/', verificarToken, permitirRoles(2), crearFaena);
 
+/* Rutas estáticas específicas (deben ir ANTES de /:id_faena) */
 router.get(
   '/faenas-realizadas',
   verificarToken,
@@ -39,17 +40,17 @@ router.get(
 );
 
 router.get(
-  '/detalles-categorias',
-  verificarToken,
-  permitirRoles(1, 2, 3),
-  obtenerDetallesFaenaConCategoria,
-);
-
-router.get(
   '/faenas-sin-decomiso',
   verificarToken,
   permitirRoles(1, 2, 3),
   obtenerFaenasSinDecomiso,
+);
+
+router.get(
+  '/detalles-categorias',
+  verificarToken,
+  permitirRoles(1, 2, 3),
+  obtenerDetallesFaenaConCategoria,
 );
 
 /* Endpoint para obtener tropas relacionadas (si corresponde) */
@@ -63,10 +64,6 @@ router.get(
   obtenerRemanentePorTropa,
 );
 
-/* Operaciones CRUD / listados generales */
-router.get('/', verificarToken, permitirRoles(1, 2, 3), obtenerFaenas);
-router.post('/', verificarToken, permitirRoles(2), crearFaena);
-
 /* Registrar faena (acción distinta a crearFaena) */
 router.post(
   '/registrar',
@@ -74,5 +71,10 @@ router.post(
   permitirRoles(1, 2, 3),
   registrarFaena,
 );
+
+/* Rutas DINÁMICAS (deben ir DESPUÉS de las estáticas) */
+router.get('/:id_faena/decomiso-datos', obtenerDatosParaDecomiso);
+router.get('/:id_faena/detalle', verificarToken, permitirRoles(1, 2, 3), obtenerDetalleFaenaPorId);
+router.put('/:id_faena', verificarToken, permitirRoles(1, 2, 3), modificarFaena);
 
 module.exports = router;

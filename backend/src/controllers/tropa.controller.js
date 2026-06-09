@@ -267,7 +267,16 @@ exports.getDetalleAgrupado = async (req, res) => {
         td.id_cat_especie,
         ce.descripcion AS categoria,
         SUM(td.cantidad) AS cantidad_total,
-        COUNT(td.*) AS filas
+        COALESCE((
+          SELECT SUM(fd.cantidad_faena)
+          FROM faena_detalle fd
+          WHERE fd.id_tropa_detalle IN (
+            SELECT id_tropa_detalle FROM tropa_detalle td2
+            WHERE td2.id_tropa = $1
+            AND td2.id_especie = td.id_especie
+            AND td2.id_cat_especie = td.id_cat_especie
+          )
+        ), 0) AS cantidad_faenada
       FROM tropa_detalle td
       LEFT JOIN especie e ON td.id_especie = e.id_especie
       LEFT JOIN categoria_especie ce ON td.id_cat_especie = ce.id_cat_especie
@@ -278,14 +287,21 @@ exports.getDetalleAgrupado = async (req, res) => {
       [tropaId],
     );
 
-    const categorias = detalleRes.rows.map((row) => ({
-      id_especie: row.id_especie,
-      id_cat_especie: row.id_cat_especie,
-      especie: row.especie,
-      nombre: row.categoria,
-      remanente: parseInt(row.cantidad_total, 10) || 0,
-      filas: parseInt(row.filas, 10) || 0,
-    }));
+    const categorias = detalleRes.rows.map((row) => {
+      const cantidad_total = parseInt(row.cantidad_total, 10) || 0;
+      const cantidad_faenada = parseInt(row.cantidad_faenada, 10) || 0;
+      const remanente = cantidad_total - cantidad_faenada;
+      
+      return {
+        id_especie: row.id_especie,
+        id_cat_especie: row.id_cat_especie,
+        especie: row.especie,
+        nombre: row.categoria,
+        cantidad_total,
+        cantidad_faenada,
+        remanente: remanente > 0 ? remanente : 0,
+      };
+    });
 
     return res.status(200).json({
       tropaId,

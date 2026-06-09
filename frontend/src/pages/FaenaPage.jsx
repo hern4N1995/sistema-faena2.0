@@ -204,65 +204,47 @@ const FaenaPage = () => {
           : [];
         const basics = data.map(normalizeBasic);
 
-        // Para asegurar especie y total: pedir detalle por tropa (si endpoint disponible)
-        // Usar batching para evitar rate limit: máximo 5 peticiones paralelas a la vez
-        const batchSize = 5;
+        // Usar batching para obtener detalles: máximo 10 peticiones paralelas
+        const batchSize = 10;
         const detalleMap = new Map();
 
         for (let i = 0; i < basics.length; i += batchSize) {
           if (!isMounted) return;
 
           const batch = basics.slice(i, i + batchSize);
+          const batchNum = Math.floor(i / batchSize) + 1;
+          const totalBatches = Math.ceil(basics.length / batchSize);
+          
+          console.log(`[FaenaPage] Batch ${batchNum}/${totalBatches} (${batch.length} tropas)`);
+          
           const batchPromises = batch.map((t) =>
             api
-              .get(`/tropas/${t.id_tropa}/detalle`, { signal: controller.signal })
+              .get(`/tropas/${t.id_tropa}/detalle-agrupado`, { signal: controller.signal })
               .then((r) => ({ status: 'fulfilled', id: t.id_tropa, data: r.data }))
               .catch((err) => {
-                // Si falla, intentar con detalle-agrupado como fallback
-                console.warn(
-                  `[FaenaPage] getDetalle failed for tropa ${t.id_tropa}, trying detalle-agrupado`
-                );
-                return api
-                  .get(`/tropas/${t.id_tropa}/detalle-agrupado`, {
-                    signal: controller.signal,
-                  })
-                  .then((r) => ({
-                    status: 'fulfilled',
-                    id: t.id_tropa,
-                    data: r.data,
-                  }))
-                  .catch((err2) => {
-                    console.warn(
-                      `[FaenaPage] Both endpoints failed for tropa ${t.id_tropa}`
-                    );
-                    return { status: 'rejected', id: t.id_tropa, error: err2 };
-                  });
+                console.warn(`[FaenaPage] getDetalleAgrupado failed for tropa ${t.id_tropa}`);
+                return { status: 'rejected', id: t.id_tropa, error: err };
               })
           );
 
           const detalles = await Promise.allSettled(batchPromises);
 
-          // Procesar resultados de este batch
+          // Procesar resultados
           for (const p of detalles) {
-            if (
-              p.status === 'fulfilled' &&
-              p.value &&
-              p.value.status === 'fulfilled' &&
-              p.value.data
-            ) {
+            if (p.status === 'fulfilled' && p.value?.status === 'fulfilled' && p.value?.data) {
               detalleMap.set(p.value.id, p.value.data);
             }
           }
 
-          // Pequeño delay entre batches para no sobrecargar el servidor
+          // Delay pequeño entre batches (50ms) para no sobrecargar servidor
           if (i + batchSize < basics.length) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 50));
           }
         }
 
         if (!isMounted) return;
 
-        // Consolida datos: si detalle disponible, extrae especie y total
+        // Consolidar: combinar info de tropa + detalle
         const consolidated = basics.map((t) => {
           const det = detalleMap.get(t.id_tropa) ?? null;
           if (!det) return t;
@@ -301,7 +283,7 @@ const FaenaPage = () => {
           };
         });
 
-        // Filtrar según criterio: si total_a_faenar existe, mostrar >0; si es null mostramos igualmente
+        // Filtrar según criterio: si total_a_faenar existe, mostrar >0
         const disponibles = consolidated.filter(
           (t) =>
             t.id_tropa != null &&
@@ -338,7 +320,7 @@ const FaenaPage = () => {
           return;
         }
 
-        console.error('Error al cargar tropas por planta:', err);
+        console.error('Error al cargar tropas:', err);
         if (isMounted) {
           setTropas([]);
           setTotalFaenar(0);
@@ -354,7 +336,7 @@ const FaenaPage = () => {
       isMounted = false;
       controller.abort();
     };
-  }, [rol]);
+  }, [rol, plantaDelUsuario]);
 
   const handleFaenar = (t) => {
     setRedirigiendoId(t.id_tropa);

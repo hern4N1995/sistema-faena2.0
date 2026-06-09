@@ -194,7 +194,7 @@ export default function InformeFaenaPage() {
       
       // Usar la planta seleccionada en el filtro, o la del usuario si es no-admin y no selecciona nada
       let plantaAFiltrar = idPlanta;
-      if (!plantaAFiltrar && user?.role !== 1) {
+      if (!plantaAFiltrar && user?.rol !== 1) {
         // No-admin sin selección: usar su planta asignada
         plantaAFiltrar = String(user?.id_planta || '');
       }

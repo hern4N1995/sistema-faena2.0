@@ -17,8 +17,11 @@
     "cors": "^2.8.5",
     "dotenv": "^17.1.0",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.1.5",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "redis": "^4.6.13",
+    "rate-limit-redis": "^4.1.5"
   },
   "devDependencies": {
     "eslint": "^9.30.0",

@@ -904,6 +904,7 @@ export default function FaenasRealizadasPage() {
                   <table className="w-full text-sm text-left">
                     <thead className="bg-green-700 text-white">
                       <tr>
+                        <th className="px-4 py-2 font-semibold">Especie</th>
                         <th className="px-4 py-2 font-semibold">Categoría</th>
                         <th className="px-4 py-2 font-semibold text-right">Cantidad</th>
                       </tr>
@@ -914,6 +915,7 @@ export default function FaenasRealizadasPage() {
                           key={i}
                           className="border-t border-slate-100 even:bg-slate-50"
                         >
+                          <td className="px-4 py-2 text-slate-700">{cat.especie}</td>
                           <td className="px-4 py-2 text-slate-700">{cat.categoria}</td>
                           <td className="px-4 py-2 text-right font-semibold text-slate-800">
                             {cat.cantidad_faena}
@@ -923,7 +925,7 @@ export default function FaenasRealizadasPage() {
                     </tbody>
                     <tfoot>
                       <tr className="bg-green-50 border-t-2 border-green-200">
-                        <td className="px-4 py-2 font-bold text-green-800">Total</td>
+                        <td colSpan="2" className="px-4 py-2 font-bold text-green-800">Total</td>
                         <td className="px-4 py-2 text-right font-bold text-green-800">
                           {modalDetalle.data.total_faenado}
                         </td>
@@ -1010,7 +1012,11 @@ export default function FaenasRealizadasPage() {
                   {(modalModificar.data.categorias || []).map((cat, i) => (
                     <div key={i} className="flex items-center justify-between gap-3 bg-slate-50 rounded-lg px-3 py-2">
                       <div className="flex-1">
-                        <span className="text-sm text-slate-700">{cat.categoria}</span>
+                        <span className="text-sm text-slate-700">
+                          <span className="font-semibold text-slate-800">{cat.especie}</span>
+                          {' - '}
+                          {cat.categoria}
+                        </span>
                         <p className="text-xs text-slate-500 mt-1">
                           Max permitido: {cat.max_permitido ?? '—'}
                         </p>

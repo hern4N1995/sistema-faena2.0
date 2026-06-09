@@ -316,8 +316,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ===== MIDDLEWARES DE SEGURIDAD =====
-// 1. Rate limiting - Proteger contra fuerza bruta
-app.use(securityMiddleware.rateLimiter);
+// 1. Rate limiting - Proteger contra fuerza bruta (DESHABILITADO EN DESARROLLO)
+// app.use(securityMiddleware.rateLimiter);
 
 // 2. Sanitización de entrada - Limpiar datos peligrosos
 app.use(securityMiddleware.sanitizeInput);

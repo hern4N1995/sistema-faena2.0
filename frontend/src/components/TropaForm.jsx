@@ -1199,7 +1199,7 @@ export default function TropaForm({ onCreated }) {
 
           <div className="flex flex-col">
             <label className="mb-2 font-semibold text-gray-700 text-sm">
-              Fecha Ingreso
+              Ingreso al establecimiento
             </label>
             <input
               name="fecha_ingreso"

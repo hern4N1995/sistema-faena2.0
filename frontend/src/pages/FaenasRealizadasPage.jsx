@@ -129,6 +129,7 @@ export default function FaenasRealizadasPage() {
 
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [sortOrder, setSortOrder] = useState(sortOptions[0]); // objeto {value,label}
+  const [sortField, setSortField] = useState('fecha'); // 'fecha' | 'n_tropa'
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -429,10 +430,16 @@ export default function FaenasRealizadasPage() {
   const sortedFaenas = useMemo(() => {
     const copy = Array.isArray(faenas) ? [...faenas] : [];
     copy.sort((a, b) => {
+      const sval = sortOrder?.value ?? 'desc';
+      const dir = sval === 'desc' ? -1 : 1;
+      if (sortField === 'n_tropa') {
+        const na = Number(a?.n_tropa) || 0;
+        const nb = Number(b?.n_tropa) || 0;
+        return dir * (na - nb);
+      }
       const da = a?.fecha_faena ? new Date(a.fecha_faena).getTime() : -Infinity;
       const db = b?.fecha_faena ? new Date(b.fecha_faena).getTime() : -Infinity;
-      const sval = sortOrder?.value ?? 'desc';
-      return sval === 'desc' ? db - da : da - db;
+      return dir * (da - db);
     });
     return copy;
   }, [faenas, sortOrder]);
@@ -579,6 +586,20 @@ export default function FaenasRealizadasPage() {
               </div>
 
               <div style={{ minWidth: 0 }} className="col-span-1">
+                <div className="flex flex-col">
+                  <label className="text-sm font-semibold text-slate-700 mb-1">Ordenar por</label>
+                  <select
+                    value={sortField}
+                    onChange={(e) => setSortField(e.target.value)}
+                    className="w-full rounded-lg border-2 border-gray-200 px-2 py-3 text-sm bg-gray-50 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                  >
+                    <option value="fecha">Fecha</option>
+                    <option value="n_tropa">N° Tropa</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ minWidth: 0 }} className="col-span-1">
                 <SelectField
                   label="Filas"
                   value={
@@ -598,20 +619,32 @@ export default function FaenasRealizadasPage() {
                 />
               </div>
 
-              <div className="flex flex-col items-start md:items-end text-xs">
-                <div className="text-slate-700">
-                  <span className="font-medium">{faenas.length}</span>
-                  <span className="ml-1 text-slate-500">reg.</span>
-                </div>
-                <div className="mt-1 text-slate-700">
-                  <span className="font-medium">Total:</span>
-                  <span className="font-bold text-green-700 ml-1">{totalFaenados}</span>
+              <div style={{ minWidth: 0 }} className="col-span-1">
+                <div className="flex items-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFiltro({ desde: '', hasta: '', n_tropa: '' })}
+                    className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition"
+                  >
+                    Limpiar filtros
+                  </button>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
       </header>
+
+      <div className="max-w-7xl mx-auto px-1 mb-3 flex justify-end">
+        <div className="text-right">
+          <p className="text-sm font-semibold text-green-700">
+            Total general faenados:{' '}
+            <span className="text-green-900">{totalFaenados}</span>
+          </p>
+          <p className="text-xs text-slate-500 mt-1">Registros visibles: {sortedFaenas.length}</p>
+        </div>
+      </div>
 
       {loading ? (
         <div className="flex justify-center items-center h-40">
@@ -999,8 +1032,26 @@ export default function FaenasRealizadasPage() {
                     <span className="text-slate-800">{modalModificar.data.especie || '—'}</span>
                   </div>
                   <div className="col-span-2">
-                    <span className="font-semibold text-slate-600">Fecha:</span>{' '}
-                    <span className="text-slate-800">{formatDate(modalModificar.data.fecha_faena)}</span>
+                    <label className="font-semibold text-slate-600 block mb-1">Fecha</label>
+                    <input
+                      type="date"
+                      value={
+                        modalModificar.data.fecha_faena
+                          ? (() => {
+                              const d = parseFaenaDate(modalModificar.data.fecha_faena);
+                              return d ? d.toISOString().split('T')[0] : '';
+                            })()
+                          : ''
+                      }
+                      onChange={(e) =>
+                        setModalModificar((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, fecha_faena: e.target.value },
+                        }))
+                      }
+                      disabled={modalModificar.saving}
+                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                    />
                   </div>
                 </div>
 

@@ -223,10 +223,42 @@ const obtenerFaenasRealizadas = async (req, res) => {
     let totalCantidadByTropa = {};
     
     if (allTropasIds.length > 0) {
-      // Usar los IDs específicamente con IN clause
+      // Query con los mismos filtros que la query principal (especie, provincia)
       const idsPlaceholders = allTropasIds.map((_, i) => `$${i + 1}`).join(',');
-      const totalCantidadQuery = `SELECT id_tropa, SUM(cantidad) as total_cantidad FROM tropa_detalle WHERE id_tropa IN (${idsPlaceholders}) GROUP BY id_tropa`;
-      const totalCantidadResult = await pool.query(totalCantidadQuery, allTropasIds);
+      
+      // Construir filtros adicionales para esta query
+      let filtrosAdicionales = [];
+      let valoresAdicionales = [];
+      
+      if (String(id_especie).trim()) {
+        valoresAdicionales.push(id_especie);
+        filtrosAdicionales.push(`esp.id_especie = $${allTropasIds.length + valoresAdicionales.length}`);
+      }
+      if (String(id_provincia).trim()) {
+        valoresAdicionales.push(id_provincia);
+        filtrosAdicionales.push(`prov.id_provincia = $${allTropasIds.length + valoresAdicionales.length}`);
+      }
+      
+      const whereAdicionales = filtrosAdicionales.length > 0 ? `AND ${filtrosAdicionales.join(' AND ')}` : '';
+      
+      const totalCantidadQuery = `
+        SELECT td.id_tropa, SUM(td.cantidad)::int as total_cantidad
+        FROM tropa_detalle td
+        JOIN especie esp ON td.id_especie = esp.id_especie
+        JOIN tropa t ON td.id_tropa = t.id_tropa
+        JOIN departamento depto ON t.id_departamento = depto.id_departamento
+        LEFT JOIN provincia prov ON depto.id_provincia = prov.id_provincia
+        WHERE td.id_tropa IN (${idsPlaceholders})
+        ${whereAdicionales}
+        GROUP BY td.id_tropa
+      `;
+      const totalCantidadResult = await pool.query(
+        totalCantidadQuery, 
+        [...allTropasIds, ...valoresAdicionales]
+      );
+      console.log('[obtenerFaenasRealizadas] Query:', totalCantidadQuery);
+      console.log('[obtenerFaenasRealizadas] Valores:', [...allTropasIds, ...valoresAdicionales]);
+      console.log('[obtenerFaenasRealizadas] Resultado:', totalCantidadResult.rows);
       totalCantidadByTropa = totalCantidadResult.rows.reduce((acc, row) => {
         acc[row.id_tropa] = Number(row.total_cantidad);
         return acc;

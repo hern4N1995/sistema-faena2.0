@@ -109,6 +109,10 @@ function SelectField({
 const FaenaPage = () => {
   const [tropas, setTropas] = useState([]);
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
+  const [filterDesde, setFilterDesde] = useState('');
+  const [filterHasta, setFilterHasta] = useState('');
+  const [sortField, setSortField] = useState('fecha'); // 'fecha' | 'n_tropa'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
   const [totalFaenar, setTotalFaenar] = useState(0);
   const [loading, setLoading] = useState(true);
   const [redirigiendoId, setRedirigiendoId] = useState(null);
@@ -361,6 +365,26 @@ const FaenaPage = () => {
     }
   };
 
+  const parseDateString = (v) => {
+    if (!v) return null;
+    try {
+      // Si viene en formato YYYY-MM-DD (input date), crear fecha local sin hora
+      if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+        const [y, m, d] = v.split('-').map((x) => Number(x));
+        return new Date(y, m - 1, d);
+      }
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const dateOnly = (d) => {
+    if (!d) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  };
+
   const esTropaVencida = (t) => {
     if (!t.fecha) return false;
     const fechaTropa = new Date(t.fecha);
@@ -396,9 +420,42 @@ const FaenaPage = () => {
     return searchable.includes(query);
   });
 
+  // Aplicar filtro por rango de fechas (usar solo la parte fecha, inclusivo)
+  const tropasFiltradasPorFecha = tropasFiltradas.filter((t) => {
+    if (!filterDesde && !filterHasta) return true;
+    const tDateRaw = parseDateString(t.fecha);
+    if (!tDateRaw) return false;
+    const tDate = dateOnly(tDateRaw);
+    if (filterDesde) {
+      const desdeRaw = parseDateString(filterDesde);
+      const desde = dateOnly(desdeRaw);
+      if (desde && tDate < desde) return false;
+    }
+    if (filterHasta) {
+      const hastaRaw = parseDateString(filterHasta);
+      const hasta = dateOnly(hastaRaw);
+      if (hasta && tDate > hasta) return false;
+    }
+    return true;
+  });
+
+  // Aplicar ordenamiento
+  const tropasOrdenadas = tropasFiltradasPorFecha.slice().sort((a, b) => {
+    const dir = sortOrder === 'asc' ? 1 : -1;
+    if (sortField === 'n_tropa') {
+      const na = Number(a.n_tropa) || 0;
+      const nb = Number(b.n_tropa) || 0;
+      return dir * (na - nb);
+    }
+    // por fecha (por defecto)
+    const da = parseDateString(a.fecha) || new Date(0);
+    const db = parseDateString(b.fecha) || new Date(0);
+    return dir * (da - db);
+  });
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [filtroBusqueda, rowsPerPage]);
+  }, [filtroBusqueda, rowsPerPage, filterDesde, filterHasta, sortField, sortOrder]);
 
   const TropaCard = ({ t }) => (
     <div
@@ -453,8 +510,8 @@ const FaenaPage = () => {
     </div>
   );
 
-  const totalPages = Math.max(1, Math.ceil(tropasFiltradas.length / rowsPerPage));
-  const paginatedTropas = tropasFiltradas.slice(
+  const totalPages = Math.max(1, Math.ceil(tropasOrdenadas.length / rowsPerPage));
+  const paginatedTropas = tropasOrdenadas.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
@@ -465,8 +522,9 @@ const FaenaPage = () => {
         <h1 className="text-2xl md:text-3xl font-extrabold text-center text-slate-800 drop-shadow mb-6">
           📋 Tropas a Faenar
         </h1>
+
         <div className="max-w-7xl mx-auto px-1 mb-3 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-          <div className="w-full md:max-w-xl">
+          <div className="w-full md:max-w-lg">
             <label className="block text-xs font-medium text-slate-600 mb-1">
               Buscar por tropa, productor, departamento o especie
             </label>
@@ -493,13 +551,72 @@ const FaenaPage = () => {
             />
           </div>
 
-          <div className="md:text-right">
+          <div className="flex gap-3 items-end">
+            <div className="flex flex-col">
+              <label className="text-xs font-semibold text-slate-600 mb-1">Desde</label>
+              <input
+                type="date"
+                value={filterDesde}
+                onChange={(e) => setFilterDesde(e.target.value)}
+                className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-xs font-semibold text-slate-600 mb-1">Hasta</label>
+              <input
+                type="date"
+                value={filterHasta}
+                onChange={(e) => setFilterHasta(e.target.value)}
+                className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none"
+              />
+            </div>
+            <div className="flex flex-col justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterDesde('');
+                  setFilterHasta('');
+                  setFiltroBusqueda('');
+                }}
+                className="ml-2 px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition"
+              >
+                Limpiar filtros
+              </button>
+            </div>
+            <div className="flex flex-col">
+              <label className="text-xs font-semibold text-slate-600 mb-1">Ordenar</label>
+              <div className="flex gap-2">
+                <select
+                  value={sortField}
+                  onChange={(e) => setSortField(e.target.value)}
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none"
+                >
+                  <option value="fecha">Fecha</option>
+                  <option value="n_tropa">N° Tropa</option>
+                </select>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none"
+                >
+                  <option value="desc">Descendente</option>
+                  <option value="asc">Ascendente</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          
+        </div>
+
+        <div className="max-w-7xl mx-auto px-1 mb-3 flex justify-end">
+          <div className="text-right">
             <p className="text-sm font-semibold text-green-700">
               Total general a faenar:{' '}
               <span className="text-green-900">{totalFaenar}</span>
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Registros visibles: {tropasFiltradas.length}
+              Registros visibles: {tropasOrdenadas.length}
             </p>
           </div>
         </div>

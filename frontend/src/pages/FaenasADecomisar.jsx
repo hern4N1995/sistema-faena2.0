@@ -495,7 +495,7 @@ export default function FaenasADecomisar() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-8 sm:px-6 lg:px-6 box-border pb-24">
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 text-center drop-shadow mb-6">
-          🩺 Decomisos
+          🩺 Faenas a Decomisar
         </h1>
 
         {/* Controles: Filtros de Fecha y Hora + Selector de Filas */}

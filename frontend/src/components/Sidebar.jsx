@@ -46,7 +46,7 @@ export default function Sidebar() {
       title: 'Gestión de Tropa',
       roles: ['1', '2', '3'],
       menu: [
-        { to: '/tropa', label: 'Ingreso Tropa', end: true },
+        { to: '/tropa', label: 'Ingreso de Tropa', end: true },
         { to: '/tropas-cargadas', label: 'Tropas Cargadas' },
       ],
     },

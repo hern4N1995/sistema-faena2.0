@@ -68,6 +68,7 @@ const obtenerResumenDecomiso = async (req, res) => {
     const result = await pool.query(
       `SELECT
         d.id_decomiso,
+        d.fecha_decomiso,
         fd.id_faena_detalle,
         t.n_tropa,
         t.dte_dtu,
@@ -97,7 +98,8 @@ const obtenerResumenDecomiso = async (req, res) => {
 
     res.json(result.rows);
   } catch (err) {
-    console.error('❌ Error al obtener resumen:', err.message);
+    console.error('❌ Error al obtener resumen para id:', id);
+    console.error(err.stack || err.message || err);
     res.status(500).json({ error: 'Error al obtener resumen del decomiso' });
   }
 };
@@ -115,6 +117,7 @@ const listarDecomisos = async (req, res) => {
         t.n_tropa,
         t.dte_dtu,
         t.id_planta,
+        t.fecha_ingreso,
         p.nombre AS nombre_planta,
         (SELECT SUM(cantidad) FROM tropa_detalle WHERE id_tropa = t.id_tropa) AS cantidad_tropa,
         (SELECT SUM(cantidad_faena) FROM faena_detalle WHERE id_faena = f.id_faena) AS cantidad_faena,
@@ -142,6 +145,12 @@ const listarDecomisos = async (req, res) => {
       ORDER BY d.fecha_decomiso DESC, d.id_decomiso DESC
       LIMIT $1;
     `, [limit]);
+
+    if (result.rows.length > 0) {
+      console.log('[listarDecomisos] First row keys:', Object.keys(result.rows[0]));
+      console.log('[listarDecomisos] First row fecha_ingreso:', result.rows[0].fecha_ingreso);
+      console.log('[listarDecomisos] First row fecha_decomiso:', result.rows[0].fecha_decomiso);
+    }
 
     res.json(result.rows);
   } catch (err) {

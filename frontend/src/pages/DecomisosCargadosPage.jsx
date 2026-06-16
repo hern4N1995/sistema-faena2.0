@@ -23,6 +23,9 @@ const DecomisosCargadosPage = () => {
   const [expandedDecomiso, setExpandedDecomiso] = useState(null);
   const [filterDesde, setFilterDesde] = useState('');
   const [filterHasta, setFilterHasta] = useState('');
+  const [filterQuery, setFilterQuery] = useState('');
+  const [sortField, setSortField] = useState('fecha');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingDecomiso, setEditingDecomiso] = useState(null);
   const [editErrors, setEditErrors] = useState([]);
@@ -76,12 +79,14 @@ const DecomisosCargadosPage = () => {
         // Agrupar detalles por id_decomiso (un decomiso puede tener múltiples detalles)
         const detallesMap = new Map();
         arr.forEach((row) => {
+          // Preferir y propagar la `fecha_decomiso` si está presente en alguna fila
           if (!detallesMap.has(row.id_decomiso)) {
             detallesMap.set(row.id_decomiso, {
               id_decomiso: row.id_decomiso,
               id_faena: row.id_faena,
               fecha_faena: row.fecha_faena || row.fecha,
-              fecha_decomiso: row.fecha_decomiso,
+              // Priorizar fecha_decomiso, si no está usar row.fecha o row.fecha_faena como fallback
+              fecha_decomiso: row.fecha_decomiso || row.fecha || row.fecha_faena,
               n_tropa: row.n_tropa,
               dte_dtu: row.dte_dtu,
               id_planta: row.id_planta,
@@ -92,8 +97,14 @@ const DecomisosCargadosPage = () => {
               detalles: [],
             });
           }
-          
+
           const decomiso = detallesMap.get(row.id_decomiso);
+
+          // Si alguna fila tiene `fecha_decomiso` y aún no la hemos registrado, guardarla
+          if (!decomiso.fecha_decomiso && (row.fecha_decomiso || row.fecha || row.fecha_faena)) {
+            decomiso.fecha_decomiso = row.fecha_decomiso || row.fecha || row.fecha_faena;
+          }
+
           if (row.id_decomiso_detalle) {
             decomiso.detalles.push({
               id_decomiso_detalle: row.id_decomiso_detalle,
@@ -183,8 +194,31 @@ const DecomisosCargadosPage = () => {
 
   const parseDateString = (value) => {
     if (!value) return null;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
+    // If it's already a Date
+    if (value instanceof Date) return value;
+    // If it's a number (ms)
+    if (typeof value === 'number') {
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    // Handle plain YYYY-MM-DD as local date (avoid timezone shift)
+    if (typeof value === 'string') {
+      const isoDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+      if (isoDateOnly) {
+        const [y, m, d] = value.split('-');
+        const dt = new Date(Number(y), Number(m) - 1, Number(d));
+        return Number.isNaN(dt.getTime()) ? null : dt;
+      }
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    return null;
+  };
+
+  const dateToLocalDateOnlyMs = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   };
 
   const isEditableDecomiso = (fecha) => {
@@ -240,6 +274,17 @@ const DecomisosCargadosPage = () => {
     navigate(`/decomisos/detalle/${id}`);
   };
 
+  function plantaLabel(d) {
+    if (!d) return '—';
+    if (d.nombre_planta) return d.nombre_planta;
+    if (d.planta && typeof d.planta === 'object') {
+      return d.planta.nombre ?? (d.planta.id ? `Planta #${d.planta.id}` : '—');
+    }
+    if (d.planta_nombre) return d.planta_nombre;
+    if (d.planta) return d.planta;
+    return '—';
+  }
+
   const visibleDecomisos = React.useMemo(() => {
     const desdeDate = parseDateString(filterDesde);
     const hastaDate = parseDateString(filterHasta);
@@ -247,15 +292,52 @@ const DecomisosCargadosPage = () => {
       ? new Date(hastaDate.getFullYear(), hastaDate.getMonth(), hastaDate.getDate(), 23, 59, 59, 999)
       : null;
 
-    return decomisos.filter((d) => {
-      if (!desdeDate && !maxHasta) return true;
-      const fecha = parseDateString(d.fecha_decomiso || '');
-      if (!fecha) return false;
-      if (desdeDate && fecha < desdeDate) return false;
-      if (maxHasta && fecha > maxHasta) return false;
-      return true;
-    });
-  }, [decomisos, filterDesde, filterHasta]);
+    // Aplicar filtros de fecha, nro tropa, planta y DTE
+    return decomisos
+      .filter((d) => {
+        // Fecha: comparar solo la parte de fecha (local) y hacer Hasta inclusivo
+        if (desdeDate || hastaDate) {
+          const fecha = parseDateString(d.fecha_decomiso || d.fecha || d.fecha_faena || '');
+          if (!fecha) return false;
+          const fechaOnly = dateToLocalDateOnlyMs(fecha);
+          const desdeOnly = desdeDate ? dateToLocalDateOnlyMs(desdeDate) : null;
+          const hastaOnly = hastaDate ? dateToLocalDateOnlyMs(hastaDate) : null;
+          if (desdeOnly !== null && fechaOnly < desdeOnly) return false;
+          if (hastaOnly !== null && fechaOnly > hastaOnly) return false;
+        }
+
+        // Búsqueda combinada por N° tropa, Planta o DTE/DTU
+        if (filterQuery && String(filterQuery).trim()) {
+          const needle = String(filterQuery).trim().toLowerCase();
+          const tropaStr = String(d.n_tropa || '').toLowerCase();
+          const plantaStr = String(plantaLabel(d) || '').toLowerCase();
+          const dteStr = String(d.dte_dtu || '').toLowerCase();
+
+          const matchTropa = tropaStr.startsWith(needle);
+          const matchPlanta = plantaStr.startsWith(needle);
+          const matchDte = dteStr.startsWith(needle);
+
+          if (!matchTropa && !matchPlanta && !matchDte) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortField === 'n_tropa') {
+          const na = Number(a.n_tropa) || 0;
+          const nb = Number(b.n_tropa) || 0;
+          return sortOrder === 'asc' ? na - nb : nb - na;
+        }
+
+        // sortField === 'fecha'
+        const fa = parseDateString(a.fecha_decomiso);
+        const fb = parseDateString(b.fecha_decomiso);
+        if (fa && fb) return sortOrder === 'asc' ? fa - fb : fb - fa;
+        if (fa && !fb) return sortOrder === 'asc' ? -1 : -1;
+        if (!fa && fb) return sortOrder === 'asc' ? 1 : 1;
+        return 0;
+      });
+  }, [decomisos, filterDesde, filterHasta, filterQuery, sortField, sortOrder]);
 
   const destinoOptions = [
     { value: 'incineracion', label: 'Incineración' },
@@ -373,7 +455,7 @@ const DecomisosCargadosPage = () => {
   /* ---------------------------------------------------------- */
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [filterDesde, filterHasta]);
+  }, [filterDesde, filterHasta, filterQuery, sortField, sortOrder]);
 
   const totalPages = Math.ceil(visibleDecomisos.length / rowsPerPage);
   const paginatedDecomisos = visibleDecomisos.slice(
@@ -522,17 +604,16 @@ const DecomisosCargadosPage = () => {
     </div>
   );
 
-  const plantaLabel = (d) => {
-    if (!d) return '—';
-    // Buscar en diferentes estructuras posibles
-    if (d.nombre_planta) return d.nombre_planta;
-    if (d.planta && typeof d.planta === 'object') {
-      return d.planta.nombre ?? (d.planta.id ? `Planta #${d.planta.id}` : '—');
-    }
-    if (d.planta_nombre) return d.planta_nombre;
-    if (d.planta) return d.planta;
-    return '—';
+  const clearFilters = () => {
+    setFilterDesde('');
+    setFilterHasta('');
+    setFilterQuery('');
+    setSortField('fecha');
+    setSortOrder('desc');
+    setCurrentPage(1);
   };
+
+  
 
   /* ---------------------------------------------------------- */
   /*  Vista principal                                           */
@@ -546,15 +627,9 @@ const DecomisosCargadosPage = () => {
         </h1>
       </header>
 
-      <section className="mb-6 max-w-5xl mx-auto rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <div className="mb-6 max-w-5xl mx-auto">
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] items-end">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">Filtro por fecha</h2>
-            <p className="text-sm text-slate-500">
-              Usa las fechas "Desde" y "Hasta" para acotar los decomisos mostrados.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 items-end">
             <label className="flex flex-col text-sm text-slate-600">
               <span className="mb-1 font-semibold">Desde</span>
               <input
@@ -564,6 +639,7 @@ const DecomisosCargadosPage = () => {
                 className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
               />
             </label>
+
             <label className="flex flex-col text-sm text-slate-600">
               <span className="mb-1 font-semibold">Hasta</span>
               <input
@@ -574,8 +650,53 @@ const DecomisosCargadosPage = () => {
               />
             </label>
           </div>
+
+          <div className="flex items-end gap-3">
+            <label className="flex flex-col text-sm text-slate-600 w-[212px]">
+              <span className="mb-1 font-semibold">Buscar (tropa / planta / DTE)</span>
+              <input
+                type="text"
+                value={filterQuery}
+                onChange={(e) => setFilterQuery(e.target.value)}
+                placeholder="Ej: 123, Planta X, DTE123"
+                className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+              />
+            </label>
+
+            <label className="flex flex-col text-sm text-slate-600">
+              <span className="mb-1 font-semibold">Ordenar por</span>
+              <select
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value)}
+                className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-green-500 outline-none"
+              >
+                <option value="fecha">Fecha decomiso</option>
+                <option value="n_tropa">N° Tropa</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col text-sm text-slate-600">
+              <span className="mb-1 font-semibold">Dirección</span>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-green-500 outline-none"
+              >
+                <option value="desc">Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </label>
+            <div className="self-end">
+              <button
+                onClick={clearFilters}
+                className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg font-semibold text-sm hover:bg-slate-200 transition"
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
 
       {editModalOpen && editingDecomiso && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -615,7 +736,7 @@ const DecomisosCargadosPage = () => {
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Planta</p>
                   <p className="text-sm text-slate-800">{plantaLabel(editingDecomiso)}</p>
-                </div>
+              </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase mb-2 block">Fecha Decomiso</label>
                   <input

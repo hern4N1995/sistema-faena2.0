@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { formatDateFromDB } from '../utils/dateFormatter';
+import ModalAccessible from '../components/ModalAccessible';
 
 // Hook para detectar si es móvil
 const useMediaQuery = (query) => {
@@ -236,10 +237,30 @@ const DecomisoResumenPage = () => {
                         fecha_faena: row.fecha_faena,
                         fecha_decomiso: row.fecha_decomiso,
                         cantidad_decomisada: 0,
+                        detalles: [],
                       });
                     }
                     const deco = decomisosMap.get(decoKey);
+                    // Sumar cantidad total decomisada
                     deco.cantidad_decomisada += row.cantidad ? Number(row.cantidad) : 0;
+
+                    // Agregar detalle individual (puede haber múltiples por decomiso)
+                    const detalle = {
+                      id_decomiso_detalle: row.id_decomiso_detalle,
+                      tipo_parte: row.nombre_tipo_parte || null,
+                      parte: row.nombre_parte || null,
+                      afeccion: row.afeccion || null,
+                      cantidad: row.cantidad ? Number(row.cantidad) : 0,
+                      peso_kg: row.peso_kg != null ? row.peso_kg : null,
+                      animales_afectados: row.animales_afectados != null ? row.animales_afectados : null,
+                      destino_decomiso: row.destino_decomiso || null,
+                      observaciones: row.observaciones || null,
+                    };
+
+                    // Evitar duplicados si la misma fila se procesa dos veces
+                    if (!deco.detalles.some((dt) => dt.id_decomiso_detalle === detalle.id_decomiso_detalle)) {
+                      deco.detalles.push(detalle);
+                    }
                   });
 
                   // PASO 2: Agrupar los decomisos por id_faena
@@ -315,11 +336,8 @@ const DecomisoResumenPage = () => {
         
         {/* Modal: resumen completo de la tropa */}
         {showTropaModal && (
-          <div
-            onClick={() => setShowTropaModal(false)}
-            className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-2 sm:p-4 overflow-auto"
-          >
-            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-6xl bg-white rounded-xl sm:rounded-2xl shadow-xl ring-1 ring-slate-200 mt-4 sm:mt-8 mb-4">
+          <ModalAccessible onClose={() => setShowTropaModal(false)}>
+            <div className="w-full max-w-4xl lg:max-w-6xl mx-4 lg:mx-auto bg-white rounded-xl sm:rounded-2xl shadow-xl ring-1 ring-slate-200">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-3 sm:py-4 border-b gap-2">
                 <div className="min-w-0">
                   <h3 className="text-base sm:text-lg font-bold">Resumen completo - Tropa #{faena.n_tropa}</h3>
@@ -333,7 +351,7 @@ const DecomisoResumenPage = () => {
                 </button>
               </div>
 
-              <div className="p-3 sm:p-6 space-y-4 overflow-auto max-h-[calc(100vh-200px)]">
+              <div className="p-3 sm:p-6 space-y-4 overflow-auto max-h-[calc(100vh-160px)]">
                 {tropaLoading ? (
                   <p className="text-slate-500">Cargando...</p>
                 ) : tropaError ? (
@@ -352,7 +370,7 @@ const DecomisoResumenPage = () => {
                         </div>
                         <div className="bg-slate-50 p-2 sm:p-3 rounded text-center sm:text-left">
                           <p className="text-xs text-slate-500">Total decomisados</p>
-                          <p className="font-semibold text-slate-800">{tropaDecomisos.reduce((s, it) => s + (it.total_decomisado || 0), 0)}</p>
+                          <p className="font-semibold text-slate-800">{tropaDecomisos.reduce((s, it) => s + (it.total_decomado || it.total_decomisado || 0), 0)}</p>
                         </div>
                       </div>
 
@@ -385,7 +403,8 @@ const DecomisoResumenPage = () => {
                                   <tr>
                                     <th className="px-2 sm:px-3 py-2 text-left">#</th>
                                     <th className="px-2 sm:px-3 py-2 text-left">Fecha decomiso</th>
-                                    <th className="px-2 sm:px-3 py-2 text-left">ID Decomiso</th>
+                                    <th className="px-2 sm:px-3 py-2 text-left">Se decomisó</th>
+                                    <th className="px-2 sm:px-3 py-2 text-left">Observaciones</th>
                                     <th className="px-2 sm:px-3 py-2 text-right">Decomisados</th>
                                   </tr>
                                 </thead>
@@ -393,8 +412,30 @@ const DecomisoResumenPage = () => {
                                   {f.decomisos.map((d, di) => (
                                     <tr key={di} className="border-b last:border-b-0 hover:bg-slate-50">
                                       <td className="px-2 sm:px-3 py-2">{d.orden}°</td>
-                                      <td className="px-2 sm:px-3 py-2">{d.fecha_decomiso ? new Date(d.fecha_decomiso).toLocaleDateString('es-AR') : '—'}</td>
-                                      <td className="px-2 sm:px-3 py-2">{d.id_decomiso || '—'}</td>
+                                      <td className="px-2 sm:px-3 py-2">{formatDateFromDB(d.fecha_decomiso) || '—'}</td>
+                                      <td className="px-2 sm:px-3 py-2 text-left">
+                                        {Array.isArray(d.detalles) && d.detalles.length > 0 ? (
+                                          d.detalles.map((dt, ii) => (
+                                            <div key={ii} className="mb-1">
+                                              <div className="font-medium text-sm truncate">{(dt.tipo_parte ? dt.tipo_parte + ' • ' : '') + (dt.parte || '—')}</div>
+                                              <div className="text-xs text-slate-500 truncate">{dt.afeccion || '—'}</div>
+                                              <div className="text-xs text-slate-700">Cant: {dt.cantidad || 0} · Peso: {dt.peso_kg != null ? dt.peso_kg : '—'} kg · Animales: {dt.animales_afectados != null ? dt.animales_afectados : '—'}</div>
+                                              <div className="text-xs text-slate-500">Destino: {dt.destino_decomiso || '—'}</div>
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <span className="text-slate-500">{d.id_decomiso || '—'}</span>
+                                        )}
+                                      </td>
+                                      <td className="px-2 sm:px-3 py-2 text-left">
+                                        {Array.isArray(d.detalles) && d.detalles.length > 0 ? (
+                                          d.detalles.map((dt, ii) => (
+                                            <div key={ii} className="mb-1 text-xs text-slate-700 truncate">{dt.observaciones || '—'}</div>
+                                          ))
+                                        ) : (
+                                          <span className="text-slate-500">—</span>
+                                        )}
+                                      </td>
                                       <td className="px-2 sm:px-3 py-2 text-right">{d.cantidad_decomisada || 0}</td>
                                     </tr>
                                   ))}
@@ -409,7 +450,7 @@ const DecomisoResumenPage = () => {
                 )}
               </div>
             </div>
-          </div>
+          </ModalAccessible>
         )}
       </div>
     </div>

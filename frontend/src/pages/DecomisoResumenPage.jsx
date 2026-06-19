@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { formatDateFromDB } from '../utils/dateFormatter';
 
 // Hook para detectar si es móvil
 const useMediaQuery = (query) => {
@@ -367,11 +368,11 @@ const DecomisoResumenPage = () => {
                                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-1">
                                   <div>
                                     <p className="text-slate-500">Ingreso</p>
-                                    <p className="font-semibold">{f.fecha_ingreso ? new Date(f.fecha_ingreso).toLocaleDateString('es-AR') : '—'}</p>
+                                    <p className="font-semibold">{formatDateFromDB(f.fecha_ingreso || f.fecha_faena || faena.fecha_faena) || '—'}</p>
                                   </div>
                                   <div>
                                     <p className="text-slate-500">Fecha faena</p>
-                                    <p className="font-semibold">{f.fecha_faena ? new Date(f.fecha_faena).toLocaleDateString('es-AR') : '—'}</p>
+                                    <p className="font-semibold">{formatDateFromDB(f.fecha_faena) || '—'}</p>
                                   </div>
                                 </div>
                               </div>

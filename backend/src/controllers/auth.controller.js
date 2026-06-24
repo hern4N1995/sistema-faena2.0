@@ -1,6 +1,7 @@
 const pool = require('../db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const sessionManager = require('../middleware/sessionManager');
 
 // Clave secreta para firmar el token (usala desde .env en producción)
 const JWT_SECRET = process.env.JWT_SECRET; // <-- Cambiala en producción
@@ -37,6 +38,13 @@ exports.login = async (req, res) => {
       JWT_SECRET,
       { expiresIn: '30d' }
     );
+
+    // Registrar la sesión en el gestor de sesiones (control de inactividad)
+    try {
+      sessionManager.addSession(token);
+    } catch (e) {
+      console.warn('[AUTH] No se pudo registrar sesión en sessionManager:', e.message);
+    }
 
     // 4. Devolver token + user básico
     res.json({

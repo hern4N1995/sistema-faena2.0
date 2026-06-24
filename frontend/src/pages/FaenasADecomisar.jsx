@@ -177,7 +177,20 @@ export default function FaenasADecomisar() {
       const ordenadas = [...conFaenados].sort(
         (a, b) => new Date(b.fecha_faena) - new Date(a.fecha_faena)
       );
-      setFaenas(ordenadas);
+
+      // Normalizar fecha_faena a fecha local y ms para filtros
+      const normalizadas = ordenadas.map((f) => {
+        const parsed = parseDateString(f.fecha_faena);
+        if (parsed) {
+          const y = parsed.getFullYear();
+          const m = parsed.getMonth();
+          const day = parsed.getDate();
+          return { ...f, fecha_local: `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`, fecha_local_ms: new Date(y, m, day).getTime() };
+        }
+        return { ...f, fecha_local: null, fecha_local_ms: null };
+      });
+
+      setFaenas(normalizadas);
       setCurrentPage(1);
     } catch (err) {
       console.error('[FaenasADecomisar] Error al cargar faenas:', err?.response?.data || err.message);
@@ -202,6 +215,52 @@ export default function FaenasADecomisar() {
   }, [rol, plantaDelUsuario]);
 
   const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
+
+  const parseDateString = (v) => {
+    if (!v) return null;
+    try {
+      // If string starts with YYYY-MM-DD (optionally followed by time),
+      // parse as local date to avoid timezone shifts from ISO timestamps
+      if (typeof v === 'string') {
+        const m = /^\d{4}-\d{2}-\d{2}/.exec(v);
+        if (m) {
+          const [y, mm, dd] = m[0].split('-').map((x) => Number(x));
+          return new Date(y, mm - 1, dd);
+        }
+      }
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const dateOnlyMs = (d) => {
+    if (!d) return null;
+    const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    return dt.getTime();
+  };
+
+  const endOfDayMs = (d) => {
+    if (!d) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+  };
+
+  const timeStringToSeconds = (t) => {
+    if (!t) return null;
+    // Expect HH:MM or HH:MM:SS
+    const parts = String(t).split(':').map((x) => Number(x));
+    if (parts.length < 2) return null;
+    const hh = parts[0] || 0;
+    const mm = parts[1] || 0;
+    const ss = parts[2] || 0;
+    return hh * 3600 + mm * 60 + ss;
+  };
+
+  // Intercambiar fechas si el usuario las pone invertidas.
+  // Ejecutar en onBlur para no interferir mientras escribe.
+  // No swap: preservamos lo que ingreso el usuario y aceptamos rango invertido.
+  // El filtrado construirá un rango inclusivo usando min/max.
 
   const handleDecomisar = (f) => {
     setRedirigiendoId(f.id_faena);
@@ -242,9 +301,12 @@ export default function FaenasADecomisar() {
     const s = new Set();
     for (const f of faenas) {
       if (!f?.fecha_faena) continue;
-      const d = new Date(f.fecha_faena);
-      if (isNaN(d.getTime())) continue;
-      s.add(d.toISOString().slice(0, 10));
+      const d = parseDateString(f.fecha_faena);
+      if (!d) continue;
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const da = String(d.getDate()).padStart(2, '0');
+      s.add(`${y}-${m}-${da}`);
     }
     return Array.from(s).sort((a, b) => (a < b ? 1 : -1)); // descendente
   }, [faenas]);
@@ -270,44 +332,64 @@ export default function FaenasADecomisar() {
     // Filtro por día relativo
     if (selectedDateForFilter) {
       result = result.filter((f) => {
-        if (!f?.fecha_faena) return false;
-        return (
-          new Date(f.fecha_faena).toISOString().slice(0, 10) ===
-          selectedDateForFilter
-        );
+        if (!f?.fecha_local) return false;
+        return f.fecha_local === selectedDateForFilter;
       });
     }
 
-    // Filtro por rango de fechas y horas
+    // Filtro por rango de fechas y horas (usar parsing local y rango inclusivo)
     if (filterDateStart || filterDateEnd || filterTimeStart || filterTimeEnd) {
+      const desdeDate = parseDateString(filterDateStart);
+      const hastaDate = parseDateString(filterDateEnd);
+      const desdeStartMs = desdeDate ? dateOnlyMs(desdeDate) : null;
+      const desdeEndMs = desdeDate ? endOfDayMs(desdeDate) : null;
+      const hastaStartMs = hastaDate ? dateOnlyMs(hastaDate) : null;
+      const hastaEndMs = hastaDate ? endOfDayMs(hastaDate) : null;
+
+      // Nuevo comportamiento:
+      // - `Desde` actúa como límite superior (<=). `Hasta` actúa como límite inferior (>=).
+      // - Si solo hay `Desde` -> fechas <= Desde.
+      // - Si solo hay `Hasta` -> fechas >= Hasta.
+      // - Si hay ambos -> rango inclusivo entre las dos fechas (min..max).
+      let low = null;
+      let high = null;
+
+      if (desdeDate && !hastaDate) {
+        high = desdeEndMs; // <= Desde
+        low = null;
+      } else if (!desdeDate && hastaDate) {
+        low = hastaStartMs; // >= Hasta
+        high = null;
+      } else if (desdeDate && hastaDate) {
+        const minDateMs = Math.min(desdeStartMs, hastaStartMs);
+        const maxStartMs = Math.max(desdeStartMs, hastaStartMs);
+        const maxEndMs = endOfDayMs(new Date(maxStartMs));
+        low = minDateMs;
+        high = maxEndMs;
+      }
+
+      const timeStartSec = timeStringToSeconds(filterTimeStart);
+      const timeEndSec = timeStringToSeconds(filterTimeEnd);
+
       result = result.filter((f) => {
-        if (!f?.fecha_faena) return false;
+        if (!f?.fecha_local_ms) return false;
+        const faenaMs = f.fecha_local_ms;
+        const faenaDateMs = f.fecha_local_ms;
 
-        const faenaDateTime = new Date(f.fecha_faena);
-        const faenaDate = faenaDateTime.toISOString().slice(0, 10);
-        const faenaTime = faenaDateTime.toISOString().slice(11, 19);
+        if (low !== null && faenaMs < low) return false;
+        if (high !== null && faenaMs > high) return false;
 
-        // Filtro por fecha inicio
-        if (filterDateStart && faenaDate < filterDateStart) {
-          return false;
-        }
-
-        // Filtro por fecha fin
-        if (filterDateEnd && faenaDate > filterDateEnd) {
-          return false;
-        }
-
-        // Filtro por hora inicio (solo si están en el mismo día o en el de inicio)
-        if (filterTimeStart && filterDateStart === faenaDate) {
-          if (faenaTime < filterTimeStart) {
-            return false;
+        // Hora filters: only apply when the faena date is equal to the corresponding filter date
+        if ((timeStartSec != null || timeEndSec != null) && (desdeStartMs != null || hastaStartMs != null)) {
+          const faenaDtFull = parseDateString(f.fecha_faena);
+          if (!faenaDtFull) return false;
+          if (timeStartSec != null && desdeStartMs != null && faenaDateMs === desdeStartMs) {
+            const faenaSec = faenaDtFull.getHours() * 3600 + faenaDtFull.getMinutes() * 60 + faenaDtFull.getSeconds();
+            if (faenaSec < timeStartSec) return false;
           }
-        }
-
-        // Filtro por hora fin (solo si están en el mismo día o en el de fin)
-        if (filterTimeEnd && filterDateEnd === faenaDate) {
-          if (faenaTime > filterTimeEnd) {
-            return false;
+          if (timeEndSec != null && hastaStartMs != null && faenaDateMs === hastaStartMs) {
+            const faenaSec = faenaDtFull.getHours() * 3600 + faenaDtFull.getMinutes() * 60 + faenaDtFull.getSeconds();
+            if (faenaSec > timeEndSec) return false;
           }
         }
 
@@ -507,25 +589,27 @@ export default function FaenasADecomisar() {
                 <label htmlFor="filterDateStart" className="block text-xs font-semibold text-slate-700 mb-2">
                   Fecha Inicio
                 </label>
-                <input
-                  id="filterDateStart"
-                  type="date"
-                  value={filterDateStart}
-                  onChange={(e) => setFilterDateStart(e.target.value)}
-                  className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
-                />
+                  <input
+                    id="filterDateStart"
+                    type="date"
+                    value={filterDateStart}
+                    onChange={(e) => setFilterDateStart(e.target.value)}
+                    onInput={(e) => setFilterDateStart(e.target.value)}
+                    className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                  />
               </div>
               <div>
                 <label htmlFor="filterDateEnd" className="block text-xs font-semibold text-slate-700 mb-2">
                   Fecha Fin
                 </label>
-                <input
-                  id="filterDateEnd"
-                  type="date"
-                  value={filterDateEnd}
-                  onChange={(e) => setFilterDateEnd(e.target.value)}
-                  className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
-                />
+                  <input
+                    id="filterDateEnd"
+                    type="date"
+                    value={filterDateEnd}
+                    onChange={(e) => setFilterDateEnd(e.target.value)}
+                    onInput={(e) => setFilterDateEnd(e.target.value)}
+                    className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                  />
               </div>
               <div>
                 <label htmlFor="filterTimeStart" className="block text-xs font-semibold text-slate-700 mb-2">

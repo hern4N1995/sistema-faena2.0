@@ -126,6 +126,21 @@ const DecomisosCargadosPage = () => {
         // Convertir map a array
         const agrupados = Array.from(detallesMap.values());
 
+        // Normalizar fecha_decomiso a fecha local (YYYY-MM-DD) y ms inicio de día
+        agrupados.forEach((d) => {
+          const parsed = parseDateString(d.fecha_decomiso || d.fecha || d.fecha_faena || '');
+          if (parsed) {
+            const y = parsed.getFullYear();
+            const m = parsed.getMonth();
+            const day = parsed.getDate();
+            d.fecha_local = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            d.fecha_local_ms = new Date(y, m, day).getTime();
+          } else {
+            d.fecha_local = null;
+            d.fecha_local_ms = null;
+          }
+        });
+
         agrupados.sort((a, b) => {
           const fa = parseDateString(a.fecha_decomiso);
           const fb = parseDateString(b.fecha_decomiso);
@@ -203,10 +218,13 @@ const DecomisosCargadosPage = () => {
     }
     // Handle plain YYYY-MM-DD as local date (avoid timezone shift)
     if (typeof value === 'string') {
-      const isoDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
-      if (isoDateOnly) {
-        const [y, m, d] = value.split('-');
-        const dt = new Date(Number(y), Number(m) - 1, Number(d));
+      // If string starts with YYYY-MM-DD (optionally followed by time),
+      // parse using local date to avoid timezone shifts from ISO timestamps.
+      const match = /^\d{4}-\d{2}-\d{2}/.exec(value);
+      if (match) {
+        const datePart = match[0];
+        const [y, m, d] = datePart.split('-').map((x) => Number(x));
+        const dt = new Date(y, m - 1, d);
         return Number.isNaN(dt.getTime()) ? null : dt;
       }
       const parsed = new Date(value);
@@ -221,12 +239,23 @@ const DecomisosCargadosPage = () => {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   };
 
+  const endOfDayLocalMs = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+  };
+
   const isEditableDecomiso = (fecha) => {
     const date = parseDateString(fecha || '');
     if (!date) return false;
     const diffDays = (new Date() - date) / (1000 * 60 * 60 * 24);
     return diffDays <= 7;
   };
+
+  // No hacemos swap de inputs. En lugar de cambiar los valores del usuario,
+  // durante el filtrado aplicamos el rango inclusivo usando min/max entre ambas fechas.
+  // Mantener una función vacía por compatibilidad con posibles referencias anteriores.
+  const handleMaybeSwapFilterDates = () => {};
 
   const handleOpenEdit = (d) => {
     const fechaValue = d.fecha_decomiso || d.fecha;
@@ -288,22 +317,53 @@ const DecomisosCargadosPage = () => {
   const visibleDecomisos = React.useMemo(() => {
     const desdeDate = parseDateString(filterDesde);
     const hastaDate = parseDateString(filterHasta);
-    const maxHasta = hastaDate
-      ? new Date(hastaDate.getFullYear(), hastaDate.getMonth(), hastaDate.getDate(), 23, 59, 59, 999)
-      : null;
 
     // Aplicar filtros de fecha, nro tropa, planta y DTE
     return decomisos
       .filter((d) => {
-        // Fecha: comparar solo la parte de fecha (local) y hacer Hasta inclusivo
+        // Fecha: comparar usando la fecha local normalizada (ms) y hacer Hasta inclusivo
         if (desdeDate || hastaDate) {
-          const fecha = parseDateString(d.fecha_decomiso || d.fecha || d.fecha_faena || '');
-          if (!fecha) return false;
-          const fechaOnly = dateToLocalDateOnlyMs(fecha);
-          const desdeOnly = desdeDate ? dateToLocalDateOnlyMs(desdeDate) : null;
-          const hastaOnly = hastaDate ? dateToLocalDateOnlyMs(hastaDate) : null;
-          if (desdeOnly !== null && fechaOnly < desdeOnly) return false;
-          if (hastaOnly !== null && fechaOnly > hastaOnly) return false;
+          const fechaOnly = d.fecha_local_ms || null;
+          if (fechaOnly === null) return false;
+
+          const hoy = new Date();
+          const hoyMs = dateToLocalDateOnlyMs(hoy);
+
+          // Nuevo comportamiento solicitado:
+          // - `Desde` actúa como límite superior (<=). Muestra fechas anteriores o iguales a `Desde`.
+          // - `Hasta` actúa como límite inferior (>=). Muestra fechas posteriores o iguales a `Hasta`.
+          // - Si solo hay `Desde` -> filtrar fechas <= Desde (inclusive).
+          // - Si solo hay `Hasta` -> filtrar fechas >= Hasta (inclusive).
+          // - Si hay ambos -> aplicar rango inclusivo entre las dos fechas (min..max).
+
+          const desdeStartMs = desdeDate ? dateToLocalDateOnlyMs(desdeDate) : null;
+          const desdeEndMs = desdeDate ? endOfDayLocalMs(desdeDate) : null;
+          const hastaStartMs = hastaDate ? dateToLocalDateOnlyMs(hastaDate) : null;
+          const hastaEndMs = hastaDate ? endOfDayLocalMs(hastaDate) : null;
+
+          let low = null;
+          let high = null;
+
+          if (desdeDate && !hastaDate) {
+            // Solo `Desde`: fechas <= Desde
+            high = desdeEndMs;
+            low = null;
+          } else if (!desdeDate && hastaDate) {
+            // Solo `Hasta`: fechas >= Hasta
+            low = hastaStartMs;
+            high = null;
+          } else if (desdeDate && hastaDate) {
+            // Ambos: rango entre las dos fechas (min..max)
+            const minDateMs = Math.min(desdeStartMs, hastaStartMs);
+            const maxDate = new Date(Math.max(desdeStartMs, hastaStartMs));
+            // maxDate is in start-of-day ms; make it end of day for inclusive comparison
+            const maxEndMs = endOfDayLocalMs(maxDate);
+            low = minDateMs;
+            high = maxEndMs;
+          }
+
+          if (low != null && fechaOnly < low) return false;
+          if (high != null && fechaOnly > high) return false;
         }
 
         // Búsqueda combinada por N° tropa, Planta o DTE/DTU
@@ -627,15 +687,19 @@ const DecomisosCargadosPage = () => {
         </h1>
       </header>
 
+      {/* debug panel removed */}
+
       <div className="mb-6 max-w-5xl mx-auto">
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] items-end">
           <div className="grid gap-3 sm:grid-cols-2 items-end">
             <label className="flex flex-col text-sm text-slate-600">
               <span className="mb-1 font-semibold">Desde</span>
               <input
+                id="filterDesde"
                 type="date"
                 value={filterDesde}
                 onChange={(e) => setFilterDesde(e.target.value)}
+                onInput={(e) => setFilterDesde(e.target.value)}
                 className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
               />
             </label>
@@ -643,9 +707,11 @@ const DecomisosCargadosPage = () => {
             <label className="flex flex-col text-sm text-slate-600">
               <span className="mb-1 font-semibold">Hasta</span>
               <input
+                id="filterHasta"
                 type="date"
                 value={filterHasta}
                 onChange={(e) => setFilterHasta(e.target.value)}
+                onInput={(e) => setFilterHasta(e.target.value)}
                 className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
               />
             </label>

@@ -425,17 +425,28 @@ const FaenaPage = () => {
     if (!filterDesde && !filterHasta) return true;
     const tDateRaw = parseDateString(t.fecha);
     if (!tDateRaw) return false;
-    const tDate = dateOnly(tDateRaw);
-    if (filterDesde) {
-      const desdeRaw = parseDateString(filterDesde);
-      const desde = dateOnly(desdeRaw);
-      if (desde && tDate < desde) return false;
+    const tDate = dateOnly(tDateRaw).getTime();
+
+    const desdeRaw = filterDesde ? parseDateString(filterDesde) : null;
+    const hastaRaw = filterHasta ? parseDateString(filterHasta) : null;
+    const desdeMs = desdeRaw ? dateOnly(desdeRaw).getTime() : null;
+    const hastaMs = hastaRaw ? dateOnly(hastaRaw).getTime() : null;
+
+    // Nuevo comportamiento: `Desde` <= (upper), `Hasta` >= (lower).
+    // Si ambos presentes, tomar rango inclusivo entre ambas fechas.
+    let low = null;
+    let high = null;
+    if (filterDesde && !filterHasta) {
+      high = desdeMs; // fechas <= Desde
+    } else if (!filterDesde && filterHasta) {
+      low = hastaMs; // fechas >= Hasta
+    } else if (filterDesde && filterHasta) {
+      low = Math.min(desdeMs, hastaMs);
+      high = Math.max(desdeMs, hastaMs);
     }
-    if (filterHasta) {
-      const hastaRaw = parseDateString(filterHasta);
-      const hasta = dateOnly(hastaRaw);
-      if (hasta && tDate > hasta) return false;
-    }
+
+    if (low != null && tDate < low) return false;
+    if (high != null && tDate > high) return false;
     return true;
   });
 

@@ -286,18 +286,56 @@ export default function TropasCargadas() {
       console.log('[TropasCargadas] Admin - mostrando todas las tropas');
     }
 
-    if (startDate) {
+    // Filtrado por rango de fechas (convencional):
+    // - `startDate` = desde = límite inferior (>=)
+    // - `endDate` = hasta = límite superior (<=)
+    // Si el usuario ingresa las fechas invertidas, las normalizamos (auto-swap)
+    if (startDate || endDate) {
+      // Helper: parse input (YYYY-MM-DD or full datetime) to ms at local midnight
+      const parseDateToMs = (input) => {
+        if (!input) return null;
+        const s = String(input).trim();
+        const m = s.match(/^\d{4}-\d{2}-\d{2}/);
+        if (m) {
+          const [y, mo, d] = m[0].split('-');
+          return new Date(parseInt(y), parseInt(mo) - 1, parseInt(d)).getTime();
+        }
+        const dObj = new Date(s);
+        if (isNaN(dObj.getTime())) return null;
+        return new Date(dObj.getFullYear(), dObj.getMonth(), dObj.getDate()).getTime();
+      };
+
+      const sdMs = parseDateToMs(startDate);
+      const edMs = parseDateToMs(endDate);
+
+      // Semántica requerida por el usuario:
+      // - Si sólo se proporciona `startDate` (Desde): incluir fechas <= startDate
+      // - Si sólo se proporciona `endDate` (Hasta): incluir fechas >= endDate
+      // - Si ambas están presentes: incluir el rango inclusivo entre ambas fechas
+      let low = null;
+      let high = null;
+
+      if (startDate && !endDate) {
+        // Desde = límite superior
+        low = null;
+        high = sdMs;
+      } else if (!startDate && endDate) {
+        // Hasta = límite inferior
+        low = edMs;
+        high = null;
+      } else if (sdMs != null && edMs != null) {
+        // Ambas presentes: rango inclusivo entre min y max
+        low = Math.min(sdMs, edMs);
+        high = Math.max(sdMs, edMs);
+      }
+
       filtered = filtered.filter((t) => {
         if (!t.fecha_ingreso) return false;
-        const tropaDate = getDateOnly(new Date(t.fecha_ingreso));
-        return tropaDate >= startDate;
-      });
-    }
-    if (endDate) {
-      filtered = filtered.filter((t) => {
-        if (!t.fecha_ingreso) return false;
-        const tropaDate = getDateOnly(new Date(t.fecha_ingreso));
-        return tropaDate <= endDate;
+        const tropaDate = parseDateToMs(t.fecha_ingreso);
+        if (tropaDate == null) return false;
+        if (low != null && tropaDate < low) return false;
+        if (high != null && tropaDate > high) return false;
+        return true;
       });
     }
 
@@ -356,8 +394,9 @@ export default function TropasCargadas() {
   const clearQuery = () => query && setQuery('');
 
   const rangeInvalid = useMemo(() => {
-    if (!startDate || !endDate) return false;
-    return new Date(startDate) > new Date(endDate);
+    // Las fechas se normalizan automáticamente en el filtrado; nunca mostramos
+    // "Rango inválido" sólo por haber ingresado las fechas en orden invertido.
+    return false;
   }, [startDate, endDate]);
 
   const totalPages = Math.max(1, Math.ceil(tropas.length / pageSize));

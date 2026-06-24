@@ -187,8 +187,20 @@ export default function InformeFaenaPage() {
     try {
       // Construir parámetros de consulta
       const params = {};
-      if (desde) params.desde = desde;
-      if (hasta) params.hasta = hasta;
+      // Mapear semántica: UI `desde` actúa como límite superior (<=), UI `hasta` como límite inferior (>=).
+      // Backend `desde` = lower bound (>=), `hasta` = upper bound (<=).
+      if (desde && hasta) {
+        const low = desde < hasta ? desde : hasta;
+        const high = desde > hasta ? desde : hasta;
+        params.desde = low;
+        params.hasta = high;
+      } else if (desde) {
+        // UI 'desde' -> backend 'hasta' (upper bound)
+        params.hasta = desde;
+      } else if (hasta) {
+        // UI 'hasta' -> backend 'desde' (lower bound)
+        params.desde = hasta;
+      }
       if (idEspecie && idEspecie !== '') params.id_especie = idEspecie;
       if (idProvincia && idProvincia !== '') params.id_provincia = idProvincia;
       

@@ -163,15 +163,23 @@ export default function FaenasRealizadasPage() {
     setLoading(true);
     try {
       const params = {};
-      const desde = filtro.desde?.trim();
-      const hasta = filtro.hasta?.trim();
-      if (desde && hasta) {
-        params.desde = desde;
-        params.hasta = hasta;
-      } else if (desde) {
-        params.fecha = desde;
-      } else if (hasta) {
-        params.fecha = hasta;
+      const desdeUser = filtro.desde?.trim();
+      const hastaUser = filtro.hasta?.trim();
+      // Mapear semántica: en UI `desde` actúa como límite superior (<=) y `hasta` como límite inferior (>=).
+      // El backend interpreta `desde` como lower bound (>=) y `hasta` como upper bound (<=).
+      // Por eso, cuando el usuario provee solo `desde`, lo enviamos como `hasta` al backend.
+      if (desdeUser && hastaUser) {
+        // Ambos: construir rango inclusivo entre las dos fechas
+        const low = desdeUser < hastaUser ? desdeUser : hastaUser;
+        const high = desdeUser > hastaUser ? desdeUser : hastaUser;
+        params.desde = low;
+        params.hasta = high;
+      } else if (desdeUser) {
+        // UI 'desde' => backend 'hasta' (upper bound)
+        params.hasta = desdeUser;
+      } else if (hastaUser) {
+        // UI 'hasta' => backend 'desde' (lower bound)
+        params.desde = hastaUser;
       }
       if (filtro.n_tropa?.trim()) params.n_tropa = filtro.n_tropa;
 

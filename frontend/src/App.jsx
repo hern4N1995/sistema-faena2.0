@@ -1,8 +1,9 @@
 // App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import React from 'react';
+import React, { useEffect } from 'react';
 import './index.css';
 import Layout from './components/Layout.jsx';
+import { clearAuthStorage, isSessionExpired, LAST_ACTIVITY_KEY } from './utils/auth';
 import Sidebar from './components/Sidebar.jsx';
 import Inicio from './pages/Inicio.jsx';
 import Tropa from './pages/Tropa.jsx';
@@ -39,6 +40,46 @@ import PrivacyPage from './pages/PrivacyPage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
 
 function App() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const markActivity = () => window.localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+    const logoutOnInactivity = () => {
+      const lastActivityAt = Number(window.localStorage.getItem(LAST_ACTIVITY_KEY) || 0);
+      if (lastActivityAt && isSessionExpired(lastActivityAt)) {
+        clearAuthStorage();
+        window.location.href = '/inicio';
+        return;
+      }
+    };
+
+    const token = window.localStorage.getItem('token');
+    if (!token) return;
+
+    const lastActivityAt = Number(window.localStorage.getItem(LAST_ACTIVITY_KEY) || 0);
+    if (!lastActivityAt || isSessionExpired(lastActivityAt)) {
+      clearAuthStorage();
+      window.location.href = '/inicio';
+      return;
+    }
+
+    markActivity();
+    const interval = window.setInterval(logoutOnInactivity, 30_000);
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    events.forEach((eventName) => window.addEventListener(eventName, markActivity, { passive: true }));
+
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'token' && !event.newValue) {
+        clearAuthStorage();
+      }
+    });
+
+    return () => {
+      window.clearInterval(interval);
+      events.forEach((eventName) => window.removeEventListener(eventName, markActivity));
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>

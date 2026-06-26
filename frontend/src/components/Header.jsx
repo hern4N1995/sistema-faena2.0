@@ -3,6 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { HiBars3, HiXMark } from 'react-icons/hi2';
 import { motion, AnimatePresence } from 'framer-motion';
 import LoginModal from './LoginModal';
+import { clearAuthStorage } from '../utils/auth';
 
 export default function Header() {
   const [loginAbierto, setLoginAbierto] = useState(false);
@@ -33,8 +34,7 @@ export default function Header() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    clearAuthStorage();
     setPerfilOpen(false); // ✅ cerrar menú de perfil
     navigate('/inicio');
   };

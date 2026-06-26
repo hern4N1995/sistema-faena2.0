@@ -1,6 +1,7 @@
 // src/services/api.js
 import axios from 'axios';
 import { getResponseCache, getRequestDeduplicator } from './cache';
+import { clearAuthStorage } from '../utils/auth';
 
 /**
  * Determina la base del API en RUNTIME:
@@ -125,9 +126,16 @@ api.interceptors.response.use(
       );
 
       // Manejar errores de seguridad específicos
+      if (status === 401 && (data?.message === 'Sesión cerrada por inactividad' || data?.message === 'Token inválido o expirado')) {
+        console.warn('[AUTH] Sesión expirada por inactividad. Cerrando sesión...');
+        clearAuthStorage();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/inicio';
+        }
+      }
+
       if (status === 403 && data?.code === 'CSRF_INVALID') {
         console.warn('[SECURITY] CSRF token inválido. Redireccionando a login...');
-        // En producción, redirigir a login
         localStorage.removeItem('csrfToken');
       }
 

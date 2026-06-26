@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
 import api from 'src/services/api';
+import { LAST_ACTIVITY_KEY } from '../utils/auth';
 
 export default function LoginModal({ isOpen, onClose }) {
   const [email, setEmail] = useState('');
@@ -59,6 +60,7 @@ export default function LoginModal({ isOpen, onClose }) {
 
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('token', data.token);
+      localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
 
       // Obtener CSRF token después del login
       try {

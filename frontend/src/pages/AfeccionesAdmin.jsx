@@ -3,7 +3,7 @@ import Select from 'react-select';
 import api from 'src/services/api';
 
 /* ------------------------------------------------------------------ */
-/*  SelectField estilizado                                            */
+/*  SelectField estilizado :D                                           */
 /* ------------------------------------------------------------------ */
 function SelectField({ label, value, onChange, options, placeholder }) {
   const [isFocusing, setIsFocusing] = useState(false);

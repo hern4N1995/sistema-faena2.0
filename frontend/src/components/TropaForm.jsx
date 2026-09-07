@@ -378,15 +378,18 @@ function InlineCreateModal({
         }
       } else if (type === 'titular') {
         const cuitNorm = values.cuit.replace(/\D/g, '');
-        const existeDuplicado = existentes.some((t) => {
-          const cuitExistente = String(t.cuit || t.documento || '').replace(/\D/g, '');
-          return cuitExistente === cuitNorm;
-        });
-        if (existeDuplicado) {
-          setError('❌ Este CUIT de titular ya está registrado.');
-          if (onNotify) onNotify('error', 'Este CUIT de titular ya está registrado.');
-          setLoading(false);
-          return;
+        // Solo validar duplicado si el CUIT no está vacío (CUIT es opcional para titulares)
+        if (cuitNorm) {
+          const existeDuplicado = existentes.some((t) => {
+            const cuitExistente = String(t.cuit || t.documento || '').replace(/\D/g, '');
+            return cuitExistente === cuitNorm;
+          });
+          if (existeDuplicado) {
+            setError('❌ Este CUIT de titular ya está registrado.');
+            if (onNotify) onNotify('error', 'Este CUIT de titular ya está registrado.');
+            setLoading(false);
+            return;
+          }
         }
       }
 

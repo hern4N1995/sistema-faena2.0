@@ -60,19 +60,27 @@ export function formatDateFromDB(dateInput, locale = 'es-AR') {
 
 /**
  * Convierte una fecha de un input type="date" a formato para API
+ * CRÍTICO: Las columnas DATE en PostgreSQL NO necesitan hora
+ * Enviar solo YYYY-MM-DD para evitar interpretación como UTC
  * @param {string} dateString - String de fecha (ej: "2026-06-01")
- * @returns {string|null} Fecha con hora para API (ej: "2026-06-01T00:00:00") o null
+ * @returns {string} Fecha en formato YYYY-MM-DD o null
  */
 export function formatDateForAPI(dateString) {
   if (!dateString) return null;
   
-  // Si ya tiene hora, devolverlo tal cual
-  if (dateString.includes('T')) {
-    return dateString;
+  // Si ya es un input type="date" puro (YYYY-MM-DD), devolverlo tal cual
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return dateString;  // "2026-06-01" puro, sin hora
   }
   
-  // Agregar hora 00:00:00
-  return `${dateString}T00:00:00`;
+  // Si tiene hora/timezone (ISO format), extraer SOLO la parte de fecha
+  // Para columnas DATE en PostgreSQL, NO enviamos hora
+  if (dateString.includes('T')) {
+    return dateString.split('T')[0];  // "2026-06-01T12:34:56Z" → "2026-06-01"
+  }
+  
+  // Fallback: devolver como está
+  return dateString;
 }
 
 /**

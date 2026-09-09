@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import api from '../services/api';
+import { formatDateForAPI, formatDateForInput as formatDateForInputUtil } from '../utils/dateFormatter';
 
 const useMediaQuery = (query) => {
   const [matches, setMatches] = useState(window.matchMedia(query).matches);
@@ -151,6 +152,22 @@ const DecomisosCargadosPage = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 1023px)');
   const rowsPerPage = isMobile ? 3 : 6;
+
+  // Helper para obtener fecha de hoy en formato YYYY-MM-DD
+  const getTodayDateString = () => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // Validación de rango: Hasta no debe ser anterior a Desde
+  // Solo validar cuando ambas fechas están completas (10 caracteres: YYYY-MM-DD)
+  const isRangeInvalid = 
+    filterDesde?.length === 10 && 
+    filterHasta?.length === 10 && 
+    filterDesde > filterHasta;
 
   // Obtener rol y planta del usuario desde localStorage
   useEffect(() => {
@@ -446,11 +463,11 @@ const DecomisosCargadosPage = () => {
           const hoy = new Date();
           const hoyMs = dateToLocalDateOnlyMs(hoy);
 
-          // Nuevo comportamiento solicitado:
-          // - `Desde` actúa como límite superior (<=). Muestra fechas anteriores o iguales a `Desde`.
-          // - `Hasta` actúa como límite inferior (>=). Muestra fechas posteriores o iguales a `Hasta`.
-          // - Si solo hay `Desde` -> filtrar fechas <= Desde (inclusive).
-          // - Si solo hay `Hasta` -> filtrar fechas >= Hasta (inclusive).
+          // Semántica estándar de rango de fechas:
+          // - `Desde` actúa como límite inferior (>=). Muestra fechas posteriores o iguales a `Desde`.
+          // - `Hasta` actúa como límite superior (<=). Muestra fechas anteriores o iguales a `Hasta`.
+          // - Si solo hay `Desde` -> filtrar fechas >= Desde (inclusive).
+          // - Si solo hay `Hasta` -> filtrar fechas <= Hasta (inclusive).
           // - Si hay ambos -> aplicar rango inclusivo entre las dos fechas (min..max).
 
           const desdeStartMs = desdeDate ? dateToLocalDateOnlyMs(desdeDate) : null;
@@ -462,13 +479,13 @@ const DecomisosCargadosPage = () => {
           let high = null;
 
           if (desdeDate && !hastaDate) {
-            // Solo `Desde`: fechas <= Desde
-            high = desdeEndMs;
-            low = null;
-          } else if (!desdeDate && hastaDate) {
-            // Solo `Hasta`: fechas >= Hasta
-            low = hastaStartMs;
+            // Solo `Desde`: fechas >= Desde
+            low = desdeStartMs;
             high = null;
+          } else if (!desdeDate && hastaDate) {
+            // Solo `Hasta`: fechas <= Hasta
+            high = hastaEndMs;
+            low = null;
           } else if (desdeDate && hastaDate) {
             // Ambos: rango entre las dos fechas (min..max)
             const minDateMs = Math.min(desdeStartMs, hastaStartMs);
@@ -571,7 +588,7 @@ const DecomisosCargadosPage = () => {
         peso_kg: pesoStr ? Number(pesoStr.replace(',', '.')) : 0,
         destino_decomiso: destino,
         observaciones: det.observaciones || null,
-        fecha_decomiso: editingDecomiso.fecha_decomiso,
+        fecha_decomiso: formatDateForAPI(editingDecomiso.fecha_decomiso),
       };
     });
 
@@ -592,7 +609,7 @@ const DecomisosCargadosPage = () => {
           d.id_decomiso === editingDecomiso.id_decomiso
             ? {
                 ...d,
-                fecha_decomiso: editingDecomiso.fecha_decomiso,
+                fecha_decomiso: formatDateForAPI(editingDecomiso.fecha_decomiso),
                 detalles: editingDecomiso.detalles.map((det) => ({
                   ...det,
                   cantidad: Number(det.cantidad),
@@ -816,7 +833,7 @@ const DecomisosCargadosPage = () => {
                 type="date"
                 value={filterDesde}
                 onChange={(e) => setFilterDesde(e.target.value)}
-                onInput={(e) => setFilterDesde(e.target.value)}
+                max={getTodayDateString()}
                 className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
               />
             </label>
@@ -828,9 +845,19 @@ const DecomisosCargadosPage = () => {
                 type="date"
                 value={filterHasta}
                 onChange={(e) => setFilterHasta(e.target.value)}
-                onInput={(e) => setFilterHasta(e.target.value)}
-                className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none"
+                disabled={isRangeInvalid}
+                max={getTodayDateString()}
+                className={`rounded-xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all ${
+                  isRangeInvalid
+                    ? 'border-red-400 bg-red-50 opacity-60 cursor-not-allowed'
+                    : 'border-slate-300 bg-slate-50 focus:border-green-500 focus:ring-4 focus:ring-green-100'
+                }`}
               />
+              {isRangeInvalid && (
+                <p className="text-red-600 text-xs mt-1 font-medium">
+                  ⚠️ "Hasta" no puede ser anterior a "Desde"
+                </p>
+              )}
             </label>
           </div>
 

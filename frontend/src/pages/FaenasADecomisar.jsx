@@ -132,6 +132,22 @@ export default function FaenasADecomisar() {
   const [filterTimeStart, setFilterTimeStart] = useState('');
   const [filterTimeEnd, setFilterTimeEnd] = useState('');
 
+  // Helper para obtener fecha de hoy en formato YYYY-MM-DD
+  const getTodayDateString = () => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // Validación de rango: Fecha Fin no debe ser anterior a Fecha Inicio
+  // Solo validar cuando ambas fechas están completas (10 caracteres: YYYY-MM-DD)
+  const isRangeInvalid = 
+    filterDateStart?.length === 10 && 
+    filterDateEnd?.length === 10 && 
+    filterDateStart > filterDateEnd;
+
   // Obtener rol y planta del usuario desde localStorage
   useEffect(() => {
     try {
@@ -346,20 +362,20 @@ export default function FaenasADecomisar() {
       const hastaStartMs = hastaDate ? dateOnlyMs(hastaDate) : null;
       const hastaEndMs = hastaDate ? endOfDayMs(hastaDate) : null;
 
-      // Nuevo comportamiento:
-      // - `Desde` actúa como límite superior (<=). `Hasta` actúa como límite inferior (>=).
-      // - Si solo hay `Desde` -> fechas <= Desde.
-      // - Si solo hay `Hasta` -> fechas >= Hasta.
+      // Semántica estándar de rango de fechas:
+      // - `Desde` actúa como límite inferior (>=). `Hasta` actúa como límite superior (<=).
+      // - Si solo hay `Desde` -> fechas >= Desde.
+      // - Si solo hay `Hasta` -> fechas <= Hasta.
       // - Si hay ambos -> rango inclusivo entre las dos fechas (min..max).
       let low = null;
       let high = null;
 
       if (desdeDate && !hastaDate) {
-        high = desdeEndMs; // <= Desde
-        low = null;
-      } else if (!desdeDate && hastaDate) {
-        low = hastaStartMs; // >= Hasta
+        low = desdeStartMs; // >= Desde
         high = null;
+      } else if (!desdeDate && hastaDate) {
+        high = hastaEndMs; // <= Hasta
+        low = null;
       } else if (desdeDate && hastaDate) {
         const minDateMs = Math.min(desdeStartMs, hastaStartMs);
         const maxStartMs = Math.max(desdeStartMs, hastaStartMs);
@@ -511,7 +527,7 @@ export default function FaenasADecomisar() {
           {formatDate(f.fecha_faena)}
         </span>
         <span className="text-sm font-semibold text-green-800">
-          Faena #{f.id_faena}
+          Tropa Nº {f.n_tropa || f.id_tropa || '—'}
         </span>
       </div>
       <div className="text-sm text-slate-700 space-y-1">
@@ -596,7 +612,7 @@ export default function FaenasADecomisar() {
                     type="date"
                     value={filterDateStart}
                     onChange={(e) => setFilterDateStart(e.target.value)}
-                    onInput={(e) => setFilterDateStart(e.target.value)}
+                    max={getTodayDateString()}
                     className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
                   />
               </div>
@@ -609,9 +625,19 @@ export default function FaenasADecomisar() {
                     type="date"
                     value={filterDateEnd}
                     onChange={(e) => setFilterDateEnd(e.target.value)}
-                    onInput={(e) => setFilterDateEnd(e.target.value)}
-                    className="w-full px-2 py-3 border-2 border-gray-200 rounded-lg text-sm bg-gray-50 transition-all duration-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 focus:outline-none hover:border-green-300"
+                    disabled={isRangeInvalid}
+                    max={getTodayDateString()}
+                    className={`w-full px-2 py-3 border-2 rounded-lg text-sm transition-all duration-200 focus:outline-none ${
+                      isRangeInvalid
+                        ? 'border-red-400 bg-red-50 opacity-60 cursor-not-allowed'
+                        : 'border-gray-200 bg-gray-50 focus:border-green-500 focus:ring-4 focus:ring-green-100 hover:border-green-300'
+                    }`}
                   />
+                  {isRangeInvalid && (
+                    <p className="text-red-600 text-xs mt-1 font-medium">
+                      ⚠️ "Fecha Fin" no puede ser anterior a "Fecha Inicio"
+                    </p>
+                  )}
               </div>
               <div>
                 <label htmlFor="filterTimeStart" className="block text-xs font-semibold text-slate-700 mb-2">

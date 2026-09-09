@@ -5,7 +5,7 @@
 
 /**
  * Convierte una fecha de la BD a formato de fecha local (DD-MM-YYYY)
- * CLAVE: Si viene con Z (UTC), convierte a zona local PRIMERO
+ * CLAVE CRÍTICA: Para columnas DATE en PostgreSQL, extraer YYYY-MM-DD sin crear Date objects
  * @param {string|Date} dateInput - Fecha de la BD (ej: "2026-06-01" o "2026-06-01T00:00:00Z")
  * @param {string} locale - Código de localización (default: 'es-AR')
  * @returns {string} Fecha formateada (ej: "01-06-2026") o string vacío si no es válida
@@ -16,24 +16,16 @@ export function formatDateFromDB(dateInput, locale = 'es-AR') {
   try {
     let dateString = String(dateInput).trim();
     
-    // Caso 1: Formato ISO con marca de hora (ej: "2026-06-01T00:00:00Z" o "2026-06-01T00:00:00")
+    // Caso 1: Formato ISO con T (ej: "2026-06-01T00:00:00Z" o "2026-06-01T00:00:00")
+    // ⚠️ CRÍTICO: Extraer SOLO YYYY-MM-DD sin crear Date object
     if (/^\d{4}-\d{2}-\d{2}T/.test(dateString)) {
-      // Parsear como Date - JavaScript lo interpreta como UTC si tiene Z
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '';
-      
-      // Formatear usando componentes en zona LOCAL (toLocaleDateString ya hace esto)
-      return date.toLocaleDateString(locale, {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
+      dateString = dateString.split('T')[0];  // "2026-06-01T00:00:00Z" → "2026-06-01"
     }
     
-    // Caso 2: Formato YYYY-MM-DD puro (sin hora, asumir local)
+    // Caso 2: Formato YYYY-MM-DD puro
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
       const [year, month, day] = dateString.split('-');
-      // Crear fecha en zona local
+      // Crear fecha en zona local con componentes
       const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
       
       return date.toLocaleDateString(locale, {
@@ -43,7 +35,7 @@ export function formatDateFromDB(dateInput, locale = 'es-AR') {
       });
     }
     
-    // Caso 3: Otro formato - intentar parsearlo como Date
+    // Caso 3: Otro formato - intentar parsearlo como Date (último recurso)
     const date = new Date(dateInput);
     if (isNaN(date.getTime())) return '';
     
@@ -106,7 +98,8 @@ export function extractDatePart(dateString) {
 
 /**
  * Convierte una fecha de la BD al formato YYYY-MM-DD para usar en input type="date"
- * CLAVE: Si viene con Z (UTC), convierte a zona local PRIMERO
+ * CLAVE CRÍTICA: Para columnas DATE en PostgreSQL, NUNCA crear Date objects
+ * porque JavaScript interpretará como UTC causando -1 día en zonas negativas
  * @param {string|Date} dateInput - Fecha de la BD (ej: "2026-06-01" o "2026-06-01T00:00:00Z")
  * @returns {string} Fecha en formato YYYY-MM-DD (fecha local) o string vacío si no es válida
  */
@@ -116,18 +109,11 @@ export function formatDateForInput(dateInput) {
   try {
     let dateString = String(dateInput).trim();
     
-    // Caso 1: Formato ISO con marca de hora (ej: "2026-06-01T00:00:00Z" o "2026-06-01T00:00:00")
+    // Caso 1: Formato ISO con marca de hora (ej: "2026-06-01T00:00:00Z")
+    // ⚠️ CRÍTICO: NO crear Date object - eso causaría interpretación UTC
+    // Solo extraer la parte YYYY-MM-DD que está ANTES de la T
     if (/^\d{4}-\d{2}-\d{2}T/.test(dateString)) {
-      // Parsear como Date (JavaScript lo interpreta como UTC si tiene Z)
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '';
-      
-      // Extraer componentes en zona LOCAL (no UTC)
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      
-      return `${yyyy}-${mm}-${dd}`;
+      return dateString.split('T')[0];  // "2026-06-01T00:00:00Z" → "2026-06-01"
     }
     
     // Caso 2: Formato YYYY-MM-DD puro (sin hora)

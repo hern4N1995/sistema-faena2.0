@@ -166,11 +166,24 @@ const FaenaPage = () => {
     return `${y}-${m}-${d}`;
   };
 
+  // Validación de fecha: Verifica que sea formato YYYY-MM-DD válido con año >= 1000
+  // Evita bloquear mientras se escribe el año (ej: "0002", "0020", "0202")
+  const isValidDateString = (dateStr) => {
+    if (!dateStr || dateStr.length !== 10) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+    const [y, m, d] = dateStr.split('-').map(x => Number(x));
+    // ⚠️ CRÍTICO: Año debe ser >= 1000 (rechaza años como 0002, 0020, 0202)
+    if (y < 1000 || y > 9999) return false;
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > 31) return false;
+    return true;
+  };
+
   // Validación de rango: Hasta no debe ser anterior a Desde
-  // Solo validar cuando ambas fechas están completas (10 caracteres: YYYY-MM-DD)
+  // Solo validar cuando ambas fechas son válidas y están completas
   const isRangeInvalid = 
-    filterDesde?.length === 10 && 
-    filterHasta?.length === 10 && 
+    isValidDateString(filterDesde) && 
+    isValidDateString(filterHasta) && 
     filterDesde > filterHasta;
 
   // Normaliza datos básicos de la tropa (lo mínimo)

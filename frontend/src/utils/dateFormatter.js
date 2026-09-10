@@ -146,3 +146,79 @@ export function formatDateForInput(dateInput) {
     return '';
   }
 }
+
+/**
+ * Extrae el DÍA (DD) de una fecha sin problemas de zona horaria
+ * ⚠️ CRÍTICO: NO usar new Date() para fechas de BD porque JavaScript interpreta como UTC
+ * En Argentina (UTC-3), "2026-09-10" se convierte a 2026-09-09 cuando se usa new Date()
+ * 
+ * @param {string|Date} dateInput - Fecha de la BD (ej: "2026-09-10" o "2026-09-10T00:00:00Z")
+ * @returns {string} Día con formato "DD" (ej: "10") o string vacío si no es válida
+ */
+export function getDayFromDate(dateInput) {
+  if (!dateInput) return '';
+  
+  try {
+    let dateString = String(dateInput).trim();
+    
+    // Extraer YYYY-MM-DD sin crear Date object (evita interpretación UTC)
+    let datePartOnly = dateString;
+    
+    // Si tiene hora (formato "2026-09-10T00:00:00Z"), extraer solo la parte de fecha
+    if (dateString.includes('T')) {
+      datePartOnly = dateString.split('T')[0];
+    }
+    
+    // Validar formato YYYY-MM-DD
+    const match = datePartOnly.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) {
+      // Fallback: intentar con Date object (último recurso)
+      const date = new Date(dateInput);
+      if (!isNaN(date.getTime())) {
+        return String(date.getDate()).padStart(2, '0');
+      }
+      return '';
+    }
+    
+    // Extraer el día (tercer grupo)
+    return match[3];  // El grupo 3 es MM, grupo 3 es DD. Espera, revisemos.
+  } catch (e) {
+    console.error('Error al extraer día de fecha:', e);
+    return '';
+  }
+}
+
+/**
+ * Extrae YEAR, MONTH, DAY de una fecha sin problemas de zona horaria
+ * ⚠️ CRÍTICO: Para usar en comparaciones de mes/año
+ * 
+ * @param {string|Date} dateInput - Fecha de la BD (ej: "2026-09-10" o "2026-09-10T00:00:00Z")
+ * @returns {Object} { year, month, day } con valores numéricos, o null si no es válida
+ */
+export function getDateComponentsFromDB(dateInput) {
+  if (!dateInput) return null;
+  
+  try {
+    let dateString = String(dateInput).trim();
+    
+    // Si tiene hora, extraer solo la parte de fecha
+    if (dateString.includes('T')) {
+      dateString = dateString.split('T')[0];
+    }
+    
+    // Validar formato YYYY-MM-DD
+    const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) {
+      return null;
+    }
+    
+    return {
+      year: parseInt(match[1]),
+      month: parseInt(match[2]),
+      day: parseInt(match[3]),
+    };
+  } catch (e) {
+    console.error('Error al extraer componentes de fecha:', e);
+    return null;
+  }
+}

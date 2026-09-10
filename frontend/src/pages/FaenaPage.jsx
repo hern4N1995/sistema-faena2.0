@@ -409,11 +409,21 @@ const FaenaPage = () => {
   const parseDateString = (v) => {
     if (!v) return null;
     try {
-      // Si viene en formato YYYY-MM-DD (input date), crear fecha local sin hora
-      if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
-        const [y, m, d] = v.split('-').map((x) => Number(x));
+      let dateStr = String(v).trim();
+      
+      // Si viene en formato ISO con T (ej: "2026-09-09T00:00:00Z")
+      // CRÍTICO: Extraer SOLO YYYY-MM-DD sin crear Date object que interprete como UTC
+      if (dateStr.includes('T')) {
+        dateStr = dateStr.split('T')[0];  // "2026-09-09T00:00:00Z" → "2026-09-09"
+      }
+      
+      // Si es formato YYYY-MM-DD puro, crear fecha local sin hora
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [y, m, d] = dateStr.split('-').map((x) => Number(x));
         return new Date(y, m - 1, d);
       }
+      
+      // Fallback para otros formatos
       const d = new Date(v);
       return isNaN(d.getTime()) ? null : d;
     } catch (e) {

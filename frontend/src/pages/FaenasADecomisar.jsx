@@ -205,7 +205,11 @@ export default function FaenasADecomisar() {
       
       const conFaenados = arr.filter((f) => Number(f.total_faenado) > 0);
       const ordenadas = [...conFaenados].sort(
-        (a, b) => new Date(b.fecha_faena) - new Date(a.fecha_faena)
+        (a, b) => {
+          const dateA = parseDateString(a.fecha_faena);
+          const dateB = parseDateString(b.fecha_faena);
+          return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
+        }
       );
 
       // Normalizar fecha_faena a fecha local y ms para filtros
@@ -244,7 +248,7 @@ export default function FaenasADecomisar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rol, plantaDelUsuario]);
 
-  const formatDate = (f) => (f ? new Date(f).toLocaleDateString('es-AR') : '—');
+  const formatDate = (f) => (f ? formatDateFromDB(f) : '—');
 
   const parseDateString = (v) => {
     if (!v) return null;
@@ -393,7 +397,8 @@ export default function FaenasADecomisar() {
       } else if (desdeDate && hastaDate) {
         const minDateMs = Math.min(desdeStartMs, hastaStartMs);
         const maxStartMs = Math.max(desdeStartMs, hastaStartMs);
-        const maxEndMs = endOfDayMs(new Date(maxStartMs));
+        const maxDate = new Date(maxStartMs);
+        const maxEndMs = endOfDayMs(maxDate);
         low = minDateMs;
         high = maxEndMs;
       }

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Select from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { formatDateFromDB } from '../utils/dateFormatter';
 
 /* SelectField compatible con react-select */
 function SelectField({
@@ -1065,7 +1066,7 @@ export default function FaenasADecomisar() {
               <div className="bg-slate-50 rounded-lg p-4">
                 <p className="text-xs text-slate-600 font-semibold">Fecha Faena</p>
                 <p className="text-lg font-bold text-slate-800">
-                  {previewFaena.fecha_faena ? new Date(previewFaena.fecha_faena).toLocaleDateString('es-AR') : '—'}
+                  {previewFaena.fecha_faena ? formatDateFromDB(previewFaena.fecha_faena) : '—'}
                 </p>
               </div>
               <div className="bg-slate-50 rounded-lg p-4">

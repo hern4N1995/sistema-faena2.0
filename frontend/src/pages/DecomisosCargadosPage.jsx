@@ -156,6 +156,16 @@ const DecomisosCargadosPage = () => {
   const isMobile = useMediaQuery('(max-width: 1023px)');
   const rowsPerPage = isMobile ? 3 : 6;
 
+  // Referencia al contenedor del modal para scroll automático
+  const editModalContentRef = React.useRef(null);
+
+  // Scroll al top cuando aparezcan errores
+  React.useEffect(() => {
+    if (editErrors.length > 0 && editModalContentRef.current) {
+      editModalContentRef.current.scrollTop = 0;
+    }
+  }, [editErrors]);
+
   // Helper para obtener fecha de hoy en formato YYYY-MM-DD
   const getTodayDateString = () => {
     const today = new Date();
@@ -286,7 +296,7 @@ const DecomisosCargadosPage = () => {
               nombre_parte: row.nombre_parte,
               afeccion: row.afeccion,
             });
-            decomiso.cantidad_decomisada += row.cantidad ? Number(row.cantidad) : 0;
+            decomiso.cantidad_decomisada += row.animales_afectados ? Number(row.animales_afectados) : 0;
           }
         });
 
@@ -485,10 +495,11 @@ const DecomisosCargadosPage = () => {
     setEditingDecomiso((prev) => {
       if (!prev) return prev;
       const detalles = [...(prev.detalles || [])];
-      detalles.splice(index, 1);
+      // Marcar como eliminado en lugar de remover del array
+      detalles[index] = { ...detalles[index], isDeleted: true };
       return {
         ...prev,
-        detalles: detalles.length > 0 ? detalles : prev.detalles,
+        detalles,
       };
     });
   };
@@ -620,18 +631,21 @@ const DecomisosCargadosPage = () => {
       errors.push('La fecha del decomiso es obligatoria.');
     }
 
-    const totalCantidadDecomiso = (editingDecomiso.detalles || []).reduce((sum, det) => {
-      const cantidad = det.cantidad != null ? Number(String(det.cantidad).trim()) : 0;
-      return sum + cantidad;
+    // Filtrar detalles no eliminados para validaciones y envío
+    const detallesActivos = (editingDecomiso.detalles || []).filter((det) => !det.isDeleted);
+
+    const totalAnimalesAfectados = detallesActivos.reduce((sum, det) => {
+      const animales = det.animales_afectados != null ? Number(String(det.animales_afectados).trim()) : 0;
+      return sum + animales;
     }, 0);
 
-    if (totalCantidadDecomiso > editingDecomiso.cantidad_faena) {
+    if (totalAnimalesAfectados > editingDecomiso.cantidad_faena) {
       errors.push(
-        `La cantidad total de decomiso (${totalCantidadDecomiso}) no puede superar la cantidad faenada (${editingDecomiso.cantidad_faena}).`
+        `La cantidad total de animales afectados (${totalAnimalesAfectados}) no puede superar la cantidad faenada (${editingDecomiso.cantidad_faena}).`
       );
     }
 
-    const detallesPayload = (editingDecomiso.detalles || []).map((det, idx) => {
+    const detallesPayload = detallesActivos.map((det, idx) => {
       const row = idx + 1;
       const cantidad = det.cantidad != null ? String(det.cantidad).trim() : '';
       const destino = String(det.destino_decomiso || '').trim();
@@ -689,7 +703,7 @@ const DecomisosCargadosPage = () => {
             ? {
                 ...d,
                 fecha_decomiso: formatDateForAPI(editingDecomiso.fecha_decomiso),
-                detalles: editingDecomiso.detalles.map((det) => ({
+                detalles: detallesActivos.map((det) => ({
                   ...det,
                   cantidad: Number(det.cantidad),
                   animales_afectados: det.animales_afectados
@@ -697,8 +711,8 @@ const DecomisosCargadosPage = () => {
                     : 0,
                   peso_kg: det.peso_kg ? Number(det.peso_kg.replace(',', '.')) : 0,
                 })),
-                cantidad_decomisada: editingDecomiso.detalles.reduce(
-                  (sum, det) => sum + (Number(det.cantidad) || 0),
+                cantidad_decomisada: detallesActivos.reduce(
+                  (sum, det) => sum + (Number(det.animales_afectados) || 0),
                   0,
                 ),
               }
@@ -1009,7 +1023,7 @@ const DecomisosCargadosPage = () => {
               </button>
             </div>
 
-            <div className="px-4 sm:px-6 py-5 space-y-5">
+            <div className="px-4 sm:px-6 py-5 space-y-5" ref={editModalContentRef}>
               {editErrors.length > 0 && (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                   <p className="font-semibold mb-2">Corrige los siguientes errores:</p>
@@ -1049,7 +1063,7 @@ const DecomisosCargadosPage = () => {
               <div>
                 <p className="font-semibold text-slate-900 mb-3">Detalles del decomiso</p>
                 <div className="space-y-4">
-                  {editingDecomiso.detalles.map((det, detIdx) => {
+                  {(editingDecomiso.detalles || []).filter((det) => !det.isDeleted).map((det, detIdx) => {
                     const isNewDetail = det.isNewDetail;
                     const tipoSelected = tiposParte.find((t) => String(t.id_tipo_parte_deco) === String(det.id_tipo_parte_deco));
                     const partesDelTipo = partes.filter((p) => String(p.id_tipo_parte_deco) === String(det.id_tipo_parte_deco));
@@ -1185,7 +1199,7 @@ const DecomisosCargadosPage = () => {
                           </div>
                         </div>
 
-                        {isNewDetail && (
+                        {!det.isDeleted && (
                           <div className="mt-3 pt-3 border-t border-slate-200">
                             <button
                               type="button"
